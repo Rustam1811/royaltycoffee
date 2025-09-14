@@ -1,0 +1,23 @@
+[
+  {
+    "origin": [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "http://localhost:5175",
+      "http://localhost:5176",
+      "http://localhost:5177",
+      "https://sunfoodapp.vercel.app",
+      "https://coffee-addict.vercel.app"
+    ],
+    "method": ["GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS"],
+    "responseHeader": [
+      "Content-Type",
+      "Authorization",
+      "x-goog-meta-uploadedby",
+      "x-goog-meta-originalname",
+      "x-goog-meta-size",
+      "x-goog-meta-hash"
+    ],
+    "maxAgeSeconds": 3600
+  }
+]

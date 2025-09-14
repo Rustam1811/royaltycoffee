@@ -1,0 +1,6 @@
+# Exclude backend from frontend deploy
+api/
+api-server/
+functions/
+# Also exclude node server helpers if any
+api-server.js

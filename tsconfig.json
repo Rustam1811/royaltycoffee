@@ -1,0 +1,31 @@
+// tsconfig.json
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "lib": ["dom", "esnext"],
+    "jsx": "preserve",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": ["vite/client", "node", "jest"],
+
+    "baseUrl": "./src",
+    "paths": {
+      "@/*": ["*"],
+      "@features/*": ["features/*"],
+      "@components/*": ["components/*"],
+      "@hooks/*": ["hooks/*"],
+      "@utils/*": ["utils/*"],
+      "@services/*": ["services/*"],
+      "@types/*": ["types/*"],
+      "@theme/*": ["theme/*"],
+      "@contexts/*": ["contexts/*"]
+    },
+
+    "noEmit": true        // <- добавь ЭТО
+  },
+  "include": ["src", "vite.config.ts", "admin", "api"],
+  "exclude": ["node_modules"]
+}

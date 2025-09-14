@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Coffee App</title>
+    
+    <base href="/" />
+    
+    <meta name="theme-color" content="#F6F7FB" />
+<!-- Для iOS ярлыка: -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+    <meta
+      name="viewport"
+      content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    
+    <link rel="manifest" href="/manifest.json" />
+    <script>
+      // Register SW only outside localhost to avoid dev caching issues
+      (function() {
+        if (!('serviceWorker' in navigator)) return;
+        var isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+        if (!isLocalhost) {
+          navigator.serviceWorker.register('/sw.js');
+        }
+      })();
+    </script>
+    
+    <link rel="shortcut icon" type="image/png" href="/favicon.png" />
+    
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

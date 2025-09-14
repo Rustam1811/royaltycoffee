@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    { "source": "/admin", "destination": "https://coffee-admin.vercel.app/" },
+    { "source": "/admin/(.*)", "destination": "https://coffee-admin.vercel.app/$1" },
+
+    { "source": "/api/(.*)", "destination": "https://coffee-api.vercel.app/api/$1" },
+
+    { "source": "/firebase-api/(.*)", "destination": "https://us-central1-coffeeaddict-c9d70.cloudfunctions.net/api/$1" },
+
+    { "source": "/(.*)", "destination": "/" }
+  ]
+}
