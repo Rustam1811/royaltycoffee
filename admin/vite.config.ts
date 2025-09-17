@@ -3,19 +3,9 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/',
-  server: {
-    port: 5174,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-        secure: false,
-      },
-    },
-  },
+  base: './',        // важно: относительные ассеты => /admin/assets/... через прокси
   build: {
-    outDir: '../dist/admin',
+    outDir: 'dist',  // билд в локальную папку проекта
     emptyOutDir: true,
   },
 })

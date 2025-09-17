@@ -2,7 +2,7 @@ import React from "react";
 import AdminRoutes from "./routes/AdminRoutes";
 import "./theme/tokens.css";
 import "./index.css";
-import "../shared/styles/base.css";
+
 import { UserProvider } from "./contexts/UserContext";
 
 const AdminApp: React.FC = () => {
