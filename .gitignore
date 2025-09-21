@@ -67,4 +67,6 @@ api-server/firebase-service-account.json
 node_modules/
 dist/
 .vercel/
+# Allow Vercel API handlers
+!api/**/*.js
 
