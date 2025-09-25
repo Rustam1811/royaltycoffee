@@ -70,3 +70,5 @@ dist/
 # Allow Vercel API handlers
 !api/**/*.js
 
+!admin/postcss.config.js
+!admin/tailwind.config.js

@@ -1,20 +1,37 @@
 {
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-react": "^5.0.2",
-    "typescript": "^5.9.2",
-    "vite": "^7.1.5"
-  },
-  "dependencies": {
-    "firebase": "^12.2.1",
-    "framer-motion": "^12.23.12",
-    "history": "^4.10.1",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "react-router-dom": "^5.3.4"
-  }
+    "name":  "coffee-admin",
+    "private":  true,
+    "version":  "0.1.0",
+    "engines":  {
+                    "node":  "\u003e=18"
+                },
+    "scripts":  {
+                    "dev":  "vite",
+                    "typecheck":  "tsc -p tsconfig.json --noEmit",
+                    "build":  "tsc -b \u0026\u0026 vite build",
+                    "preview":  "vite preview"
+                },
+    "dependencies":  {
+                         "@heroicons/react":  "^2.1.5",
+                         "@zxing/browser":  "^0.1.5",
+                         "firebase":  "^12.2.1",
+                         "framer-motion":  "^12.23.12",
+                         "lucide-react":  "^0.456.0",
+                         "react":  "^19.1.1",
+                         "react-dom":  "^19.1.1",
+                         "react-router-dom":  "^5.3.4",
+                         "recharts":  "^2.12.7",
+                         "uuid":  "^9.0.1",
+                         "zod":  "^3.23.8"
+                     },
+    "devDependencies":  {
+                            "@vitejs/plugin-react":  "^4.3.2",
+                            "autoprefixer":  "^10.4.20",
+                            "postcss":  "^8.4.41",
+                            "tailwindcss":  "^3.4.14",
+                            "typescript":  "^5.5.4",
+                            "vite":  "^5.4.10",
+                            "@tailwindcss/postcss":  "^4.1.5",
+                            "@types/node":  "^20.11.30"
+                        }
 }

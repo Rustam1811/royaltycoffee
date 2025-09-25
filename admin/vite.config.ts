@@ -1,11 +1,17 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import path from "path";
 
 export default defineConfig({
   plugins: [react()],
-  base: './',        // важно: относительные ассеты => /admin/assets/... через прокси
+  base: "/",
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "src"),
+    },
+  },
   build: {
-    outDir: 'dist',  // билд в локальную папку проекта
+    outDir: "dist",
     emptyOutDir: true,
   },
-})
+});
