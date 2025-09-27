@@ -115,16 +115,36 @@ const BonusManagement: React.FC = () => {
 
     const fetchBonusSettings = async () => {
         try {
-            const data = await api.get<Partial<BonusSettings> & { percentage?: number }>('bonus?action=settings');
+            type BonusSettingsAPI = {
+                percentage?: number;
+                pointsPerRuble?: number;
+                multipliers?: Record<string, number>;
+                categories?: Record<string, any>;
+                rewards?: any[];
+                levels?: any[];
+                settings?: {
+                    percentage?: number;
+                    pointsPerRuble?: number;
+                    multipliers?: Record<string, number>;
+                    categories?: Record<string, any>;
+                    rewards?: any[];
+                    levels?: any[];
+                };
+            };
+            const raw = await api.get<BonusSettingsAPI>('bonus?action=settings');
+            const data = (raw as any)?.settings ? (raw as any).settings as BonusSettingsAPI : raw;
             // Адаптируем данные из Firebase под формат админки
-            if (data.percentage !== undefined) {
-                setSettings(prev => ({
-                    ...prev,
-                    baseRate: data.percentage as number
-                }));
-            } else {
-                setSettings(data as BonusSettings);
-            }
+            setSettings(prev => ({
+                ...prev,
+                baseRate:
+                    (typeof (data as any)?.percentage === 'number' ? (data as any).percentage : undefined) ??
+                    (typeof (data as any)?.pointsPerRuble === 'number' ? (data as any).pointsPerRuble : undefined) ??
+                    prev.baseRate ?? 0,
+                multipliers: (data as any)?.multipliers ?? prev.multipliers ?? {},
+                categories:  (data as any)?.categories  ?? prev.categories  ?? {},
+                rewards:     (data as any)?.rewards     ?? prev.rewards     ?? [],
+                levels:      (data as any)?.levels      ?? prev.levels      ?? [],
+            }));
         } catch (error) {
             console.error('Ошибка загрузки настроек бонусов:', error);
         }
@@ -154,14 +174,14 @@ const BonusManagement: React.FC = () => {
         let bonus = (orderAmount * settings.baseRate) / 100;
 
         // Применяем множители
-        if (conditions.isMorning) bonus *= settings.multipliers.morningBonus;
-        if (conditions.isEvening) bonus *= settings.multipliers.eveningBonus;
-        if (conditions.isWeekend) bonus *= settings.multipliers.weekendBonus;
-        if (conditions.isVip) bonus *= settings.multipliers.vipBonus;
+        if (conditions.isMorning) bonus *= (settings.multipliers?.morningBonus ?? 1);
+        if (conditions.isEvening) bonus *= (settings.multipliers?.eveningBonus ?? 1);
+        if (conditions.isWeekend) bonus *= (settings.multipliers?.weekendBonus ?? 1);
+        if (conditions.isVip) bonus *= (settings.multipliers?.vipBonus ?? 1);
 
         // Применяем множитель категории
-        if (conditions.category && settings.categories[conditions.category]) {
-            bonus *= settings.categories[conditions.category];
+        if (conditions.category && (settings.categories?.[conditions.category])) {
+            bonus *= (settings.categories?.[conditions.category] ?? 1);
         }
 
         return Math.floor(bonus);
@@ -270,7 +290,7 @@ const BonusManagement: React.FC = () => {
 
                             <h4 className="text-md font-semibold mt-6 mb-3 text-[var(--color-text-primary)]">Множители</h4>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {Object.entries(settings.multipliers).map(([key, value]) => (
+                                {Object.entries(settings.multipliers || {}).map(([key, value]) => (
                                     <div key={key}>
                                         <label className="block text-sm font-medium mb-2 capitalize text-[var(--color-text-secondary)]">
                                             {key.replace('Bonus', ' бонус')}
@@ -292,7 +312,7 @@ const BonusManagement: React.FC = () => {
 
                             <h4 className="text-md font-semibold mt-6 mb-3 text-[var(--color-text-primary)]">Множители по категориям</h4>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {Object.entries(settings.categories).map(([category, multiplier]) => (
+                                {Object.entries(settings.categories || {}).map(([category, multiplier]) => (
                                     <div key={category}>
                                         <label className="block text-sm font-medium mb-2 capitalize text-[var(--color-text-secondary)]">{category}</label>
                                         <input
@@ -322,7 +342,7 @@ const BonusManagement: React.FC = () => {
                                 <div>
                                     <label className="block text-sm font-medium mb-2 text-[var(--color-text-secondary)]">Категория</label>
                                     <select className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-4 py-3 text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-orange)]" id="category">
-                                        {Object.keys(settings.categories).map(cat => (<option key={cat} value={cat}>{cat}</option>))}
+                                        {Object.keys(settings.categories || {}).map(cat => (<option key={cat} value={cat}>{cat}</option>))}
                                     </select>
                                 </div>
                                 <div className="flex items-end">

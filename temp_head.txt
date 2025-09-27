@@ -1,0 +1,5 @@
+# SunfoodApp
+
+## Serverless API (Vercel)
+
+- Все эндпоинты теперь в `api/*.js` как serverless-функции.

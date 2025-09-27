@@ -12,7 +12,7 @@ import {
   FunnelIcon
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckSolid } from '@heroicons/react/24/solid';
-import { API_BASE } from '@/config/api';
+import { api } from '../services/api';
 
 interface Promotion {
   id: string;
@@ -55,16 +55,6 @@ const chip = (text: string, tone: 'green' | 'gray' | 'amber' = 'gray') =>
       : 'bg-slate-500/10 text-slate-700 ring-1 ring-slate-300/60'
   }`;
 
-const emptyState = (
-  <div className="elev-card p-10 text-center">
-    <div className="mx-auto w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-      <TagIcon className="w-7 h-7 text-slate-500" />
-    </div>
-    <h3 className="text-lg font-semibold text-slate-900">Акций пока нет</h3>
-    <p className="text-sm text-slate-500 mt-1">Создайте первую акцию, чтобы порадовать гостей.</p>
-  </div>
-);
-
 // ───────────────────────────────────────────────────────────
 
 const PromotionManagement: React.FC = () => {
@@ -99,11 +89,8 @@ const PromotionManagement: React.FC = () => {
   const fetchPromotions = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/promo?action=promotions`);
-      if (res.ok) {
-        const data = await res.json();
-        setPromotions(data.promotions || data);
-      }
+      const data = await api.get<{ promotions: Promotion[] } | Promotion[]>('/promo?action=promotions');
+      setPromotions((data as { promotions: Promotion[] }).promotions || data as Promotion[]);
     } catch (e) {
       console.error('Ошибка загрузки акций:', e);
     } finally {
@@ -148,11 +135,8 @@ const PromotionManagement: React.FC = () => {
     if (!confirm('Удалить эту акцию?')) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/promo?action=promotions&id=${id}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (res.ok) await fetchPromotions();
+      await api.delete(`/promo?action=promotions&id=${id}`);
+      await fetchPromotions();
     } catch (e) {
       console.error('Ошибка удаления:', e);
     } finally {
@@ -164,19 +148,19 @@ const PromotionManagement: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const url = `${API_BASE}/promo?action=promotions`;
       const body = editing ? { ...form, id: editing.id } : form;
-      const res = await fetch(url + (editing ? `&id=${editing.id}` : ''), {
-        method: editing ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (res.ok) {
-        await fetchPromotions();
-        setShowModal(false);
-        setEditing(null);
-        resetForm();
+      const path = `/promo?action=promotions${editing ? `&id=${editing.id}` : ''}`;
+      
+      if (editing) {
+        await api.put(path, body);
+      } else {
+        await api.post(path, body);
       }
+      
+      await fetchPromotions();
+      setShowModal(false);
+      setEditing(null);
+      resetForm();
     } catch (e) {
       console.error('Ошибка сохранения:', e);
     } finally {
@@ -292,7 +276,7 @@ const PromotionManagement: React.FC = () => {
                 <CheckSolid className="w-5 h-5 text-[var(--color-text-secondary)]" />
                 <select
                   value={status}
-                  onChange={(e) => setStatus(e.target.value as any)}
+                  onChange={(e) => setStatus(e.target.value as 'all' | 'active' | 'inactive')}
                   className="bg-transparent outline-none text-sm text-[var(--color-text-primary)] font-[var(--font-family-base)] w-full"
                 >
                   <option value="all">Все статусы</option>
@@ -540,7 +524,7 @@ const PromotionManagement: React.FC = () => {
                           <label className="block text-sm font-semibold text-[var(--color-text-primary)] font-[var(--font-family-base)] mb-2">Тип скидки</label>
                           <select
                             value={form.discountType}
-                            onChange={(e) => setForm({ ...form, discountType: e.target.value as any })}
+                            onChange={(e) => setForm({ ...form, discountType: e.target.value as 'percentage' | 'fixed' })}
                             className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-orange)] transition-all duration-200 text-[var(--color-text-primary)] font-[var(--font-family-base)]"
                           >
                             <option value="percentage">Процент (%)</option>

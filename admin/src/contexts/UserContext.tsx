@@ -1,114 +1,141 @@
-import React, {
-  createContext,
-  useState,
-  useEffect,
-  ReactNode,
-  FC,
-} from "react";
-import {
-  getAuth,
-  onAuthStateChanged,
-  getIdTokenResult,
-  signOut,
-} from "firebase/auth";
-import app from "@/lib/firebase";
+import React, { createContext, useEffect, useState, ReactNode, FC } from "react";
+import { onIdTokenChanged, getIdTokenResult, signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
-export interface User {
-  uid: string;
-  email: string | null;
-  role: "owner" | "admin" | "user";
+export type Role = "owner" | "admin" | "barista" | "user";
+export interface User { uid: string; email: string | null; role: Role; }
+interface Ctx { user: User | null; loading: boolean; logout: () => Promise<void>; }
+
+export const UserContext = createContext<Ctx>({ user: null, loading: true, logout: async () => {} });
+
+/** === НАСТРОЙКА ALLOWLIST (заполни своими адресами) === */
+const ADMIN_EMAILS   = ["admin121@gmail.com"];
+const BARISTA_EMAILS = ["barista121@gmail.com"];
+const OWNER_EMAILS   = ["owner121@gmail.com"];
+
+/** normalize helper */
+const norm = (s?: string | null) => (s ?? "").trim().toLowerCase();
+
+/** resolve role by email allowlist */
+function roleFromEmail(email: string): Role {
+  if (!email) return "user";
+  if (OWNER_EMAILS.map(norm).includes(norm(email))) return "owner";
+  if (ADMIN_EMAILS.map(norm).includes(norm(email))) return "admin";
+  if (BARISTA_EMAILS.map(norm).includes(norm(email))) return "barista";
+  return "user";
 }
 
-interface Context {
-  user: User | null;
-  loading: boolean;
-  logout: () => Promise<void>;
+/** try custom claims → allowlist → default */
+function resolveRoleFromClaimsAndEmail(claims: any, email: string | null): Role {
+  // 1) кастом-клейм single 'role'
+  const ccRole = String(claims?.role || "").trim().toLowerCase();
+  if (ccRole === "owner" || ccRole === "admin" || ccRole === "barista" || ccRole === "user") {
+    return ccRole as Role;
+  }
+  // 2) альтернативные клеймы (булевые)
+  if (claims?.owner === true)   return "owner";
+  if (claims?.admin === true)   return "admin";
+  if (claims?.barista === true) return "barista";
+  // 3) allowlist по email
+  return roleFromEmail(email ?? "");
 }
-
-export const UserContext = createContext<Context>({
-  user: null,
-  loading: true,
-  logout: async () => {},
-});
 
 export const UserProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log('🔐 UserContext: инициализация...');
-    
-    // Сначала проверяем localStorage
-    const testUser = localStorage.getItem('admin_user');
-    console.log('🔐 UserContext: проверка localStorage', { testUser: testUser ? 'найден' : 'не найден' });
-    
-    if (testUser) {
+    console.log("🔐 UserContext init");
+
+    // 0) Режим имитации через query (?impersonate=admin|barista|owner)
+    const params = new URLSearchParams(window.location.search);
+    const impersonate = norm(params.get("impersonate"));
+    if (impersonate && ["owner", "admin", "barista"].includes(impersonate)) {
+      const fake: User = {
+        uid: `impersonated-${impersonate}`,
+        email: `impersonated+${impersonate}@local.test`,
+        role: impersonate as Role,
+      };
+      localStorage.setItem("admin_user", JSON.stringify(fake));
+      console.warn("⚠️ IMITATION MODE enabled:", fake);
+      setUser(fake);
+      setLoading(false);
+      return;
+    }
+
+    // 1) Локальный тестовый пользователь
+    const stored = localStorage.getItem("admin_user");
+    if (stored) {
       try {
-        const parsedUser = JSON.parse(testUser);
-        console.log('🔐 UserContext: найден тестовый пользователь:', parsedUser);
-        setUser({
-          uid: parsedUser.uid,
-          email: parsedUser.email,
-          role: parsedUser.role
-        });
-        setLoading(false);
-        return;
+        const parsed = JSON.parse(stored);
+        if (parsed?.uid && parsed?.role) {
+          console.warn("⚠️ Using localStorage admin_user:", parsed);
+          setUser({ uid: String(parsed.uid), email: parsed.email ?? null, role: parsed.role as Role });
+          setLoading(false);
+          return;
+        }
       } catch (e) {
-        console.error('❌ UserContext: ошибка парсинга тестового пользователя:', e);
-        localStorage.removeItem('admin_user'); // Удаляем поврежденные данные
+        console.error("admin_user parse error:", e);
+        localStorage.removeItem("admin_user");
       }
     }
-    
-    // Если нет тестового пользователя, проверяем Firebase
-    try {
-      if (!app) {
-        console.error('❌ UserContext: Firebase app не инициализирован!');
+
+    // 2) Нормальная ветка через Firebase
+    if (!auth) {
+      console.error("❌ Firebase auth not initialized");
+      setUser(null);
+      setLoading(false);
+      return;
+    }
+
+    const unsub = onIdTokenChanged(auth, async (fbUser) => {
+      console.log("🔐 onIdTokenChanged:", fbUser ? "present" : "null");
+      if (!fbUser) {
         setUser(null);
         setLoading(false);
         return;
       }
-      
-      console.log('🔐 UserContext: Firebase app найден');
-      const auth = getAuth(app);
-      console.log('🔐 UserContext: Firebase Auth получен');
-      
-      const unsub = onAuthStateChanged(auth, async u => {
-        console.log('🔐 UserContext: onAuthStateChanged вызван', { user: u ? 'есть' : 'нет' });
-        
-        if (u) {
-          console.log('🔐 UserContext: пользователь авторизован в Firebase');
-          try {
-            const tokenRes = await getIdTokenResult(u, true);
-            const role = (tokenRes.claims.role as User["role"]) || "user";
-            console.log('🔐 UserContext: роль пользователя:', role);
-            setUser({ uid: u.uid, email: u.email, role });
-          } catch (error) {
-            console.error('❌ UserContext: ошибка получения токена:', error);
-            setUser({ uid: u.uid, email: u.email, role: "user" });
-          }
-        } else {
-          console.log('🔐 UserContext: пользователь не авторизован в Firebase');
-          setUser(null);
+
+      try {
+        const email = norm(fbUser.email);
+        // force refresh to получить свежие клеймы (если только что выставили на бэке)
+        const tokenRes = await getIdTokenResult(fbUser, true);
+        console.log("🔎 token.claims:", tokenRes.claims);
+
+        let role = resolveRoleFromClaimsAndEmail(tokenRes.claims, email);
+
+        // жёсткая подстраховка: если всё равно user — попробуем allowlist ещё раз
+        if (role === "user") {
+          const allow = roleFromEmail(email);
+          if (allow !== "user") role = allow;
         }
+
+        console.log(`✅ resolved role: ${role} (email=${email || "no-email"})`);
+        setUser({ uid: fbUser.uid, email: fbUser.email, role });
+      } catch (e) {
+        console.error("❌ getIdTokenResult error:", e);
+        // вообще край — хоть allowlist отработает
+        const email = norm(fbUser.email);
+        const role = roleFromEmail(email);
+        setUser({ uid: fbUser.uid, email: fbUser.email, role });
+      } finally {
         setLoading(false);
-      });
-      
-      return () => {
-        console.log('🔐 UserContext: отписка от onAuthStateChanged');
-        unsub();
-      };
-    } catch (error) {
-      console.error('❌ UserContext: ошибка инициализации Firebase:', error);
-      setUser(null);
-      setLoading(false);
-    }
+      }
+    });
+
+    return () => {
+      console.log("🔐 unsubscribe onIdTokenChanged");
+      unsub();
+    };
   }, []);
 
   const logout = async () => {
-    const auth = getAuth(app);
-    await signOut(auth);
-    // Также удаляем тестового пользователя
-    localStorage.removeItem('admin_user');
+    try { 
+      await signOut(auth); 
+    } catch (error) {
+      console.error("Sign out error:", error);
+    }
+    localStorage.removeItem("admin_user");
     setUser(null);
   };
 

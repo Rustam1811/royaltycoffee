@@ -1,15 +1,20 @@
 // api-server/routes/bonus.js
 const express = require('express');
 const admin = require('firebase-admin');
+const { requireAuth, cors } = require('../_lib/auth');
 
 const db = admin.firestore();
 const router = express.Router();
 
-router.all('*', async (req, res) => {
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+router.all('*', async (req, res, next) => {
+  cors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
+  const guard = await requireAuth(req, res, { requireAdmin: true });
+  if (guard) return; // уже ответили 401/403
+  next();
+});
 
+router.all('*', async (req, res) => {
   const { action } = req.query || {};
   try {
     switch (action) {

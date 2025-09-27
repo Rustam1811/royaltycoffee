@@ -4,19 +4,19 @@ const path = require('path');
 function createOrdersRouter() {
   let legacy;
   try {
-    // Правильный путь к legacy файлу orders.js
-    const legacyPath = path.resolve(__dirname, '../../api/orders.js');
+    // Используем простую обёртку для разработки
+    const legacyPath = path.resolve(__dirname, '../../api/orders-simple.js');
     legacy = require(legacyPath);
-    console.log('✅ Legacy orders.js loaded from:', legacyPath);
+    console.log('✅ Simple orders.js loaded from:', legacyPath);
   } catch (e) {
-    console.error('❌ Cannot load legacy orders.js:', e.message);
-    console.error('❌ Attempted path:', path.resolve(__dirname, '../../api/orders.js'));
+    console.error('❌ Cannot load simple orders.js:', e.message);
+    console.error('❌ Attempted path:', path.resolve(__dirname, '../../api/orders-simple.js'));
     
     const r = express.Router();
     r.all('*', (_req, res) => res.status(500).json({ 
-      error: 'orders legacy not found',
+      error: 'orders simple not found',
       details: e.message,
-      attemptedPath: path.resolve(__dirname, '../../api/orders.js')
+      attemptedPath: path.resolve(__dirname, '../../api/orders-simple.js')
     }));
     return r;
   }

@@ -92,7 +92,16 @@ const db = admin.firestore();
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
 
-const corsOrigin = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:5174', 'http://127.0.0.1:5174'];
+const corsOrigin = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',')
+  : [
+      'http://localhost:5173',
+      'http://127.0.0.1:5173',
+      'http://localhost:5174',
+      'http://127.0.0.1:5174',
+      'https://coffee-admin-nine.vercel.app',
+      'https://coffee-admin-nine.vercel.app/' // на всякий случай с /
+    ];
 app.use(cors({ origin: corsOrigin, credentials: true }));
 
 // Add COOP headers for Firebase Auth popups
@@ -154,9 +163,10 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: 'INTERNAL', message: msg });
 });
 
-// старт
-app.listen(PORT, () => {
-  console.log(`🚀 API running on http://localhost:${PORT}`);
-  console.log('   /api/health');
-  console.log('   /api/auth?action=login|sendOtp|verifyOtp|setPassword|ensureUser');
+app.get('/api/ping', (_req, res) => {
+  res.json({ ok: true, pong: true, ts: new Date().toISOString() });
 });
+
+
+// старт
+module.exports = app;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { doc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
-import { db } from "@/firebase";
+import { db } from "@/lib/firebase";
 import { Product, LocalizedString } from "@/types/types";
 import { XMarkIcon, PhotoIcon, CurrencyDollarIcon, LinkIcon } from "@heroicons/react/24/outline";
 

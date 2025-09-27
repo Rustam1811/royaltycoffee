@@ -1,0 +1,474 @@
+﻿import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { api } from '@/services/api';
+import { 
+    CogIcon, 
+    StarIcon, 
+    CalculatorIcon,
+    CurrencyDollarIcon,
+    GiftIcon,
+    PlusIcon,
+    TrashIcon
+} from '@heroicons/react/24/outline';
+import Button from '@/components/ui/Button';
+
+interface BonusSettings {
+    baseRate: number; // Ð‘Ð°Ð·Ð¾Ð²Ñ‹Ð¹ Ð¿Ñ€Ð¾Ñ†ÐµÐ½Ñ‚ Ð½Ð°Ñ‡Ð¸ÑÐ»ÐµÐ½Ð¸Ñ (Ð½Ð°Ð¿Ñ€Ð¸Ð¼ÐµÑ€, 5%)
+    multipliers: {
+        morningBonus: number; // ÐœÐ½Ð¾Ð¶Ð¸Ñ‚ÐµÐ»ÑŒ Ð´Ð»Ñ ÑƒÑ‚Ñ€ÐµÐ½Ð½Ð¸Ñ… Ð·Ð°ÐºÐ°Ð·Ð¾Ð²
+        eveningBonus: number; // ÐœÐ½Ð¾Ð¶Ð¸Ñ‚ÐµÐ»ÑŒ Ð´Ð»Ñ Ð²ÐµÑ‡ÐµÑ€Ð½Ð¸Ñ… Ð·Ð°ÐºÐ°Ð·Ð¾Ð²
+        weekendBonus: number; // ÐœÐ½Ð¾Ð¶Ð¸Ñ‚ÐµÐ»ÑŒ Ð´Ð»Ñ Ð²Ñ‹Ñ…Ð¾Ð´Ð½Ñ‹Ñ…
+        vipBonus: number; // ÐœÐ½Ð¾Ð¶Ð¸Ñ‚ÐµÐ»ÑŒ Ð´Ð»Ñ VIP ÐºÐ»Ð¸ÐµÐ½Ñ‚Ð¾Ð²
+    };
+    categories: {
+        [key: string]: number; // ÐœÐ½Ð¾Ð¶Ð¸Ñ‚ÐµÐ»Ð¸ Ð´Ð»Ñ ÐºÐ°Ñ‚ÐµÐ³Ð¾Ñ€Ð¸Ð¹ Ñ‚Ð¾Ð²Ð°Ñ€Ð¾Ð²
+    };
+    rewards: Array<{
+        id: string;
+        name: string;
+        description: string;
+        cost: number; // Ð¡Ñ‚Ð¾Ð¸Ð¼Ð¾ÑÑ‚ÑŒ Ð² Ð±Ð¾Ð½ÑƒÑÐ°Ñ…
+        discount: number; // Ð Ð°Ð·Ð¼ÐµÑ€ ÑÐºÐ¸Ð´ÐºÐ¸ Ð² Ñ‚ÐµÐ½Ð³Ðµ Ð¸Ð»Ð¸ Ð¿Ñ€Ð¾Ñ†ÐµÐ½Ñ‚Ð°Ñ…
+        type: 'fixed' | 'percentage'; // Ð¢Ð¸Ð¿ ÑÐºÐ¸Ð´ÐºÐ¸
+        category?: string; // ÐšÐ°Ñ‚ÐµÐ³Ð¾Ñ€Ð¸Ñ Ñ‚Ð¾Ð²Ð°Ñ€Ð¾Ð² Ð´Ð»Ñ ÑÐºÐ¸Ð´ÐºÐ¸
+        isActive: boolean;
+    }>;
+    levels: Array<{
+        name: string;
+        minOrders: number;
+        bonusMultiplier: number;
+        benefits: string[];
+    }>;
+}
+
+const BonusManagement: React.FC = () => {
+    const [settings, setSettings] = useState<BonusSettings>({
+        baseRate: 5,
+        multipliers: {
+            morningBonus: 1.5,
+            eveningBonus: 1.2,
+            weekendBonus: 2.0,
+            vipBonus: 1.5
+        },
+        categories: {
+            'coffee': 1.0,
+            'desserts': 1.2,
+            'breakfast': 0.8,
+            'special': 2.0
+        },
+        rewards: [
+            {
+                id: '1',
+                name: 'Ð¡ÐºÐ¸Ð´ÐºÐ° 200â‚¸',
+                description: 'Ð¡ÐºÐ¸Ð´ÐºÐ° 200 Ñ‚ÐµÐ½Ð³Ðµ Ð½Ð° Ð»ÑŽÐ±Ð¾Ð¹ Ð·Ð°ÐºÐ°Ð·',
+                cost: 100,
+                discount: 200,
+                type: 'fixed',
+                isActive: true
+            },
+            {
+                id: '2',
+                name: 'Ð¡ÐºÐ¸Ð´ÐºÐ° 15% Ð½Ð° ÐºÐ¾Ñ„Ðµ',
+                description: 'Ð¡ÐºÐ¸Ð´ÐºÐ° 15% Ð½Ð° Ð²ÑÐµ ÐºÐ¾Ñ„ÐµÐ¹Ð½Ñ‹Ðµ Ð½Ð°Ð¿Ð¸Ñ‚ÐºÐ¸',
+                cost: 150,
+                discount: 15,
+                type: 'percentage',
+                category: 'coffee',
+                isActive: true
+            }
+        ],
+        levels: [
+            {
+                name: 'ÐÐ¾Ð²Ð¸Ñ‡Ð¾Ðº',
+                minOrders: 0,
+                bonusMultiplier: 1.0,
+                benefits: ['Ð‘Ð°Ð·Ð¾Ð²Ñ‹Ðµ Ð±Ð¾Ð½ÑƒÑÑ‹']
+            },
+            {
+                name: 'Ð›ÑŽÐ±Ð¸Ñ‚ÐµÐ»ÑŒ',
+                minOrders: 10,
+                bonusMultiplier: 1.2,
+                benefits: ['+20% Ðº Ð±Ð¾Ð½ÑƒÑÐ°Ð¼', 'ÐŸÐµÑ€ÑÐ¾Ð½Ð°Ð»ÑŒÐ½Ñ‹Ðµ Ð¿Ñ€ÐµÐ´Ð»Ð¾Ð¶ÐµÐ½Ð¸Ñ']
+            },
+            {
+                name: 'Ð­ÐºÑÐ¿ÐµÑ€Ñ‚',
+                minOrders: 50,
+                bonusMultiplier: 1.5,
+                benefits: ['+50% Ðº Ð±Ð¾Ð½ÑƒÑÐ°Ð¼', 'Ð Ð°Ð½Ð½ÐµÐµ ÑƒÐ²ÐµÐ´Ð¾Ð¼Ð»ÐµÐ½Ð¸Ðµ Ð¾ Ð½Ð¾Ð²Ð¸Ð½ÐºÐ°Ñ…', 'Ð‘ÐµÑÐ¿Ð»Ð°Ñ‚Ð½Ð°Ñ Ð´Ð¾ÑÑ‚Ð°Ð²ÐºÐ°']
+            },
+            {
+                name: 'VIP',
+                minOrders: 100,
+                bonusMultiplier: 2.0,
+                benefits: ['+100% Ðº Ð±Ð¾Ð½ÑƒÑÐ°Ð¼', 'ÐŸÐµÑ€ÑÐ¾Ð½Ð°Ð»ÑŒÐ½Ñ‹Ð¹ Ð¼ÐµÐ½ÐµÐ´Ð¶ÐµÑ€', 'Ð­ÐºÑÐºÐ»ÑŽÐ·Ð¸Ð²Ð½Ñ‹Ðµ Ð¿Ñ€ÐµÐ´Ð»Ð¾Ð¶ÐµÐ½Ð¸Ñ']
+            }
+        ]
+    });
+
+    const [activeTab, setActiveTab] = useState<'general' | 'rewards' | 'levels'>('general');
+    const [loading, setLoading] = useState(false);
+
+    // Ð—Ð°Ð³Ñ€ÑƒÐ·ÐºÐ° Ð½Ð°ÑÑ‚Ñ€Ð¾ÐµÐº Ð¸Ð· API
+    useEffect(() => {
+        fetchBonusSettings();
+    }, []);
+
+    const fetchBonusSettings = async () => {
+        try {
+            const data = await api.get<Partial<BonusSettings> & { percentage?: number; pointsPerRuble?: number }>('bonus?action=settings');
+            // ÐÐ´Ð°Ð¿Ñ‚Ð¸Ñ€ÑƒÐµÐ¼ Ð´Ð°Ð½Ð½Ñ‹Ðµ Ð¸Ð· Firebase Ð¿Ð¾Ð´ Ñ„Ð¾Ñ€Ð¼Ð°Ñ‚ Ð°Ð´Ð¼Ð¸Ð½ÐºÐ¸
+            setSettings(prev => {
+                const next: BonusSettings = { ...prev } as BonusSettings;
+                if (typeof (data as any)?.percentage === 'number') {
+                    next.baseRate = (data as any).percentage as number;
+                } else if (typeof (data as any)?.pointsPerRuble === 'number') {
+                    next.baseRate = (data as any).pointsPerRuble as number;
+                }
+                return next;
+            });
+        } catch (error) {
+            console.error('ÐžÑˆÐ¸Ð±ÐºÐ° Ð·Ð°Ð³Ñ€ÑƒÐ·ÐºÐ¸ Ð½Ð°ÑÑ‚Ñ€Ð¾ÐµÐº Ð±Ð¾Ð½ÑƒÑÐ¾Ð²:', error);
+        }
+    };
+
+    const saveBonusSettings = async () => {
+        setLoading(true);
+        try {
+            // ÐÐ´Ð°Ð¿Ñ‚Ð¸Ñ€ÑƒÐµÐ¼ Ð´Ð°Ð½Ð½Ñ‹Ðµ Ð¿Ð¾Ð´ Ñ„Ð¾Ñ€Ð¼Ð°Ñ‚ Firebase Ñ„ÑƒÐ½ÐºÑ†Ð¸Ð¸
+            const firebaseSettings = {
+                percentage: settings.baseRate,
+                maxBonus: 1000,
+                minOrderAmount: 100
+            };
+
+            await api.post('bonus?action=settings', firebaseSettings);
+            alert('ÐÐ°ÑÑ‚Ñ€Ð¾Ð¹ÐºÐ¸ ÑÐ¾Ñ…Ñ€Ð°Ð½ÐµÐ½Ñ‹!');
+        } catch (error) {
+            console.error('ÐžÑˆÐ¸Ð±ÐºÐ° ÑÐ¾Ñ…Ñ€Ð°Ð½ÐµÐ½Ð¸Ñ:', error);
+            alert('ÐžÑˆÐ¸Ð±ÐºÐ° ÑÐ¾Ñ…Ñ€Ð°Ð½ÐµÐ½Ð¸Ñ Ð½Ð°ÑÑ‚Ñ€Ð¾ÐµÐº');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const calculateBonus = (orderAmount: number, conditions: any = {}) => {
+        let bonus = (orderAmount * settings.baseRate) / 100;
+
+        // ÐŸÑ€Ð¸Ð¼ÐµÐ½ÑÐµÐ¼ Ð¼Ð½Ð¾Ð¶Ð¸Ñ‚ÐµÐ»Ð¸
+        if (conditions.isMorning) bonus *= settings.multipliers.morningBonus;
+        if (conditions.isEvening) bonus *= settings.multipliers.eveningBonus;
+        if (conditions.isWeekend) bonus *= settings.multipliers.weekendBonus;
+        if (conditions.isVip) bonus *= settings.multipliers.vipBonus;
+
+        // ÐŸÑ€Ð¸Ð¼ÐµÐ½ÑÐµÐ¼ Ð¼Ð½Ð¾Ð¶Ð¸Ñ‚ÐµÐ»ÑŒ ÐºÐ°Ñ‚ÐµÐ³Ð¾Ñ€Ð¸Ð¸
+        if (conditions.category && settings.categories[conditions.category]) {
+            bonus *= settings.categories[conditions.category];
+        }
+
+        return Math.floor(bonus);
+    };
+
+    const addNewReward = () => {
+        const newReward = {
+            id: Date.now().toString(),
+            name: 'ÐÐ¾Ð²Ð°Ñ Ð½Ð°Ð³Ñ€Ð°Ð´Ð°',
+            description: 'ÐžÐ¿Ð¸ÑÐ°Ð½Ð¸Ðµ Ð½Ð°Ð³Ñ€Ð°Ð´Ñ‹',
+            cost: 100,
+            discount: 10,
+            type: 'percentage' as const,
+            isActive: true
+        };
+        setSettings(prev => ({
+            ...prev,
+            rewards: [...prev.rewards, newReward]
+        }));
+    };
+
+    const removeReward = (id: string) => {
+        setSettings(prev => ({
+            ...prev,
+            rewards: prev.rewards.filter(r => r.id !== id)
+        }));
+    };
+
+    return (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.2 }}
+            style={{ opacity: 1 }}
+            className="bg-[var(--color-bg-base)] min-h-screen"
+        >
+            <div className="max-w-7xl mx-auto p-6">
+                {/* Header */}
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="sticky top-0 z-10 -mx-6 mb-6 px-6 py-4 bg-gradient-to-r from-[var(--color-accent-orange)] to-[var(--color-accent-pink)]/80 backdrop-blur-md shadow-card rounded-2xl"
+                >
+                    <div className="flex items-center justify-between">
+                        <h1 className="text-2xl font-bold text-white font-[var(--font-family-heading)] flex items-center gap-2">
+                            <StarIcon className="w-6 h-6 drop-shadow" />
+                            Ð£Ð¿Ñ€Ð°Ð²Ð»ÐµÐ½Ð¸Ðµ Ð±Ð¾Ð½ÑƒÑÐ½Ð¾Ð¹ ÑÐ¸ÑÑ‚ÐµÐ¼Ð¾Ð¹
+                        </h1>
+                        <Button
+                            variant="accent"
+                            className="bg-slate-900 hover:bg-black text-white font-bold"
+                            onClick={saveBonusSettings}
+                            disabled={loading}
+                            loading={loading}
+                        >
+                            {loading ? 'Ð¡Ð¾Ñ…Ñ€Ð°Ð½ÐµÐ½Ð¸Ðµ...' : 'Ð¡Ð¾Ñ…Ñ€Ð°Ð½Ð¸Ñ‚ÑŒ Ð½Ð°ÑÑ‚Ñ€Ð¾Ð¹ÐºÐ¸'}
+                        </Button>
+                    </div>
+                </motion.div>
+
+                {/* Tabs */}
+                <div className="flex gap-3 mb-6 overflow-x-auto pb-2">
+                    {[
+                        { id: 'general', name: 'ÐžÐ±Ñ‰Ð¸Ðµ Ð½Ð°ÑÑ‚Ñ€Ð¾Ð¹ÐºÐ¸', icon: CogIcon },
+                        { id: 'rewards', name: 'ÐÐ°Ð³Ñ€Ð°Ð´Ñ‹', icon: GiftIcon },
+                        { id: 'levels', name: 'Ð£Ñ€Ð¾Ð²Ð½Ð¸', icon: StarIcon }
+                    ].map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id as any)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-2xl border transition-all ${
+                                activeTab === tab.id
+                                    ? 'bg-gradient-to-r from-[var(--color-accent-orange)] to-[var(--color-accent-pink)] text-white border-transparent shadow-card'
+                                    : 'bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)] border-[var(--color-border)] hover:bg-[var(--color-bg-hover)]'
+                            }`}
+                        >
+                            <tab.icon className="w-5 h-5" />
+                            <span className="whitespace-nowrap">{tab.name}</span>
+                        </button>
+                    ))}
+                </div>
+
+                {/* ÐžÐ±Ñ‰Ð¸Ðµ Ð½Ð°ÑÑ‚Ñ€Ð¾Ð¹ÐºÐ¸ */}
+                {activeTab === 'general' && (
+                    <div className="space-y-6">
+                        <div className="bg-[var(--color-bg-elevated)] rounded-2xl p-6 shadow-card border border-[var(--color-border)]">
+                            <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-[var(--color-text-primary)]">
+                                <CalculatorIcon className="w-5 h-5" />
+                                Ð¤Ð¾Ñ€Ð¼ÑƒÐ»Ð° Ð½Ð°Ñ‡Ð¸ÑÐ»ÐµÐ½Ð¸Ñ Ð±Ð¾Ð½ÑƒÑÐ¾Ð²
+                            </h3>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-[var(--color-text-secondary)]">Ð‘Ð°Ð·Ð¾Ð²Ñ‹Ð¹ Ð¿Ñ€Ð¾Ñ†ÐµÐ½Ñ‚ (%)</label>
+                                    <input
+                                        type="number"
+                                        value={settings.baseRate}
+                                        onChange={(e) => setSettings(prev => ({ ...prev, baseRate: Number(e.target.value) }))}
+                                        className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-4 py-3 text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-orange)]"
+                                        min="0"
+                                        max="100"
+                                        step="0.1"
+                                    />
+                                </div>
+                            </div>
+
+                            <h4 className="text-md font-semibold mt-6 mb-3 text-[var(--color-text-primary)]">ÐœÐ½Ð¾Ð¶Ð¸Ñ‚ÐµÐ»Ð¸</h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {Object.entries(settings.multipliers).map(([key, value]) => (
+                                    <div key={key}>
+                                        <label className="block text-sm font-medium mb-2 capitalize text-[var(--color-text-secondary)]">
+                                            {key.replace('Bonus', ' Ð±Ð¾Ð½ÑƒÑ')}
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={value}
+                                            onChange={(e) => setSettings(prev => ({
+                                                ...prev,
+                                                multipliers: { ...prev.multipliers, [key]: Number(e.target.value) }
+                                            }))}
+                                            className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-4 py-3 text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-orange)]"
+                                            min="0"
+                                            step="0.1"
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+
+                            <h4 className="text-md font-semibold mt-6 mb-3 text-[var(--color-text-primary)]">ÐœÐ½Ð¾Ð¶Ð¸Ñ‚ÐµÐ»Ð¸ Ð¿Ð¾ ÐºÐ°Ñ‚ÐµÐ³Ð¾Ñ€Ð¸ÑÐ¼</h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {Object.entries(settings.categories).map(([category, multiplier]) => (
+                                    <div key={category}>
+                                        <label className="block text-sm font-medium mb-2 capitalize text-[var(--color-text-secondary)]">{category}</label>
+                                        <input
+                                            type="number"
+                                            value={multiplier}
+                                            onChange={(e) => setSettings(prev => ({
+                                                ...prev,
+                                                categories: { ...prev.categories, [category]: Number(e.target.value) }
+                                            }))}
+                                            className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-4 py-3 text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-orange)]"
+                                            min="0"
+                                            step="0.1"
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* ÐšÐ°Ð»ÑŒÐºÑƒÐ»ÑÑ‚Ð¾Ñ€ Ð±Ð¾Ð½ÑƒÑÐ¾Ð² */}
+                        <div className="bg-[var(--color-bg-elevated)] rounded-2xl p-6 shadow-card border border-[var(--color-border)]">
+                            <h3 className="text-lg font-bold mb-4 text-[var(--color-text-primary)]">ÐšÐ°Ð»ÑŒÐºÑƒÐ»ÑÑ‚Ð¾Ñ€ Ð±Ð¾Ð½ÑƒÑÐ¾Ð²</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-[var(--color-text-secondary)]">Ð¡ÑƒÐ¼Ð¼Ð° Ð·Ð°ÐºÐ°Ð·Ð° (â‚¸)</label>
+                                    <input type="number" placeholder="1000" className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-4 py-3 text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-orange)]" id="order-amount" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 text-[var(--color-text-secondary)]">ÐšÐ°Ñ‚ÐµÐ³Ð¾Ñ€Ð¸Ñ</label>
+                                    <select className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-4 py-3 text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-orange)]" id="category">
+                                        {Object.keys(settings.categories).map(cat => (<option key={cat} value={cat}>{cat}</option>))}
+                                    </select>
+                                </div>
+                                <div className="flex items-end">
+                                    <div className="rounded-2xl p-3 text-center w-full bg-gradient-to-br from-[var(--color-accent-orange)]/10 via-[var(--color-accent-pink)]/10 to-transparent ring-1 ring-[var(--color-accent-orange)]/20">
+                                        <div className="text-sm text-[var(--color-text-secondary)]">Ð‘Ð¾Ð½ÑƒÑÑ‹ Ðº Ð½Ð°Ñ‡Ð¸ÑÐ»ÐµÐ½Ð¸ÑŽ</div>
+                                        <div className="text-lg font-bold text-[var(--color-text-primary)]">
+                                            {(() => {
+                                                const amount = Number((document.getElementById('order-amount') as HTMLInputElement)?.value || 1000);
+                                                const category = (document.getElementById('category') as HTMLSelectElement)?.value || 'coffee';
+                                                return calculateBonus(amount, { category });
+                                            })()}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* ÐÐ°Ð³Ñ€Ð°Ð´Ñ‹ */}
+                {activeTab === 'rewards' && (
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-[var(--color-text-primary)]">Ð”Ð¾ÑÑ‚ÑƒÐ¿Ð½Ñ‹Ðµ Ð½Ð°Ð³Ñ€Ð°Ð´Ñ‹</h3>
+                            <button onClick={addNewReward} className="px-4 py-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-lg transition">
+                                <PlusIcon className="w-4 h-4" />
+                                Ð”Ð¾Ð±Ð°Ð²Ð¸Ñ‚ÑŒ Ð½Ð°Ð³Ñ€Ð°Ð´Ñƒ
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {settings.rewards.map((reward) => (
+                                <motion.div key={reward.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-[var(--color-bg-elevated)] rounded-2xl p-4 border border-[var(--color-border)] shadow-card">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <input
+                                            type="text"
+                                            value={reward.name}
+                                            onChange={(e) => setSettings(prev => ({ ...prev, rewards: prev.rewards.map(r => r.id === reward.id ? { ...r, name: e.target.value } : r) }))}
+                                            className="font-bold bg-transparent border-none text-[var(--color-text-primary)] text-lg outline-none"
+                                        />
+                                        <button
+                                            onClick={() => removeReward(reward.id)}
+                                            className="text-red-500 hover:text-red-600"
+                                        >
+                                            <TrashIcon className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                    
+                                    <textarea
+                                        value={reward.description}
+                                        onChange={(e) => setSettings(prev => ({ ...prev, rewards: prev.rewards.map(r => r.id === reward.id ? { ...r, description: e.target.value } : r) }))}
+                                        className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-3 py-2 text-sm text-[var(--color-text-secondary)] mb-3"
+                                        rows={2}
+                                    />
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-xs text-[var(--color-text-secondary)]">Ð¡Ñ‚Ð¾Ð¸Ð¼Ð¾ÑÑ‚ÑŒ (Ð±Ð¾Ð½ÑƒÑÑ‹)</label>
+                                            <input
+                                                type="number"
+                                                value={reward.cost}
+                                                onChange={(e) => setSettings(prev => ({ ...prev, rewards: prev.rewards.map(r => r.id === reward.id ? { ...r, cost: Number(e.target.value) } : r) }))}
+                                                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-3 py-2 text-sm"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-[var(--color-text-secondary)]">Ð¡ÐºÐ¸Ð´ÐºÐ°</label>
+                                            <input
+                                                type="number"
+                                                value={reward.discount}
+                                                onChange={(e) => setSettings(prev => ({ ...prev, rewards: prev.rewards.map(r => r.id === reward.id ? { ...r, discount: Number(e.target.value) } : r) }))}
+                                                className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-3 py-2 text-sm"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-3 flex items-center gap-2">
+                                        <label className="flex items-center gap-2 text-[var(--color-text-primary)]">
+                                            <input
+                                                type="checkbox"
+                                                checked={reward.isActive}
+                                                onChange={(e) => setSettings(prev => ({ ...prev, rewards: prev.rewards.map(r => r.id === reward.id ? { ...r, isActive: e.target.checked } : r) }))}
+                                                className="rounded"
+                                            />
+                                            <span className="text-sm">ÐÐºÑ‚Ð¸Ð²Ð½Ð°</span>
+                                        </label>
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Ð£Ñ€Ð¾Ð²Ð½Ð¸ */}
+                {activeTab === 'levels' && (
+                    <div className="space-y-4">
+                        {settings.levels.map((level, index) => (
+                            <div key={index} className="bg-[var(--color-bg-elevated)] rounded-2xl p-6 shadow-card border border-[var(--color-border)]">
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2 text-[var(--color-text-secondary)]">ÐÐ°Ð·Ð²Ð°Ð½Ð¸Ðµ ÑƒÑ€Ð¾Ð²Ð½Ñ</label>
+                                        <input
+                                            type="text"
+                                            value={level.name}
+                                            onChange={(e) => setSettings(prev => ({ ...prev, levels: prev.levels.map((l, i) => i === index ? { ...l, name: e.target.value } : l) }))}
+                                            className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-4 py-3 text-[var(--color-text-primary)]"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2 text-[var(--color-text-secondary)]">ÐœÐ¸Ð½. Ð·Ð°ÐºÐ°Ð·Ð¾Ð²</label>
+                                        <input
+                                            type="number"
+                                            value={level.minOrders}
+                                            onChange={(e) => setSettings(prev => ({ ...prev, levels: prev.levels.map((l, i) => i === index ? { ...l, minOrders: Number(e.target.value) } : l) }))}
+                                            className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-4 py-3 text-[var(--color-text-primary)]"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2 text-[var(--color-text-secondary)]">ÐœÐ½Ð¾Ð¶Ð¸Ñ‚ÐµÐ»ÑŒ Ð±Ð¾Ð½ÑƒÑÐ¾Ð²</label>
+                                        <input
+                                            type="number"
+                                            value={level.bonusMultiplier}
+                                            onChange={(e) => setSettings(prev => ({ ...prev, levels: prev.levels.map((l, i) => i === index ? { ...l, bonusMultiplier: Number(e.target.value) } : l) }))}
+                                            className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-4 py-3 text-[var(--color-text-primary)]"
+                                            step="0.1"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2 text-[var(--color-text-secondary)]">ÐŸÑ€ÐµÐ¸Ð¼ÑƒÑ‰ÐµÑÑ‚Ð²Ð°</label>
+                                        <textarea
+                                            value={level.benefits.join('\n')}
+                                            onChange={(e) => setSettings(prev => ({ ...prev, levels: prev.levels.map((l, i) => i === index ? { ...l, benefits: e.target.value.split('\n').filter(b => b.trim()) } : l) }))}
+                                            className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-3 py-2 text-[var(--color-text-primary)] text-sm"
+                                            rows={3}
+                                            placeholder="ÐšÐ°Ð¶Ð´Ð¾Ðµ Ð¿Ñ€ÐµÐ¸Ð¼ÑƒÑ‰ÐµÑÑ‚Ð²Ð¾ Ñ Ð½Ð¾Ð²Ð¾Ð¹ ÑÑ‚Ñ€Ð¾ÐºÐ¸"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </motion.div>
+    );
+};
+
+export default BonusManagement;

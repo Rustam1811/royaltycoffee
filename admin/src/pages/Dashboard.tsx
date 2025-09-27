@@ -21,11 +21,11 @@ const Dashboard: React.FC = () => {
   // Показываем индикатор загрузки в стиле клиентского приложения
   if (loading) {
     return (
-      <div className="min-h-screen font-sans bg-gradient-to-b from-slate-100 via-slate-100 to-white">
+      <div className="min-h-screen font-sans bg-admin-bg-primary">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-900 border-t-transparent mx-auto mb-4"></div>
-            <p className="text-slate-600">Загрузка...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-admin-primary border-t-transparent mx-auto mb-4"></div>
+            <p className="text-admin-text-secondary">Загрузка панели управления...</p>
           </div>
         </div>
       </div>
@@ -35,10 +35,10 @@ const Dashboard: React.FC = () => {
   // Проверяем, что пользователь загружен
   if (!user) {
     return (
-      <div className="min-h-screen font-sans bg-gradient-to-b from-slate-100 via-slate-100 to-white">
+      <div className="min-h-screen font-sans bg-admin-bg-primary">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
-            <p className="text-slate-600">Необходима авторизация</p>
+            <p className="text-admin-text-secondary">Необходима авторизация</p>
           </div>
         </div>
       </div>
@@ -51,7 +51,7 @@ const Dashboard: React.FC = () => {
       title: 'Аналитика',
       description: 'Продажи, популярные товары, отчеты',
       icon: ChartBarIcon,
-      color: 'from-blue-500 to-cyan-500',
+      color: 'from-admin-primary to-admin-info',
       route: '/admin/analytics',
       features: ['Продажи', 'Популярные товары', 'Отчеты'],
     },
@@ -60,21 +60,21 @@ const Dashboard: React.FC = () => {
       title: 'Управление заказами',
       description: 'Принятие заказов, обновление статусов',
       icon: ClipboardDocumentListIcon,
-      color: 'from-green-500 to-emerald-500',
+      color: 'from-admin-success to-admin-secondary',
       route: '/admin/orders',
       features: ['Новые заказы', 'Статусы', 'QR-коды'],
     },
   ];
 
   return (
-    <div className="min-h-screen font-sans bg-gradient-to-b from-slate-100 via-slate-100 to-white pb-20">
+    <div className="min-h-screen font-sans bg-admin-bg-primary pb-20">
       <div className="px-4 py-6">
         <motion.h1 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-2xl font-extrabold tracking-tight text-slate-900 mb-6"
+          className="text-2xl font-extrabold tracking-tight text-admin-text-primary mb-6"
         >
-          Панель управления
+          ☕ Панель управления
         </motion.h1>
 
         {/* Статистика в стиле клиентского приложения */}

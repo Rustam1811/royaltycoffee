@@ -1,5 +1,5 @@
 // src/admin/services/firestoreService.ts
-import { db } from '@/firebase';
+import { db } from '@/lib/firebase';
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 const firestoreService = {

@@ -3,5 +3,8 @@
   "private": true,
   "engines": {
     "node": "22.x"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.5.0"
   }
 }

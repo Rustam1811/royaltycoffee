@@ -10,6 +10,7 @@ import {
   onAuthStateChanged,
   User as FbUser,
   getIdToken,
+  getIdTokenResult,
 } from 'firebase/auth';
 import { auth } from '../firebase';
 import { apiUrl } from '../config/api';
@@ -79,32 +80,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsub = onAuthStateChanged(auth, async (u) => {
       if (u) {
         try {
-          // Получаем ID token и отправляем на бэкенд для получения роли
-          const idToken = await getIdToken(u);
-          const response = await fetch(apiUrl('auth', { action: 'oauth' }), {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ idToken }),
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            const appUser = fbUserToAppUser(u);
-            if (appUser && data.user) {
-              const updatedUser = { ...appUser, role: data.user.role };
-              setUser(updatedUser);
-              localStorage.setItem('user', JSON.stringify(updatedUser));
-            }
-          } else {
-            // Если бэкенд недоступен, используем дефолтную роль
-            const appUser = fbUserToAppUser(u);
+          // Получаем роль из custom claims Firebase ID токена
+          const tokenResult = await getIdTokenResult(u);
+          const claimRole = (tokenResult.claims?.role as 'admin'|'user'|undefined) ?? 'user';
+          
+          // Создаем объект пользователя
+          const appUser = fbUserToAppUser(u);
+          if (appUser) {
+            appUser.role = claimRole;
             setUser(appUser);
-            if (appUser) localStorage.setItem('user', JSON.stringify(appUser));
+            localStorage.setItem('user', JSON.stringify(appUser));
+          }
+          
+          // Опционально: можно также синхронизироваться с бэкендом для дополнительных данных
+          try {
+            const idToken = await getIdToken(u);
+            const response = await fetch(apiUrl('auth', { action: 'oauth' }), {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ idToken }),
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              if (data.user && data.user.role) {
+                // Приоритет у custom claims, но можно использовать бэкенд как fallback
+                const finalRole = claimRole !== 'user' ? claimRole : data.user.role;
+                if (appUser && appUser.role !== finalRole) {
+                  appUser.role = finalRole;
+                  setUser({...appUser});
+                  localStorage.setItem('user', JSON.stringify(appUser));
+                }
+              }
+            }
+          } catch (backendError) {
+            console.warn('Backend auth sync failed (using claims only):', backendError);
+            // Продолжаем с rolе из claims
           }
         } catch (error) {
-          console.error('Error syncing user with backend:', error);
+          console.error('Error getting user claims:', error);
           const appUser = fbUserToAppUser(u);
           setUser(appUser);
           if (appUser) localStorage.setItem('user', JSON.stringify(appUser));

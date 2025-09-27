@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { db } from '@/firebase';
+import { db } from '@/lib/firebase';
 import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { uploadImage } from '@/services/storageService'; // Для загрузки картинок
 import { LocalizedString } from '@/types/types'; // Тип можно сюда вынести отдельно

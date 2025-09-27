@@ -3,3 +3,6 @@ dist/
 .types/
 *.tsbuildinfo
 .vercel
+
+.env.production
+.vercel

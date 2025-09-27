@@ -1,22 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { v4 as uuidv4 } from 'uuid';
-import { getFirestore, doc, getDoc, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
 import { parseLoyaltyPayload } from '@/utils/parseLoyaltyPayload';
 
 // Supports QR and common 1D barcodes (Code128/EAN, etc.)
 
 // Using shared parser from utils/parseLoyaltyPayload
-
-async function fetchBalance(uid: string): Promise<number> {
-  const db = getFirestore();
-  const ref = doc(db, 'users', uid);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) return 0;
-  const data = snap.data() as { balance?: unknown };
-  return typeof data.balance === 'number' ? data.balance : Number(data.balance || 0) || 0;
-}
 
 async function fetchLedger(uid: string) {
   const db = getFirestore();
@@ -31,8 +21,8 @@ async function callApi(path: string, body: unknown) {
   const url = base.replace(/\/$/, '') + path;
 
   // Attach token if available
-  const { getAuth: _getAuth } = await import('firebase/auth');
-  const token = await _getAuth().currentUser?.getIdToken();
+  const { auth } = await import('@/lib/firebase');
+  const token = await auth.currentUser?.getIdToken();
 
   const res = await fetch(url, {
     method: 'POST',
@@ -53,8 +43,6 @@ async function callApi(path: string, body: unknown) {
 }
 
 export default function PosPage() {
-  const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<string | null>(null);
   const [input, setInput] = useState<string>('');
   const [redeem, setRedeem] = useState<number>(0);
   const [targetUid, setTargetUid] = useState<string | null>(null);
@@ -80,19 +68,6 @@ export default function PosPage() {
   const [items, setItems] = useState<CartItem[]>([]);
   const [newItemName, setNewItemName] = useState<string>('');
   const [newItemPrice, setNewItemPrice] = useState<string>('');
-
-  useEffect(() => {
-    const auth = getAuth();
-    return onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      // role from custom claims if available
-      u?.getIdTokenResult().then(r => setRole((r?.claims as any)?.role || null)).catch(() => setRole(null));
-    });
-  }, []);
-
-  const forbidden = useMemo(() => {
-    return !user || !(['staff', 'admin', 'owner'].includes(String(role)));
-  }, [user, role]);
 
   const handleResolveTarget = useCallback(async (override?: string) => {
     setError(null);
@@ -296,10 +271,10 @@ export default function PosPage() {
     };
   }, [scanning, handleResolveTarget]);
 
-  // Keep the input focused on mount and after role/user resolved
+  // Keep the input focused on mount
   useEffect(() => {
     inputRef.current?.focus();
-  }, [user, role]);
+  }, []);
 
   useEffect(() => () => { if (toastTimer.current) window.clearTimeout(toastTimer.current); }, []);
 
@@ -372,18 +347,11 @@ export default function PosPage() {
     };
   }, [globalListen, handleResolveTarget]);
 
-  if (forbidden) {
-    return (
-      <div className="p-4 max-w-2xl mx-auto">
-        <h1 className="text-xl font-semibold mb-2">POS</h1>
-        <p>Доступ запрещён. Войдите под учетной записью сотрудника.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="p-4 max-w-3xl mx-auto space-y-4">
-      <h1 className="text-2xl font-semibold">POS — Сканирование и операции</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">POS — Сканирование и операции</h1>
+      </div>
       {toast && (
         <div className="fixed top-4 right-4 z-50">
           <div className="bg-emerald-600 text-white px-4 py-2 rounded shadow">

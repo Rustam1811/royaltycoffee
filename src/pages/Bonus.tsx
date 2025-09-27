@@ -1,8 +1,7 @@
 // src/pages/Bonus.tsx
 import React, { useEffect, useState } from 'react';
-import { useHistory } from 'react-router-dom';
 import { FaCoins, FaMedal, FaGift, FaChartLine, FaLock } from 'react-icons/fa';
-import { apiUrl } from '../config/api';
+import { api } from '../lib/api';
 
 interface Order {
   id: string;
@@ -20,8 +19,6 @@ interface Achievement {
   secret?: boolean;
 }
 
-const API = import.meta.env.VITE_BACKEND_URL; // https://coffee-addict.vercel.app/api
-
 const Bonus: React.FC = () => {
   const [userPhone, setUserPhone] = useState<string | null>(null);
   const [bonusPoints, setBonusPoints] = useState(0);
@@ -29,7 +26,6 @@ const Bonus: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [loading, setLoading] = useState(true);
-  const history = useHistory();
 
   // получаем userPhone
   useEffect(() => {
@@ -47,28 +43,22 @@ const Bonus: React.FC = () => {
     (async () => {
       try {
         // баланс через GET /bonus
-        const balRes = await fetch(
-          apiUrl('bonus', { action: 'user', userId: userPhone }),
-          { method: 'GET', mode: 'cors' }
-        );
-        if (!balRes.ok) throw new Error(`Status ${balRes.status}`);
-        const { bonusPoints } = await balRes.json();
+        const bonusData = await api.get(`bonus?action=user&userId=${userPhone}`);
+        const { bonusPoints } = bonusData;
         setBonusPoints(bonusPoints);
         setSpendAmount(bonusPoints > 0 ? 1 : 0);
 
         // последние 5 заказов
-        const ordRes = await fetch(
-          apiUrl('orders', { action: 'get', userId: userPhone }),
-          { method: 'GET', mode: 'cors' }
-        );
-        if (!ordRes.ok) throw new Error(`Status ${ordRes.status}`);
-        const raw = await ordRes.json();
-        const ords: Order[] = raw.map((o: any) => ({
-          id: o.id,
-          date: o.date,
-          amount: o.amount,
-          bonusEarned: o.bonusEarned,
-        }));
+        const raw = await api.get(`orders?action=get&userId=${userPhone}`);
+        const ords: Order[] = (raw as unknown[]).map((o: unknown) => {
+          const order = o as Record<string, unknown>;
+          return {
+            id: String(order.id || ''),
+            date: String(order.date || ''),
+            amount: Number(order.amount || 0),
+            bonusEarned: Number(order.bonusEarned || 0),
+          };
+        });
         setOrders(ords);
 
         // формируем достижения
@@ -95,25 +85,16 @@ const Bonus: React.FC = () => {
     }
     try {
       // списание через POST /placeOrder
-      const res = await fetch(
-        `${API}/placeOrder`,
-        {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({
-            userId: userPhone,
-            items: [],
-            amount: 0,
-            bonusToUse: spendAmount,
-          }),
-        }
-      );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `Status ${res.status}`);
+      const data = await api.post('placeOrder', {
+        userId: userPhone,
+        items: [],
+        amount: 0,
+        bonusToUse: spendAmount,
+      });
       setBonusPoints(data.newBonus);
       setSpendAmount(data.newBonus > 0 ? 1 : 0);
       alert(`Успешно списано ${spendAmount} бонусов!`);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Ошибка списания бонусов:', err);
       alert(err.message);
     }
