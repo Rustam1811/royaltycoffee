@@ -1,10 +1,11 @@
 {
   "name": "functions",
   "private": true,
-  "engines": { "node": ">=20" },
+  "engines": { "node": "20" },
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
+    "build": "echo 'No build needed for CommonJS'",
     "serve": "firebase emulators:start",
     "deploy": "firebase deploy --only functions:api,hosting",
     "lint": "echo skip"
