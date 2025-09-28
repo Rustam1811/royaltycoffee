@@ -39,21 +39,32 @@ firebase emulators:start
 # http://localhost:5000/api/ping (через hosting)
 ```
 
-### 4. Критерии готовности
+### 4. Настройка Firebase Authentication
 
-✅ `https://<PROJECT_ID>.web.app/api/ping` → 200 `{ "ok": true }`
+Для доступа к админке нужно создать пользователей:
 
-✅ `https://<PROJECT_ID>.web.app/api/health` → 200 `{ "status":"ok", "ts": <number> }`
+1. Откройте [Firebase Console](https://console.firebase.google.com/project/coffeeaddict-c9d70/authentication/users)
+2. Во вкладке Authentication → Users создайте пользователей:
+   - Email: `admin121@gmail.com`, Password: `admin123` (или свой пароль)
+   - Email: `barista121@gmail.com`, Password: `barista123`
 
-✅ Админка загружается без CORS/404 ошибок
+### 5. Критерии готовности
 
-✅ Все API endpoints возвращают валидный JSON:
-- `/api/bonus?action=settings`
-- `/api/promo?action=promotions`
-- `/api/promo?action=achievements`
-- `/api/orders?action=get&admin=true`
-- `/api/analytics`
-- `/api/users`
+✅ `https://coffeeaddict-c9d70.web.app/api/ping` → 200 `{ "ok": true }`
+
+✅ `https://coffeeaddict-c9d70.web.app/api/health` → 200 `{ "status":"ok", "ts": <number> }`
+
+✅ Админка загружается и перенаправляет на `/login`
+
+✅ После авторизации показывает данные без CORS ошибок
+
+✅ Все API endpoints возвращают валидный JSON с тестовыми данными:
+- `/api/bonus?action=settings` → настройки бонусной системы
+- `/api/promo?action=promotions` → список промо-акций
+- `/api/promo?action=achievements` → достижения
+- `/api/orders?action=get&admin=true` → список заказов с деталями
+- `/api/analytics` → статистика с графиками
+- `/api/users` → список пользователей
 
 ### 5. Быстрые команды
 
