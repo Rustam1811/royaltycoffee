@@ -13,6 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckSolid } from '@heroicons/react/24/solid';
 import { api } from '../services/api';
+import { toISODate, safeStringValue } from '../utils/date';
 
 interface Promotion {
   id: string;
@@ -116,14 +117,14 @@ const PromotionManagement: React.FC = () => {
   const onEdit = (p: Promotion) => {
     setEditing(p);
     setForm({
-      title: p.title,
-      description: p.description,
-      image: p.image,
+      title: safeStringValue(p.title, ''),
+      description: safeStringValue(p.description, ''),
+      image: safeStringValue(p.image, ''),
       discountType: p.discountType,
       discountValue: p.discountValue,
-      startDate: p.startDate ? p.startDate.split('T')[0] : '',
-      endDate: p.endDate ? p.endDate.split('T')[0] : '',
-      category: p.category,
+      startDate: toISODate(p.startDate),
+      endDate: toISODate(p.endDate),
+      category: safeStringValue(p.category, 'all'),
       minOrderAmount: p.minOrderAmount,
       targetAudience: p.targetAudience || 'all_users',
       isActive: p.isActive,
@@ -550,8 +551,8 @@ const PromotionManagement: React.FC = () => {
                           <label className="block text-sm font-semibold text-[var(--color-text-primary)] font-[var(--font-family-base)] mb-2">Дата начала</label>
                           <input
                             type="date"
-                            value={form.startDate}
-                            onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+                            value={toISODate(form.startDate)}
+                            onChange={(e) => setForm({ ...form, startDate: toISODate(e.target.value) })}
                             className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-orange)] transition-all duration-200 text-[var(--color-text-primary)] font-[var(--font-family-base)]"
                             required
                           />
@@ -560,8 +561,8 @@ const PromotionManagement: React.FC = () => {
                           <label className="block text-sm font-semibold text-[var(--color-text-primary)] font-[var(--font-family-base)] mb-2">Дата окончания</label>
                           <input
                             type="date"
-                            value={form.endDate}
-                            onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+                            value={toISODate(form.endDate)}
+                            onChange={(e) => setForm({ ...form, endDate: toISODate(e.target.value) })}
                             className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-orange)] transition-all duration-200 text-[var(--color-text-primary)] font-[var(--font-family-base)]"
                             required
                           />

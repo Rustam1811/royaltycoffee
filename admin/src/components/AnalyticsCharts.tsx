@@ -29,9 +29,6 @@ interface ChartDataItem {
   name: string;
   orders: number;
   revenue: number;
-  date?: string;
-  weekStart?: string;
-  monthStart?: string;
 }
 
 interface TopProduct {

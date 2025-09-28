@@ -1,4 +1,5 @@
 import { apiUrl } from "@/config/api";
+import { safeParseNumber, safeArray } from "@/utils/date";
 
 export interface OrderItem {
   productId?: string;
@@ -42,9 +43,6 @@ export interface ChartPoint {
   name: string;
   orders: number;
   revenue: number;
-  date?: string;
-  weekStart?: string;
-  monthStart?: string;
 }
 
 export interface ProcessedAnalytics extends AggregatedOrders {
@@ -68,10 +66,15 @@ type OrdersApiPayload = {
   }>;
 };
 
-function toDate(value: string | { seconds: number } | undefined): Date {
+function toDate(value: unknown): Date {
   if (!value) return new Date();
   if (typeof value === "string") return new Date(value);
-  return new Date(value.seconds * 1000);
+  if (typeof value === "object" && value !== null && "seconds" in value) {
+    const timestampObj = value as { seconds: number };
+    return new Date(timestampObj.seconds * 1000);
+  }
+  if (value instanceof Date) return value;
+  return new Date();
 }
 
 export async function getOrders(from: Date, to: Date): Promise<Order[]> {
@@ -90,17 +93,18 @@ export async function getOrders(from: Date, to: Date): Promise<Order[]> {
   const data = (await response.json()) as OrdersApiPayload;
   const source = Array.isArray(data.orders) ? data.orders : [];
 
-  return source.map((order) => {
-    const createdAt = toDate(order.createdAt ?? order.timestamp ?? order.date);
+  return safeArray(source).map((order: unknown) => {
+    const orderData = order as Record<string, unknown>;
+    const createdAt = toDate(orderData.createdAt ?? orderData.timestamp ?? orderData.date);
     return {
-      id: order.id,
+      id: String(orderData.id || ''),
       createdAt,
       date: createdAt,
-      items: Array.isArray(order.items) ? order.items : [],
-      totalPrice: order.amount ?? order.totalPrice ?? 0,
-      status: order.status ?? "completed",
-      userId: order.userId,
-      bonusEarned: order.bonusEarned ?? 0,
+      items: safeArray(orderData.items),
+      totalPrice: safeParseNumber(orderData.amount ?? orderData.totalPrice, 0),
+      status: String(orderData.status || "completed"),
+      userId: orderData.userId ? String(orderData.userId) : undefined,
+      bonusEarned: safeParseNumber(orderData.bonusEarned, 0),
     } satisfies Order;
   });
 }
@@ -177,25 +181,22 @@ export function projectAnalytics(raw: AggregatedOrders, period: "day" | "week" |
       name: new Date(item.date).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }),
       orders: item.orders,
       revenue: item.revenue,
-      date: item.date,
     }));
-    periodLabel = "????";
+    periodLabel = "Дни";
   } else if (period === "week") {
     chartData = raw.byWeek.map((item) => ({
-      name: `?????? ${new Date(item.weekStart).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}`,
+      name: `Неделя ${new Date(item.weekStart).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}`,
       orders: item.orders,
       revenue: item.revenue,
-      weekStart: item.weekStart,
     }));
-    periodLabel = "??????";
+    periodLabel = "Недели";
   } else {
     chartData = raw.byMonth.map((item) => ({
       name: new Date(`${item.monthStart}-01`).toLocaleDateString("ru-RU", { month: "long", year: "numeric" }),
       orders: item.orders,
       revenue: item.revenue,
-      monthStart: item.monthStart,
     }));
-    periodLabel = "?????";
+    periodLabel = "Месяцы";
   }
 
   return {
