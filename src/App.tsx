@@ -12,8 +12,7 @@ import Order from './pages/Order';
 import Booking from './pages/Booking';
 import Login from './pages/Login';
 
-// admin
-import AdminApp from '../admin/App';
+// Админка теперь развернута отдельно на /admin
 
 // contexts
 import { CartProvider } from './contexts/CartContext';
@@ -78,10 +77,7 @@ const PrivateRoute: React.FC<{ component: React.ComponentType<Record<string, unk
       {...rest}
       render={(props) =>
         loading ? null : user ? (
-          user.role === 'admin' ? (
-            <Redirect to="/admin" />
-          ) : (
-            <motion.div
+          <motion.div
               key={location.pathname}
               variants={pageVariants(!!prefersReduced)}
               initial="initial"
@@ -91,7 +87,6 @@ const PrivateRoute: React.FC<{ component: React.ComponentType<Record<string, unk
             >
               <C {...props} />
             </motion.div>
-          )
         ) : (
           <Redirect to={{ pathname: '/login', state: { redirect: location.pathname } }} />
         )
@@ -100,32 +95,7 @@ const PrivateRoute: React.FC<{ component: React.ComponentType<Record<string, unk
   );
 };
 
-const AdminRoute: React.FC<{ component: React.ComponentType<Record<string, unknown>>; exact?: boolean; path: string; }> = ({ component: C, ...rest }) => {
-  const { user, loading } = useAuth();
-  const location = useLocation();
-  const prefersReduced = useReducedMotion();
-  return (
-    <Route
-      {...rest}
-      render={(props) =>
-        loading ? null : user && user.role === 'admin' ? (
-          <motion.div
-            key={location.pathname}
-            variants={pageVariants(!!prefersReduced)}
-            initial="initial"
-            animate="enter"
-            exit="exit"
-            className="w-full min-h-screen"
-          >
-            <C {...props} />
-          </motion.div>
-        ) : (
-          <Redirect to="/login" />
-        )
-      }
-    />
-  );
-};
+// AdminRoute удален - админка теперь отдельное приложение
 
 const AppContent: React.FC = () => {
   const location = useLocation();
@@ -134,7 +104,7 @@ const AppContent: React.FC = () => {
     <>
       <main className="pb-24 overflow-hidden min-h-screen">
         <Switch location={location} key={location.pathname}>
-          <Route path="/admin" component={AdminApp} />
+          {/* /admin теперь отдельное приложение */}
           <Route exact path="/login" render={() => (
             <motion.div
               key={location.pathname}
@@ -153,7 +123,7 @@ const AppContent: React.FC = () => {
           <PrivateRoute exact path="/profile" component={Profile} />
           <PrivateRoute exact path="/booking" component={Booking} />
           <PrivateRoute exact path="/order" component={Order} />
-          <Route path="/admin" component={AdminApp} />
+          {/* /admin теперь отдельное приложение */}
           <Route exact path="/"><Redirect to="/home" /></Route>
         </Switch>
       </main>

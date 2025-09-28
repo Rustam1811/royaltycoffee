@@ -55,6 +55,10 @@ export default defineConfig(({ mode }) => {
         'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
         'Cross-Origin-Embedder-Policy': 'credentialless'
       }
+    },
+    build: {
+      outDir: "dist",
+      emptyOutDir: true,
     }
   };
 });
