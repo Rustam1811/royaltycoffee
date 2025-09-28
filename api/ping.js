@@ -1,6 +1,5 @@
-const { withCors } = require('./_lib/cors');
-module.exports = withCors((req, res) => {
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.statusCode = 200;
-  res.end(JSON.stringify({ pong: true, t: Date.now() }));
+﻿const { withCors } = require('./_lib/cors');
+
+module.exports = withCors((_req, res) => {
+  return res.status(200).json({ ok: true, timestamp: Date.now() });
 });

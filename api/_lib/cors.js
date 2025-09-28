@@ -1,43 +1,31 @@
-function wildcardToRegex(pattern) {
-  // escape regex special chars except '*', then replace '*' with '.*'
-  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
-  return new RegExp('^' + escaped + '$');
-}
+﻿const ALLOWED_ORIGINS = [
+  'https://coffee-admin-nine.vercel.app',
+  'https://coffee-sunfood.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+  'http://127.0.0.1:3000'
+];
 
-module.exports.withCors = (handler) => (req, res) => {
-  const origin = req.headers.origin || '';
-  const allow = (process.env.ALLOWED_ORIGINS || '*').trim();
-  const list = allow === '*' ? ['*'] : allow.split(',').map(s => s.trim()).filter(Boolean);
-  const hasWildcardAll = list.includes('*');
+const DEFAULT_ORIGIN = process.env.CORS_ORIGIN || 'https://coffee-admin-nine.vercel.app';
 
-  const isAllowed = (o) => {
-    if (!o) return false;
-    for (const p of list) {
-      if (p === '*') return true;
-      if (p.includes('*')) {
-        if (wildcardToRegex(p).test(o)) return true;
-      } else if (p === o) {
-        return true;
-      }
-    }
-    return false;
-  };
-
-  res.setHeader('Vary', 'Origin');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
-
-  if (!origin || hasWildcardAll) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-  } else if (isAllowed(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.statusCode = 403;
-    return res.end(JSON.stringify({ ok: false, error: 'CORS: origin not allowed' }));
-  }
-
+exports.withCors = (handler) => async (req, res) => {
+  if (req && !req.res) req.res = res;
+  
+  const origin = req.headers.origin;
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : DEFAULT_ORIGIN;
+  
+  res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,HEAD');
+  
   if (req.method === 'OPTIONS') {
+    if (typeof res.status === 'function') {
+      return res.status(204).end();
+    }
     res.statusCode = 204;
     return res.end();
   }

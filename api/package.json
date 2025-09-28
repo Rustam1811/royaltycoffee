@@ -1,8 +1,8 @@
-{
+﻿{
   "name": "coffee-api",
   "private": true,
   "engines": {
-    "node": "22.x"
+    "node": "20.x"
   },
   "dependencies": {
     "firebase-admin": "^12.5.0"

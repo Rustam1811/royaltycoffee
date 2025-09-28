@@ -1,17 +1,19 @@
+﻿const { send } = require('./json');
+
 let _db = null;
 let _initError = null;
 
 const ADMIN_ON = process.env.ADMIN_AUTH_ENABLED === 'true';
 
 function hasCreds() {
-  const hasPK = Boolean(
+  const hasPk = Boolean(
     process.env.FIREBASE_PROJECT_ID &&
     process.env.FIREBASE_CLIENT_EMAIL &&
     process.env.FIREBASE_PRIVATE_KEY
   );
   const hasServiceJson = Boolean(process.env.FIREBASE_SERVICE_ACCOUNT);
   const hasServiceB64 = Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64);
-  return hasPK || hasServiceJson || hasServiceB64;
+  return hasPk || hasServiceJson || hasServiceB64;
 }
 
 function loadServiceAccount() {
@@ -27,13 +29,15 @@ function loadServiceAccount() {
       if (json.private_key) json.private_key = String(json.private_key).replace(/\\n/g, '\n');
       return json;
     }
-  } catch (_) {}
+  } catch (_) {
+    return null;
+  }
   return null;
 }
 
 async function ensureAdminReady() {
   if (_db) return _db;
-  if (!hasCreds()) return null; // degraded mode
+  if (!hasCreds()) return null;
 
   try {
     const { initializeApp, cert, getApps } = require('firebase-admin/app');
@@ -55,86 +59,70 @@ async function ensureAdminReady() {
     _db = getFirestore();
     _initError = null;
     return _db;
-  } catch (_e) {
-    // degraded mode on any init error
+  } catch (error) {
     _db = null;
-    try { _initError = String(_e && (_e.message || _e)); } catch { _initError = 'unknown'; }
+    try {
+      _initError = String(error && (error.message || error));
+    } catch (_) {
+      _initError = 'unknown';
+    }
     return null;
   }
 }
 
 async function getDb() {
-  return await ensureAdminReady();
+  return ensureAdminReady();
 }
 
-async function requireAdminRole(req) {
-  if (!ADMIN_ON) return; // no-op when auth is disabled
+async function requireAdminRole(req, res) {
+  if (!ADMIN_ON) return true;
 
-  // Try to use response from req if attached by wrapper
-  const res = req && req.res ? req.res : null;
+  const response = res || (req && (req.res || req.response)) || null;
+  if (req && response && !req.res) req.res = response;
 
-  // If no creds, we cannot verify; treat as unauthorized
   if (!hasCreds()) {
-    if (res && !res.writableEnded) {
-      res.statusCode = 401;
-      res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ ok: false, error: 'Unauthorized' }));
-    }
-    return;
+    send(response, 401, { ok: false, error: 'Unauthorized' });
+    return false;
   }
 
-  // Ensure app is initialized
   await ensureAdminReady();
   try {
     const { getApps } = require('firebase-admin/app');
-    if (!getApps().length) throw new Error('no-app');
-  } catch (_) {
-    if (res && !res.writableEnded) {
-      res.statusCode = 401;
-      res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ ok: false, error: 'Unauthorized' }));
+    if (!getApps().length) {
+      send(response, 401, { ok: false, error: 'Unauthorized' });
+      return false;
     }
-    return;
+  } catch (error) {
+    send(response, 401, { ok: false, error: String(error && (error.message || error)) });
+    return false;
   }
-  try {
-    const authHeader = req.headers && (req.headers.authorization || req.headers.Authorization);
-    const token = authHeader && String(authHeader).startsWith('Bearer ')
-      ? String(authHeader).slice(7).trim()
-      : null;
-    if (!token) {
-      if (res && !res.writableEnded) {
-        res.statusCode = 401;
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ ok: false, error: 'Unauthorized' }));
-      }
-      return;
-    }
 
+  const authHeader = req && (req.headers?.authorization || req.headers?.Authorization);
+  const token = authHeader && String(authHeader).startsWith('Bearer ')
+    ? String(authHeader).slice(7).trim()
+    : null;
+  if (!token) {
+    send(response, 401, { ok: false, error: 'Unauthorized' });
+    return false;
+  }
+
+  try {
     const { getAuth } = require('firebase-admin/auth');
     const decoded = await getAuth().verifyIdToken(token);
-    const role = decoded && decoded.role;
+    const role = decoded && (decoded.role || (decoded.admin ? 'admin' : null));
     if (role !== 'admin') {
-      if (res && !res.writableEnded) {
-        res.statusCode = 403;
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ ok: false, error: 'Forbidden' }));
-      }
-      return;
+      send(response, 403, { ok: false, error: 'Forbidden' });
+      return false;
     }
-    // authorized
-    return;
-  } catch (_e) {
-    if (res && !res.writableEnded) {
-      res.statusCode = 401;
-      res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ ok: false, error: 'Unauthorized' }));
-    }
-    return;
+    return true;
+  } catch (error) {
+    send(response, 401, { ok: false, error: String(error && (error.message || error)) });
+    return false;
   }
 }
 
 module.exports = { getDb, requireAdminRole, hasCreds, ADMIN_ON };
 
-module.exports.__debug = function() {
+module.exports.__debug = function () {
   return { dbReady: !!_db, initError: _initError };
 };
