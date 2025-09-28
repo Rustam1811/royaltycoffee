@@ -1,4 +1,3 @@
-import { apiUrl } from "@/config/api";
 import { safeParseNumber, safeArray } from "@/utils/date";
 
 export interface OrderItem {
@@ -78,19 +77,14 @@ function toDate(value: unknown): Date {
 }
 
 export async function getOrders(from: Date, to: Date): Promise<Order[]> {
-  const url = apiUrl("orders", {
+  const { api } = await import("@/services/api");
+  
+  const data = await api.get<OrdersApiPayload>("/orders", {
     action: "get",
-    admin: true,
+    admin: "true",
     from: from.toISOString(),
     to: to.toISOString(),
   });
-
-  const response = await fetch(url, { method: "GET", mode: "cors" });
-  if (!response.ok) {
-    throw new Error(`Failed to fetch orders: ${response.status}`);
-  }
-
-  const data = (await response.json()) as OrdersApiPayload;
   const source = Array.isArray(data.orders) ? data.orders : [];
 
   return safeArray(source).map((order: unknown) => {

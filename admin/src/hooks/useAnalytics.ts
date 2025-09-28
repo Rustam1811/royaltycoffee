@@ -40,16 +40,25 @@ export function useAnalytics(period: Period) {
     setError(null);
 
     try {
+      console.log('🔄 Загружаем аналитику для периода:', period);
       const { from, to } = rangeForPeriod(period);
+      console.log('📅 Диапазон дат:', { from: from.toISOString(), to: to.toISOString() });
+      
       const fetched = await getOrders(from, to);
+      console.log('📦 Получены заказы:', fetched);
+      console.log('📊 Количество заказов:', fetched.length);
+      
       const rawAggregated = aggregateOrders(fetched);
+      console.log('🔢 Агрегированные данные:', rawAggregated);
+      
       const processed = projectAnalytics(rawAggregated, period);
+      console.log('📈 Обработанная аналитика:', processed);
 
       setOrders(fetched);
       setAggregated(processed);
     } catch (err) {
-      console.error("Analytics load error", err);
-      setError(err instanceof Error ? err.message : "?? ??????? ????????? ?????????");
+      console.error("❌ Analytics load error", err);
+      setError(err instanceof Error ? err.message : "Не удалось загрузить аналитику");
     } finally {
       setLoading(false);
     }

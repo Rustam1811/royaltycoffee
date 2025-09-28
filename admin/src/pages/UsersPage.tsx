@@ -38,10 +38,15 @@ const UsersPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
+      console.log('🔄 Загружаем пользователей...');
       const data = await api.get<{ users: ListedUser[] }>('/users?action=list');
+      console.log('📊 Получены данные пользователей:', data);
+      console.log('👥 Массив пользователей:', data.users);
+      console.log('📈 Количество пользователей:', data.users?.length || 0);
       setUsers(data.users || []);
     } catch (e) {
       const err = e as Error;
+      console.error('❌ Ошибка загрузки пользователей:', err);
       setError(err.message || 'Ошибка загрузки');
     } finally {
       setLoading(false);
