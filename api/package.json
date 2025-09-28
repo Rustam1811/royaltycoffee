@@ -1,5 +1,5 @@
-﻿{
-  "name": "coffee-api",
+{
+  "name": "sunfood-api",
   "private": true,
   "engines": {
     "node": "20.x"
