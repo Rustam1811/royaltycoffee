@@ -1,39 +1,13 @@
 {
   "hosting": {
-    "public": "dist",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
+    "public": "admin/dist",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
-      {
-        "source": "/api/promo",
-        "function": "promotions"
-      },
-      {
-        "source": "/api/**",
-        "function": "app"
-      },
-      {
-        "source": "/admin/**",
-        "destination": "/admin/index.html"
-      },
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
+      { "source": "/api/**", "function": "api" },
+      { "source": "**", "destination": "/index.html" }
     ],
     "headers": [
-      {
-        "source": "/**",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=3600, s-maxage=86400"
-          }
-        ]
-      }
+      { "source": "/api/**", "headers": [{ "key": "Cache-Control", "value": "no-store" }] }
     ]
   },
   "storage": {
