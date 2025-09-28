@@ -5,7 +5,7 @@
       "runtime": "nodejs20.x"
     }
   },
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" }
+  "rewrites": [
+    { "source": "/((?!api).*)", "destination": "/index.html" }
   ]
 }
