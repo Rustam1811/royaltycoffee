@@ -3,15 +3,15 @@
     "private":  true,
     "version":  "0.0.1",
     "scripts":  {
-                    "dev":  "vercel dev",
-                    "dev:api":  "node api-server.js",
+                    "dev":  "npm run dev:web",
                     "dev:web":  "cross-env NODE_ENV=development vite",
                     "dev:admin":  "cross-env NODE_ENV=development vite --config admin/vite.config.ts",
-                    "dev:all":  "concurrently -n API,WEB,ADMIN -c cyan,magenta,green \"vercel dev\" \"npm run dev:web\" \"npm run dev:admin\"",
+                    "dev:functions":  "firebase emulators:start --only functions",
+                    "dev:local":  "concurrently -n FUNCTIONS,WEB,ADMIN -c cyan,magenta,green \"firebase emulators:start --only functions\" \"npm run dev:web\" \"npm run dev:admin\"",
                     "build":  "npm run build:all",
                     "typecheck":  "tsc --noEmit",
-                    "export-admin":  "cd admin \u0026\u0026 npm ci \u0026\u0026 npm run build \u0026\u0026 npm run export",
-                    "deploy":  "npm run build \u0026\u0026 npm run export-admin \u0026\u0026 vercel deploy --prod",
+                    "export-admin":  "cd admin && npm ci && npm run build && npm run export",
+                    "deploy":  "npm run build && npm run export-admin && firebase deploy",
                     "preview":  "vite preview",
                     "test.e2e":  "cypress run",
                     "test.unit":  "vitest",
@@ -20,8 +20,7 @@
                     "build:admin":  "cd admin && npm run build",
                     "build:all":  "npm run build:web && npm run build:admin",
                     "preview:web":  "vite preview --port 4173",
-                    "preview:admin":  "vite preview --config admin/vite.config.ts --port 4174",
-                    "vercel-build":  "echo Skip build"
+                    "preview:admin":  "vite preview --config admin/vite.config.ts --port 4174"
                 },
     "dependencies":  {
                          "@capacitor/app":  "7.0.0",
