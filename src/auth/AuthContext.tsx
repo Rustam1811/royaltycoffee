@@ -9,26 +9,31 @@ import {
   signOut as fbSignOut,
   onAuthStateChanged,
   User as FbUser,
-  getIdToken,
   getIdTokenResult,
 } from 'firebase/auth';
-import { auth } from '../firebase';
-import { apiUrl } from '../config/api';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '../firebase';
+import { PhoneInputModal } from '../components/PhoneInputModal';
 
 type AppUser = {
   uid: string;
   email: string;
   name?: string;
   avatar?: string;
+  phone?: string;
   role: 'user' | 'admin';
 };
 
 type AuthContextType = {
   user: AppUser | null;
   loading: boolean;
+  needsPhone: boolean;
   loginWithGoogle: () => Promise<void>;
   loginWithApple: () => Promise<void>;
   signOut: () => Promise<void>;
+  savePhone: (phone: string) => Promise<void>;
+  updateProfile: (data: { name: string; phone: string; avatar?: string }) => Promise<void>;
+  showPhoneInput: () => void;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -60,6 +65,8 @@ const fbUserToAppUser = (u: FbUser | null): AppUser | null => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<AppUser | null>(null);
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const [needsPhone, setNeedsPhone] = useState(false);
 
   useEffect(() => {
     const handleRedirectResult = async () => {
@@ -88,37 +95,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const appUser = fbUserToAppUser(u);
           if (appUser) {
             appUser.role = claimRole;
-            setUser(appUser);
+            
+              // Проверяем наличие телефона в Firestore
+              try {
+                const userDoc = await getDoc(doc(db, 'users', u.uid));
+                if (userDoc.exists()) {
+                  const userData = userDoc.data();
+                  appUser.phone = userData.phone;
+                  appUser.name = userData.name || appUser.name;
+                  appUser.avatar = userData.avatar || appUser.avatar;
+                  
+                  // Начисляем отложенные бонусы при авторизации
+                  if (appUser.phone) {
+                    try {
+                      await fetch('/api/bonus/claim-pending', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: u.uid, phone: appUser.phone })
+                      });
+                    } catch (bonusError) {
+                      // Не прерываем авторизацию если начисление бонусов не удалось
+                    }
+                  }
+                }
+                
+                // НЕ показываем модал автоматически
+                // Модал будет показан только при попытке оформить заказ без телефона
+                setNeedsPhone(!appUser.phone && appUser.role === 'user');
+              } catch (firestoreError) {
+                console.warn('Error fetching user data from Firestore:', firestoreError);
+                setNeedsPhone(appUser.role === 'user');
+              }            setUser(appUser);
             localStorage.setItem('user', JSON.stringify(appUser));
           }
           
-          // Опционально: можно также синхронизироваться с бэкендом для дополнительных данных
-          try {
-            const idToken = await getIdToken(u);
-            const response = await fetch(apiUrl('auth', { action: 'oauth' }), {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ idToken }),
-            });
-
-            if (response.ok) {
-              const data = await response.json();
-              if (data.user && data.user.role) {
-                // Приоритет у custom claims, но можно использовать бэкенд как fallback
-                const finalRole = claimRole !== 'user' ? claimRole : data.user.role;
-                if (appUser && appUser.role !== finalRole) {
-                  appUser.role = finalRole;
-                  setUser({...appUser});
-                  localStorage.setItem('user', JSON.stringify(appUser));
-                }
-              }
-            }
-          } catch (backendError) {
-            console.warn('Backend auth sync failed (using claims only):', backendError);
-            // Продолжаем с rolе из claims
-          }
         } catch (error) {
           console.error('Error getting user claims:', error);
           const appUser = fbUserToAppUser(u);
@@ -193,13 +203,98 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('user');
   };
 
+  const savePhone = async (phone: string) => {
+    if (!user) throw new Error('No user logged in');
+    
+    try {
+      // Сохраняем в Firestore с merge:true
+      await setDoc(doc(db, 'users', user.uid), {
+        phone,
+        name: user.name || '',
+        email: user.email,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+
+      // Обновляем локальное состояние
+      const updatedUser = { ...user, phone };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      
+      setNeedsPhone(false);
+      setShowPhoneModal(false);
+    } catch (error) {
+      console.error('Error saving phone:', error);
+      throw error;
+    }
+  };
+
+  const updateProfile = async (data: { name: string; phone: string; avatar?: string }) => {
+    if (!user) throw new Error('No user logged in');
+    
+    try {
+      // Обновляем в Firestore
+      const updateData: Record<string, unknown> = {
+        name: data.name,
+        phone: data.phone,
+        email: user.email,
+        updatedAt: serverTimestamp(),
+      };
+      
+      if (data.avatar) {
+        updateData.avatar = data.avatar;
+      }
+      
+      await setDoc(doc(db, 'users', user.uid), updateData, { merge: true });
+
+      // Обновляем локальное состояние
+      const updatedUser: AppUser = { 
+        ...user, 
+        name: data.name,
+        phone: data.phone,
+        ...(data.avatar && { avatar: data.avatar })
+      };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      
+      setNeedsPhone(false);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      throw error;
+    }
+  };
+
+  const showPhoneInput = () => {
+    setShowPhoneModal(true);
+  };
+
   const value: AuthContextType = {
     user,
     loading,
+    needsPhone,
     loginWithGoogle,
     loginWithApple,
     signOut,
+    savePhone,
+    updateProfile,
+    showPhoneInput,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+      <PhoneInputModal
+        isOpen={showPhoneModal}
+        onClose={() => {
+          // Не разрешаем закрыть модал пока не введен телефон
+          if (user?.role !== 'admin') {
+            // Для обычных пользователей модал обязателен
+            return;
+          }
+          setShowPhoneModal(false);
+        }}
+        onSubmit={savePhone}
+        userName={user?.name}
+      />
+    </AuthContext.Provider>
+  );
 };

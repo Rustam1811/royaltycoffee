@@ -19,8 +19,8 @@ function loadHandler(relPath) {
 
 app.use('/api/promo', (req, res) => {
   try {
-    const handler = loadHandler('api/promo.js');
-    return handler.default(req, res);
+    const handler = loadHandler('api/api/promo.js');
+    return handler(req, res);
   } catch (error) {
     console.error('API Error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -29,7 +29,7 @@ app.use('/api/promo', (req, res) => {
 
 app.use('/api/auth', (req, res) => {
   try {
-    const handler = loadHandler('api/auth.js');
+    const handler = loadHandler('api/_lib/auth.js');
     return handler(req, res);
   } catch (error) {
     console.error('API Error:', error);
@@ -40,7 +40,7 @@ app.use('/api/auth', (req, res) => {
 // Alias without /api for backward compatibility / misconfigured bases
 app.use('/auth', (req, res) => {
   try {
-    const handler = loadHandler('api/auth.js');
+    const handler = loadHandler('api/_lib/auth.js');
     return handler(req, res);
   } catch (error) {
     console.error('API Error:', error);
@@ -50,8 +50,8 @@ app.use('/auth', (req, res) => {
 
 app.use('/api/bonus', (req, res) => {
   try {
-    const handler = loadHandler('api/bonus.js');
-    return handler.default(req, res);
+    const handler = loadHandler('api/api/bonus.js');
+    return handler(req, res);
   } catch (error) {
     console.error('API Error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -60,8 +60,8 @@ app.use('/api/bonus', (req, res) => {
 
 app.use('/api/orders', (req, res) => {
   try {
-    const handler = loadHandler('api/orders-unified.js');
-    return handler.default(req, res);
+    const handler = loadHandler('api/api/orders.js');
+    return handler(req, res);
   } catch (error) {
     console.error('API Error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -70,8 +70,8 @@ app.use('/api/orders', (req, res) => {
 
 app.use('/api/stories', (req, res) => {
   try {
-    const handler = loadHandler('api/stories-unified.js');
-    return handler.default(req, res);
+    const handler = loadHandler('api/api/stories.js');
+    return handler(req, res);
   } catch (error) {
     console.error('API Error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -81,7 +81,7 @@ app.use('/api/stories', (req, res) => {
 // New: users endpoint
 app.use('/api/users', (req, res) => {
   try {
-    const handler = loadHandler('api/users.js');
+    const handler = loadHandler('api/api/users.js');
     return handler(req, res);
   } catch (error) {
     console.error('API Error:', error);

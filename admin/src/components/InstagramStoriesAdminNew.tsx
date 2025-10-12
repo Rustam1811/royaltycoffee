@@ -13,6 +13,7 @@ interface StoryFormData {
   gradient?: string;
   file?: File;
   files?: File[]; // для множественной загрузки
+  audience?: 'everyone' | 'close-friends'; // Для кого видна сторис
 }
 
 const gradientOptions = {
@@ -30,7 +31,8 @@ export const InstagramStoriesAdminNew: React.FC = () => {
     title: '',
     author: '',
     duration: 5,
-    files: [] // инициализируем массив файлов
+    files: [], // инициализируем массив файлов
+    audience: 'everyone' // По умолчанию всем
   });
   const [isCreating, setIsCreating] = useState(false);
   const [previewImages, setPreviewImages] = useState<string[]>([]); // для множественного превью
@@ -100,7 +102,8 @@ export const InstagramStoriesAdminNew: React.FC = () => {
       title: '',
       author: '',
       duration: 5,
-      files: []
+      files: [],
+      audience: 'everyone'
     });
     setPreviewImages([]);
   };
@@ -140,7 +143,8 @@ export const InstagramStoriesAdminNew: React.FC = () => {
             mediaUrl: uploadResult.url,
             likes: 0,
             views: 0,
-            reactions: []
+            reactions: [],
+            audience: formData.audience || 'everyone'
           };
 
           await StoriesService.create(newStory);
@@ -171,7 +175,8 @@ export const InstagramStoriesAdminNew: React.FC = () => {
           gradient: formData.gradient || 'sunset',
           likes: 0,
           views: 0,
-          reactions: []
+          reactions: [],
+          audience: formData.audience || 'everyone'
         };
 
         await StoriesService.create(newStory);
@@ -443,10 +448,66 @@ export const InstagramStoriesAdminNew: React.FC = () => {
                   type="range"
                   min="3"
                   max="15"
-                  value={formData.duration}
+                  value={String(formData.duration || '')}
                   onChange={(e) => handleInputChange('duration', parseInt(e.target.value))}
                   className="w-full"
                 />
+              </div>
+
+              {/* 🌟 Instagram-style Audience Selector */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Who can see this story?
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange('audience', 'everyone')}
+                    className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
+                      formData.audience === 'everyone'
+                        ? 'border-orange-500 bg-gradient-to-br from-orange-50 to-pink-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                      formData.audience === 'everyone'
+                        ? 'bg-gradient-to-br from-orange-400 to-pink-500 text-white'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className="text-center">
+                      <div className="font-semibold text-sm">Everyone</div>
+                      <div className="text-xs text-gray-500">All your subscribers</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange('audience', 'close-friends')}
+                    className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
+                      formData.audience === 'close-friends'
+                        ? 'border-green-500 bg-gradient-to-br from-green-50 to-emerald-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                      formData.audience === 'close-friends'
+                        ? 'bg-gradient-to-br from-green-400 to-emerald-500 text-white'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="text-center">
+                      <div className="font-semibold text-sm">Close Friends</div>
+                      <div className="text-xs text-gray-500">Special people only</div>
+                    </div>
+                  </button>
+                </div>
               </div>
 
               <button

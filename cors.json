@@ -7,7 +7,9 @@
       "http://localhost:5176",
       "http://localhost:5177",
       "https://sunfoodapp.vercel.app",
-      "https://coffee-addict.vercel.app"
+      "https://coffee-addict.vercel.app",
+      "https://coffeeaddict-c9d70.web.app",
+      "https://coffeeaddict-c9d70.firebaseapp.com"
     ],
     "method": ["GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS"],
     "responseHeader": [

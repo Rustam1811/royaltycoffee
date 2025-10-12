@@ -13,8 +13,10 @@ service cloud.firestore {
       // For now, allow all writes (dev mode)
       allow write: if true;
       
-      // For production, uncomment and use custom claims:
-      // allow write: if request.auth != null && request.auth.token.admin == true;
+      // For production with role field, use:
+      // allow write: if request.auth != null && 
+      //   exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+      //   get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
     // Orders collection - admin access only
@@ -25,11 +27,37 @@ service cloud.firestore {
         request.auth.token.email in ['admin121@gmail.com', 'barista121@gmail.com'];
     }
     
-    // Users collection - admin access only
+    // Users collection - admin access + user can update own phone
     match /users/{userId} {
       // Allow read/write for authenticated admin users
       allow read, write: if request.auth != null && 
         request.auth.token.email in ['admin121@gmail.com', 'barista121@gmail.com'];
+      
+      // Allow user to read their own document
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow user to create their own document with required fields
+      allow create: if request.auth != null && 
+        request.auth.uid == userId &&
+        request.resource.data.keys().hasAny(['phone', 'email', 'name']);
+      
+      // Allow user to update their own document (phone, name, email, avatar, notification preferences, fcmToken, updatedAt)
+      allow update: if request.auth != null && 
+        request.auth.uid == userId && 
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['phone', 'name', 'email', 'avatar', 'updatedAt', 'pushOptIn', 'marketingOptIn', 'subscribePromotions', 'subscribeStories', 'lastOrderAt', 'fcmToken', 'notificationsEnabled', 'lastTokenUpdate']);
+      
+      // FCM tokens subcollection - user can manage their own tokens
+      match /tokens/{tokenId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if request.auth != null && request.auth.uid == userId;
+        allow delete: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // Notification suppression subcollection - only Cloud Functions can write
+      match /notifications_suppress/{type} {
+        allow read, write: if false; // Only Cloud Functions can access
+      }
     }
     
     // Categories collection - admin write, public read
@@ -44,6 +72,20 @@ service cloud.firestore {
       allow read: if true;
       allow write: if request.auth != null && 
         request.auth.token.email in ['admin121@gmail.com', 'barista121@gmail.com'];
+    }
+    
+    // News collection (alternative to promotions) - admin write, public read
+    match /news/{newsId} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+        request.auth.token.email in ['admin121@gmail.com', 'barista121@gmail.com'];
+    }
+    
+    // Notifications log collection - only Cloud Functions can write, admin can read
+    match /notifications_log/{logId} {
+      allow read: if request.auth != null && 
+        request.auth.token.email in ['admin121@gmail.com', 'barista121@gmail.com'];
+      allow write: if false; // Only Cloud Functions can write
     }
     
     // All other collections - deny by default

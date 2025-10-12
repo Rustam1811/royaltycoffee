@@ -21,6 +21,7 @@ export interface Story {
   likes: number;
   reactions: string[];
   _serverCreatedAt?: FirestoreTs; // Firestore timestamp
+  audience?: 'everyone' | 'close-friends'; // Для кого видна сторис
 }
 
 export interface FirestoreTs { seconds: number; nanoseconds: number; toDate?: () => Date }
@@ -50,6 +51,7 @@ const normalize = (raw: RawStory): Story => ({
   likes: asNum(raw.likes,0),
   reactions: Array.isArray(raw.reactions) ? raw.reactions as string[] : [],
   _serverCreatedAt: asTs(raw._serverCreatedAt),
+  audience: asString(raw.audience) as 'everyone' | 'close-friends' || 'everyone', // ДОБАВЛЕНО!
 });
 
 export async function getAll(): Promise<Story[]> {

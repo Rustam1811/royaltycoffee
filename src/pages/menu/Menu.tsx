@@ -1,21 +1,111 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { drinkCategories } from './data/drinksData';
+import { foodCategories } from './data/foodData';
 import { PremiumMenu } from '../../features/menu/premium/PremiumMenu';
 import { useTranslation } from 'react-i18next';
+import { motion } from 'framer-motion';
 
 const humanize = (key: string) => key.split('.').pop()?.replace(/_/g,' ') || key;
 
 const Menu: React.FC = () => {
   const { t } = useTranslation();
-  const flatItems = drinkCategories.flatMap(cat =>
-    cat.products.map(p => {
-      const rawName = t(p.name);
-      const name = rawName === p.name ? humanize(p.name) : rawName;
-      return { id: p.id, name, price: p.price, image: p.image, energy: p.energy, protein: p.protein, fat: p.fat, carbs: p.carbs, badges: p.badges?.map(b => ({ type: b, label: b })) || [], categoryId: cat.id };
-    }),
+  const [activeTab, setActiveTab] = useState<'drinks' | 'food'>('drinks');
+  
+  const drinksItems = useMemo(() => 
+    drinkCategories.flatMap(cat =>
+      cat.products.map(p => {
+        const rawName = t(p.name);
+        const name = rawName === p.name ? humanize(p.name) : rawName;
+        return { 
+          id: p.id, 
+          name, 
+          price: p.price, 
+          image: p.image, 
+          energy: p.energy, 
+          protein: p.protein, 
+          fat: p.fat, 
+          carbs: p.carbs, 
+          badges: p.badges?.map(b => ({ type: b, label: b })) || [], 
+          categoryId: cat.id 
+        };
+      })
+    ),
+    [t]
   );
-  const categories = drinkCategories.map(c => { const raw = t(c.title); const label = raw === c.title ? humanize(c.title) : raw; return { key: String(c.id), label }; });
-  return <PremiumMenu items={flatItems} categories={categories} />;
+  
+  const drinksCategories = useMemo(() => 
+    drinkCategories.map(c => { 
+      const raw = t(c.title); 
+      const label = raw === c.title ? humanize(c.title) : raw; 
+      return { key: String(c.id), label }; 
+    }),
+    [t]
+  );
+
+  const foodItems = useMemo(() => 
+    foodCategories.flatMap(cat =>
+      cat.products.map(p => ({
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        image: p.image,
+        energy: p.energy,
+        protein: p.protein,
+        fat: p.fat,
+        carbs: p.carbs,
+        badges: p.badges?.map(b => ({ type: b, label: b })) || [],
+        categoryId: cat.id
+      }))
+    ),
+    []
+  );
+
+  const foodCategoriesFormatted = useMemo(() =>
+    foodCategories.map(c => ({
+      key: String(c.id),
+      label: c.title
+    })),
+    []
+  );
+  
+  return (
+    <div className="min-h-screen bg-[var(--color-bg-base)]">
+      {/* Переключатель Напитки/Еда */}
+      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 py-3">
+        <div className="flex gap-2 max-w-md mx-auto">
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={() => setActiveTab('drinks')}
+            className={`flex-1 px-6 py-3 rounded-full font-semibold text-sm transition-all ${
+              activeTab === 'drinks'
+                ? 'bg-slate-900 text-white shadow-lg'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            ☕ Напитки
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={() => setActiveTab('food')}
+            className={`flex-1 px-6 py-3 rounded-full font-semibold text-sm transition-all ${
+              activeTab === 'food'
+                ? 'bg-slate-900 text-white shadow-lg'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            🍔 Еда
+          </motion.button>
+        </div>
+      </div>
+
+      {/* Контент */}
+      {activeTab === 'drinks' ? (
+        <PremiumMenu items={drinksItems} categories={drinksCategories} type="drinks" />
+      ) : (
+        <PremiumMenu items={foodItems} categories={foodCategoriesFormatted} type="food" />
+      )}
+    </div>
+  );
 };
 
 export default Menu;

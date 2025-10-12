@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Push Notifications Test - SunfoodApp</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .card {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 { color: #333; }
+    h2 { color: #666; margin-top: 0; }
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+      font-size: 14px;
+    }
+    button:hover { background: #45a049; }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .danger { background: #f44336; }
+    .danger:hover { background: #da190b; }
+    .info { background: #2196F3; }
+    .info:hover { background: #0b7dda; }
+    .warning { background: #ff9800; }
+    .warning:hover { background: #e68900; }
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      margin: 5px 0;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    .status.success { background: #d4edda; color: #155724; }
+    .status.error { background: #f8d7da; color: #721c24; }
+    .status.info { background: #d1ecf1; color: #0c5460; }
+  </style>
+</head>
+<body>
+  <h1>🔔 Push Notifications Test - SunfoodApp</h1>
+  
+  <div class="card">
+    <h2>📋 Test Scenarios</h2>
+    <p>Use this page to test all push notification scenarios for SunfoodApp.</p>
+    <div id="status" class="status info">Ready to test notifications...</div>
+  </div>
+
+  <div class="card">
+    <h2>1️⃣ Create Test Promotion</h2>
+    <p>Triggers notification to all users subscribed to promotions</p>
+    <input type="text" id="promoTitle" placeholder="Promotion Title" value="Скидка 20% на все напитки!">
+    <textarea id="promoBody" placeholder="Promotion Body" rows="2">Успейте воспользоваться специальным предложением до конца недели.</textarea>
+    <input type="text" id="promoDeeplink" placeholder="Deeplink (optional)" value="/promotions">
+    <button onclick="createPromotion()">Create Promotion</button>
+  </div>
+
+  <div class="card">
+    <h2>2️⃣ Create Test Story</h2>
+    <p>Triggers notification to all users subscribed to stories</p>
+    <input type="text" id="storyTitle" placeholder="Story Title" value="Новый кофе из Эфиопии">
+    <input type="text" id="storyDeeplink" placeholder="Deeplink (optional)" value="/stories">
+    <button onclick="createStory()">Create Story</button>
+  </div>
+
+  <div class="card">
+    <h2>3️⃣ Update Order Status</h2>
+    <p>Triggers notification when order status changes to "accepted"</p>
+    <input type="text" id="orderId" placeholder="Order ID" value="">
+    <input type="text" id="userId" placeholder="User ID" value="">
+    <button onclick="updateOrder()">Accept Order</button>
+  </div>
+
+  <div class="card">
+    <h2>4️⃣ Test Re-engagement</h2>
+    <p>Manually trigger re-engagement notification for inactive user</p>
+    <input type="text" id="reengageUserId" placeholder="User ID" value="">
+    <button class="warning" onclick="testReengage()">Send Re-engagement</button>
+  </div>
+
+  <div class="card">
+    <h2>5️⃣ Check Notification Logs</h2>
+    <button class="info" onclick="checkLogs()">View Recent Logs</button>
+    <div id="logs"></div>
+  </div>
+
+  <div class="card">
+    <h2>6️⃣ Cleanup Test Data</h2>
+    <button class="danger" onclick="cleanupTestData()">Delete Test Data</button>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getFirestore, collection, addDoc, doc, updateDoc, getDocs, query, orderBy, limit, deleteDoc, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+    // Firebase config (replace with your config)
+    const firebaseConfig = {
+      apiKey: "AIzaSyBpNDja80x7MtlE7851R36zdOoqcNwC-Fk",
+      authDomain: "coffeeaddict-c9d70.firebaseapp.com",
+      projectId: "coffeeaddict-c9d70",
+      storageBucket: "coffeeaddict-c9d70.firebasestorage.app",
+      messagingSenderId: "148979196662",
+      appId: "1:148979196662:web:ef1b3fe13f80e5645b82d7"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    function showStatus(message, type = 'info') {
+      const statusDiv = document.getElementById('status');
+      statusDiv.textContent = message;
+      statusDiv.className = `status ${type}`;
+    }
+
+    window.createPromotion = async function() {
+      try {
+        const title = document.getElementById('promoTitle').value;
+        const body = document.getElementById('promoBody').value;
+        const deeplink = document.getElementById('promoDeeplink').value;
+
+        showStatus('Creating promotion...', 'info');
+
+        const docRef = await addDoc(collection(db, 'promotions'), {
+          title,
+          body,
+          deeplink,
+          createdAt: new Date(),
+          active: true
+        });
+
+        showStatus(`✓ Promotion created: ${docRef.id}. Notification should be sent automatically.`, 'success');
+      } catch (error) {
+        showStatus(`✗ Error: ${error.message}`, 'error');
+      }
+    };
+
+    window.createStory = async function() {
+      try {
+        const title = document.getElementById('storyTitle').value;
+        const deeplink = document.getElementById('storyDeeplink').value;
+
+        showStatus('Creating story...', 'info');
+
+        const docRef = await addDoc(collection(db, 'stories'), {
+          title,
+          deeplink,
+          createdAt: new Date(),
+          media: [],
+          order: 0
+        });
+
+        showStatus(`✓ Story created: ${docRef.id}. Notification should be sent automatically.`, 'success');
+      } catch (error) {
+        showStatus(`✗ Error: ${error.message}`, 'error');
+      }
+    };
+
+    window.updateOrder = async function() {
+      try {
+        const orderId = document.getElementById('orderId').value;
+        const userId = document.getElementById('userId').value;
+
+        if (!orderId || !userId) {
+          showStatus('Please provide Order ID and User ID', 'error');
+          return;
+        }
+
+        showStatus('Updating order...', 'info');
+
+        const orderRef = doc(db, 'orders', orderId);
+        await updateDoc(orderRef, {
+          status: 'accepted',
+          acceptedAt: new Date(),
+          userId
+        });
+
+        showStatus(`✓ Order ${orderId} accepted. Notification should be sent to user ${userId}.`, 'success');
+      } catch (error) {
+        showStatus(`✗ Error: ${error.message}`, 'error');
+      }
+    };
+
+    window.testReengage = async function() {
+      try {
+        const userId = document.getElementById('reengageUserId').value;
+
+        if (!userId) {
+          showStatus('Please provide User ID', 'error');
+          return;
+        }
+
+        showStatus('Triggering re-engagement...', 'info');
+
+        const response = await fetch(`https://us-central1-coffeeaddict-c9d70.cloudfunctions.net/testReengage?userId=${userId}`);
+        const result = await response.json();
+
+        if (result.success) {
+          showStatus(`✓ Re-engagement notification sent to user ${userId}`, 'success');
+        } else {
+          showStatus(`✗ Failed to send re-engagement`, 'error');
+        }
+      } catch (error) {
+        showStatus(`✗ Error: ${error.message}`, 'error');
+      }
+    };
+
+    window.checkLogs = async function() {
+      try {
+        showStatus('Fetching logs...', 'info');
+
+        const q = query(collection(db, 'notifications_log'), orderBy('ts', 'desc'), limit(10));
+        const querySnapshot = await getDocs(q);
+
+        const logsDiv = document.getElementById('logs');
+        logsDiv.innerHTML = '<h3>Recent Notification Logs:</h3>';
+
+        if (querySnapshot.empty) {
+          logsDiv.innerHTML += '<p>No logs found.</p>';
+          showStatus('No logs found', 'info');
+          return;
+        }
+
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          logsDiv.innerHTML += `
+            <div style="background: #f9f9f9; padding: 10px; margin: 5px 0; border-radius: 4px; font-size: 12px;">
+              <strong>${data.type}</strong> | 
+              Success: ${data.successCount} | 
+              Failure: ${data.failureCount} | 
+              Tokens: ${data.tokensCount}
+              ${data.uid ? ` | User: ${data.uid}` : ''}
+            </div>
+          `;
+        });
+
+        showStatus(`✓ Loaded ${querySnapshot.size} log entries`, 'success');
+      } catch (error) {
+        showStatus(`✗ Error: ${error.message}`, 'error');
+      }
+    };
+
+    window.cleanupTestData = async function() {
+      if (!confirm('Are you sure you want to delete all test data?')) return;
+
+      try {
+        showStatus('Cleaning up test data...', 'info');
+
+        // Delete test promotions
+        const promoQuery = query(collection(db, 'promotions'), where('title', '==', 'Скидка 20% на все напитки!'));
+        const promoSnapshot = await getDocs(promoQuery);
+        for (const doc of promoSnapshot.docs) {
+          await deleteDoc(doc.ref);
+        }
+
+        // Delete test stories
+        const storyQuery = query(collection(db, 'stories'), where('title', '==', 'Новый кофе из Эфиопии'));
+        const storySnapshot = await getDocs(storyQuery);
+        for (const doc of storySnapshot.docs) {
+          await deleteDoc(doc.ref);
+        }
+
+        showStatus(`✓ Cleaned up ${promoSnapshot.size + storySnapshot.size} test items`, 'success');
+      } catch (error) {
+        showStatus(`✗ Error: ${error.message}`, 'error');
+      }
+    };
+  </script>
+</body>
+</html>

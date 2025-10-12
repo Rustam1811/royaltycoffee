@@ -30,6 +30,13 @@ module.exports = {
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
       },
+      backgroundSize: {
+        'size-200': '200% 200%',
+      },
+      backgroundPosition: {
+        'pos-0': '0% 50%',
+        'pos-100': '100% 50%',
+      },
     },
   },
   plugins: [],

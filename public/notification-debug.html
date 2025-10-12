@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Диагностика Push-уведомлений</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .status {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .status h3 {
+      margin-top: 0;
+      color: #333;
+    }
+    .success { color: #10b981; }
+    .error { color: #ef4444; }
+    .warning { color: #f59e0b; }
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 5px;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    pre {
+      background: #f9f9f9;
+      padding: 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 12px;
+    }
+    .log {
+      background: #1f2937;
+      color: #10b981;
+      padding: 16px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      max-height: 400px;
+      overflow-y: auto;
+      margin-top: 20px;
+    }
+    .log div {
+      margin: 4px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔔 Диагностика Push-уведомлений</h1>
+  
+  <div class="status">
+    <h3>Статус системы</h3>
+    <div id="browser-support"></div>
+    <div id="permission-status"></div>
+    <div id="sw-status"></div>
+    <div id="vapid-status"></div>
+  </div>
+
+  <div class="status">
+    <h3>Действия</h3>
+    <button onclick="requestPermission()">🔔 Запросить разрешение</button>
+    <button onclick="getToken()">🔑 Получить FCM токен</button>
+    <button onclick="testNotification()">📬 Тест локального уведомления</button>
+    <button onclick="checkFirestore()">📊 Проверить Firestore</button>
+  </div>
+
+  <div class="status">
+    <h3>FCM Токен</h3>
+    <pre id="token-display">Нажмите "Получить FCM токен"</pre>
+  </div>
+
+  <div class="log" id="log">
+    <div>Лог событий:</div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
+    import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+    import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+    // Firebase конфигурация
+    const firebaseConfig = {
+      apiKey: "AIzaSyBpNDja80x7MtlE7851R36zdOoqcNwC-Fk",
+      authDomain: "coffeeaddict-c9d70.firebaseapp.com",
+      projectId: "coffeeaddict-c9d70",
+      storageBucket: "coffeeaddict-c9d70.firebasestorage.app",
+      messagingSenderId: "148979196662",
+      appId: "1:148979196662:web:ef1b3fe13f80e5645b82d7"
+    };
+
+    // VAPID ключ
+    const VAPID_KEY = 'BKPPcrrCt_ZQW8zIuxACO86IxEMQ8aOWKuJFeqONaI6eSyh8zVAdebf0TM_fGylIRjmnPDyiDwpuq5kC5bNNKmU';
+
+    const app = initializeApp(firebaseConfig);
+    const messaging = getMessaging(app);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    let currentUserId = null;
+
+    function log(message, type = 'info') {
+      const logEl = document.getElementById('log');
+      const time = new Date().toLocaleTimeString();
+      const color = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#60a5fa';
+      logEl.innerHTML += `<div style="color: ${color}">[${time}] ${message}</div>`;
+      logEl.scrollTop = logEl.scrollHeight;
+      console.log(message);
+    }
+
+    // Проверка поддержки браузера
+    function checkBrowserSupport() {
+      const support = document.getElementById('browser-support');
+      if ('Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window) {
+        support.innerHTML = '<span class="success">✅ Браузер поддерживает push-уведомления</span>';
+        log('Браузер поддерживает push-уведомления', 'success');
+        return true;
+      } else {
+        support.innerHTML = '<span class="error">❌ Браузер НЕ поддерживает push-уведомления</span>';
+        log('Браузер НЕ поддерживает push-уведомления', 'error');
+        return false;
+      }
+    }
+
+    // Проверка разрешения
+    function checkPermission() {
+      const permEl = document.getElementById('permission-status');
+      const perm = Notification.permission;
+      
+      if (perm === 'granted') {
+        permEl.innerHTML = '<span class="success">✅ Разрешение получено</span>';
+        log('Разрешение на уведомления: granted', 'success');
+      } else if (perm === 'denied') {
+        permEl.innerHTML = '<span class="error">❌ Разрешение отклонено (нужно сбросить в настройках браузера)</span>';
+        log('Разрешение на уведомления: denied', 'error');
+      } else {
+        permEl.innerHTML = '<span class="warning">⚠️ Разрешение не запрошено</span>';
+        log('Разрешение на уведомления: default', 'warning');
+      }
+    }
+
+    // Проверка Service Worker
+    async function checkServiceWorker() {
+      const swEl = document.getElementById('sw-status');
+      try {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (registration) {
+          swEl.innerHTML = '<span class="success">✅ Service Worker зарегистрирован</span>';
+          log('Service Worker активен', 'success');
+        } else {
+          swEl.innerHTML = '<span class="warning">⚠️ Service Worker не найден</span>';
+          log('Service Worker не зарегистрирован', 'warning');
+          
+          // Регистрируем
+          await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+          log('Service Worker зарегистрирован', 'success');
+          swEl.innerHTML = '<span class="success">✅ Service Worker зарегистрирован (только что)</span>';
+        }
+      } catch (error) {
+        swEl.innerHTML = '<span class="error">❌ Ошибка Service Worker</span>';
+        log('Ошибка Service Worker: ' + error.message, 'error');
+      }
+    }
+
+    // Проверка VAPID ключа
+    function checkVapidKey() {
+      const vapidEl = document.getElementById('vapid-status');
+      if (VAPID_KEY && VAPID_KEY.length > 80) {
+        vapidEl.innerHTML = `<span class="success">✅ VAPID ключ настроен (${VAPID_KEY.substring(0, 20)}...)</span>`;
+        log('VAPID ключ найден и выглядит валидным', 'success');
+      } else {
+        vapidEl.innerHTML = '<span class="error">❌ VAPID ключ отсутствует или невалиден</span>';
+        log('VAPID ключ не найден!', 'error');
+      }
+    }
+
+    // Запрос разрешения
+    window.requestPermission = async function() {
+      log('Запрос разрешения на уведомления...');
+      try {
+        const permission = await Notification.requestPermission();
+        log('Результат: ' + permission, permission === 'granted' ? 'success' : 'error');
+        checkPermission();
+      } catch (error) {
+        log('Ошибка запроса разрешения: ' + error.message, 'error');
+      }
+    };
+
+    // Получение FCM токена
+    window.getToken = async function() {
+      log('Получение FCM токена...');
+      try {
+        if (Notification.permission !== 'granted') {
+          log('Сначала нужно получить разрешение!', 'error');
+          return;
+        }
+
+        const token = await getToken(messaging, { vapidKey: VAPID_KEY });
+        
+        if (token) {
+          document.getElementById('token-display').textContent = token;
+          log('✅ FCM токен получен успешно!', 'success');
+          log('Токен: ' + token.substring(0, 50) + '...');
+        } else {
+          log('❌ Не удалось получить токен', 'error');
+        }
+      } catch (error) {
+        log('Ошибка получения токена: ' + error.message, 'error');
+        console.error(error);
+      }
+    };
+
+    // Тест локального уведомления
+    window.testNotification = async function() {
+      log('Отправка тестового уведомления...');
+      try {
+        if (Notification.permission !== 'granted') {
+          log('Сначала нужно получить разрешение!', 'error');
+          return;
+        }
+
+        const notification = new Notification('Тест уведомлений', {
+          body: 'Это тестовое уведомление. Если вы его видите - всё работает!',
+          icon: '/icon-192x192.png',
+          badge: '/icon-192x192.png',
+          tag: 'test',
+          requireInteraction: true
+        });
+
+        log('✅ Уведомление отправлено!', 'success');
+      } catch (error) {
+        log('Ошибка отправки уведомления: ' + error.message, 'error');
+      }
+    };
+
+    // Проверка Firestore
+    window.checkFirestore = async function() {
+      log('Проверка сохранения токена в Firestore...');
+      try {
+        if (!currentUserId) {
+          log('Выполняем анонимный вход...');
+          const result = await signInAnonymously(auth);
+          currentUserId = result.user.uid;
+          log('Вход выполнен. User ID: ' + currentUserId, 'success');
+        }
+
+        const userDoc = await getDoc(doc(db, 'users', currentUserId));
+        
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          log('Документ пользователя найден');
+          log('FCM Token в Firestore: ' + (data.fcmToken ? 'ДА ✅' : 'НЕТ ❌'), data.fcmToken ? 'success' : 'error');
+          log('Уведомления включены: ' + (data.notificationsEnabled ? 'ДА ✅' : 'НЕТ ❌'));
+        } else {
+          log('Документ пользователя НЕ найден', 'warning');
+        }
+      } catch (error) {
+        log('Ошибка проверки Firestore: ' + error.message, 'error');
+      }
+    };
+
+    // Слушаем входящие сообщения
+    onMessage(messaging, (payload) => {
+      log('📬 Получено foreground сообщение!', 'success');
+      log('Title: ' + (payload.notification?.title || 'N/A'));
+      log('Body: ' + (payload.notification?.body || 'N/A'));
+      console.log('Payload:', payload);
+    });
+
+    // Инициализация при загрузке
+    window.addEventListener('load', async () => {
+      checkBrowserSupport();
+      checkPermission();
+      await checkServiceWorker();
+      checkVapidKey();
+      
+      // Автоматический анонимный вход
+      try {
+        await signInAnonymously(auth);
+        currentUserId = auth.currentUser.uid;
+        log('Выполнен анонимный вход. User ID: ' + currentUserId, 'success');
+      } catch (error) {
+        log('Ошибка анонимного входа: ' + error.message, 'error');
+      }
+    });
+  </script>
+</body>
+</html>

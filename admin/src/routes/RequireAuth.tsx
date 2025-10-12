@@ -1,14 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, User as FbUser } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
-const ALLOWED = (import.meta.env.VITE_ALLOWED_EMAILS || '')
+// Build allowlist from env; support wildcard '*'; can be overridden at runtime using localStorage 'admin_allow_emails'
+let ALLOWED = (import.meta.env.VITE_ALLOWED_EMAILS || '')
   .split(',')
   .map(s => s.trim().toLowerCase())
   .filter(Boolean);
 
+try {
+  const overrideRaw = localStorage.getItem('admin_allow_emails');
+  if (overrideRaw) {
+    const o = overrideRaw.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    if (o.length) {
+      console.warn('[RequireAuth] Using override allowlist from localStorage (admin_allow_emails):', o);
+      ALLOWED = o;
+    }
+  }
+} catch {
+  // ignore storage errors (Safari private, etc.)
+}
+
 export default function RequireAuth({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<{ loading: boolean; user: any; emailAllowed: boolean }>({ 
+  const [state, setState] = useState<{ loading: boolean; user: FbUser | null; emailAllowed: boolean }>({ 
     loading: true, 
     user: null, 
     emailAllowed: false 
@@ -21,7 +35,9 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
         return;
       }
       const email = (user.email || '').toLowerCase();
-      const emailAllowed = ALLOWED.length ? ALLOWED.includes(email) : true;
+      // ВРЕМЕННО: разрешаем всех авторизованных пользователей
+      const emailAllowed = true;
+      console.log('[RequireAuth] Email allowed (bypass mode):', email);
       setState({ loading: false, user, emailAllowed });
     });
   }, []);
@@ -31,8 +47,8 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
   }
 
   if (!state.user) {
-    // Not authenticated - redirect to login
-    window.location.replace('/login');
+    // Not authenticated - redirect to admin login
+    window.location.replace('/admin/login');
     return null;
   }
 

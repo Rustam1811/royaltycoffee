@@ -3,10 +3,24 @@ import { motion } from 'framer-motion';
 import { LazyImage } from './LazyImage';
 
 interface UpsellItem { id:number|string; name:string; price:number; image:string; }
-interface Props { items: UpsellItem[]; title?: string; onAdd:(item:UpsellItem)=>void; }
+interface Props { 
+  items: UpsellItem[]; 
+  title?: string; 
+  onAdd?:(item:UpsellItem)=>void;
+  onItemClick?:(item:UpsellItem)=>void; // Новый колбэк для открытия модалки
+}
 
-export const UpsellStrip: React.FC<Props> = ({ items, title='Вместе вкуснее', onAdd }) => {
+export const UpsellStrip: React.FC<Props> = ({ items, title='Вместе вкуснее', onAdd, onItemClick }) => {
   if (!items.length) return null;
+  
+  const handleClick = (it: UpsellItem) => {
+    if (onItemClick) {
+      onItemClick(it); // Открыть модалку
+    } else if (onAdd) {
+      onAdd(it); // Старое поведение - сразу добавить
+    }
+  };
+  
   return (
     <div className="space-y-3 mt-4">
       <h4 className="text-[15px] font-semibold tracking-tight text-[var(--color-text-primary)]">{title}</h4>
@@ -16,7 +30,7 @@ export const UpsellStrip: React.FC<Props> = ({ items, title='Вместе вку
             key={it.id}
             whileTap={{ scale:.94 }}
             className="relative flex-shrink-0 w-40 snap-start elev-card px-3 pt-3 pb-4 text-left"
-            onClick={() => onAdd(it)}
+            onClick={() => handleClick(it)}
           >
             <LazyImage src={it.image} alt={it.name} className="w-32 h-32 mx-auto mb-2" />
             <div className="text-[13px] font-medium leading-tight line-clamp-2 min-h-[34px]">{it.name}</div>

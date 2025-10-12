@@ -63,10 +63,13 @@ export const BottomSheetPremium: React.FC<Props> = ({
     const panel = panelRef.current;
     if (!panel) return onClose();
     const h = panel.getBoundingClientRect().height;
-    const passedDistance = info.offset.y > h * 0.18;     // порог 18% высоты
-    const fastSwipe = info.velocity.y > 900;             // быстрый свайп вниз
-    if (passedDistance || fastSwipe) onClose();
-    else y.set(0); // вернуться на место
+    const passedDistance = info.offset.y > h * 0.33;     // порог 33% высоты для закрытия
+    const fastSwipe = info.velocity.y > 500;             // быстрый свайп вниз
+    if (passedDistance || fastSwipe) {
+      onClose();
+    } else {
+      y.set(0); // вернуться на место
+    }
   }, [onClose, y]);
 
   // Предотвращаем «протекание» скролла: если контент на верх/низ — разрешаем свайп листа
@@ -87,29 +90,26 @@ export const BottomSheetPremium: React.FC<Props> = ({
   const sheetVariants = {
     hidden: {
       y: '100%',
-      transition: { type: 'spring' as const, stiffness: 380, damping: 32, ...fast }
+      transition: { type: 'spring' as const, stiffness: 500, damping: 40, duration: 0.3, ...fast }
     },
     visible: {
       y: 0,
       transition: { 
         type: 'spring' as const,
-        stiffness: 380,
-        damping: 32,
-        delayChildren: 0.12,
-        staggerChildren: 0.06,
+        stiffness: 500,
+        damping: 40,
+        duration: 0.3,
         ...fast
       }
     }
   };
 
   const backdropVariants = {
-    hidden: { opacity: 0, transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] as const, ...fast } },
+    hidden: { opacity: 0, transition: { duration: 0.2, ...fast } },
     visible: {
       opacity: 1,
       transition: {
-        duration: 0.4,
-        delay: 0.1,
-        ease: [0.25, 0.46, 0.45, 0.94] as const,
+        duration: 0.2,
         ...fast
       }
     }
@@ -143,8 +143,9 @@ export const BottomSheetPremium: React.FC<Props> = ({
             ref={panelRef}
             drag="y"
             dragControls={dragControls}
-            dragListener={false}
-            dragElastic={0.1}
+            dragListener={true}
+            dragElastic={{ top: 0, bottom: 0.2 }}
+            dragConstraints={{ top: 0, bottom: 600 }}
             dragMomentum={false}
             onDragEnd={handleDragEnd}
             className={[
@@ -185,13 +186,33 @@ export const BottomSheetPremium: React.FC<Props> = ({
               id="premium-sheet-scroll"
               className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-none [touch-action:pan-y] [-webkit-overflow-scrolling:touch]"
               onWheel={onWheelCapture}
+              onTouchStart={(e) => {
+                // Разрешаем скролл контента, НО если скролл наверху - разрешаем drag панели
+                const el = scrollRef.current;
+                if (el && el.scrollTop <= 5) {
+                  // На верху - можно драгать панель вниз (используем первый touch как pointer)
+                  const touch = e.touches[0];
+                  if (touch) {
+                    const pointerEvent = new PointerEvent('pointerdown', {
+                      clientX: touch.clientX,
+                      clientY: touch.clientY,
+                      bubbles: true
+                    });
+                    dragControls.start(pointerEvent);
+                  }
+                } else {
+                  // Иначе - блокируем свайп панели, оставляем скролл
+                  e.stopPropagation();
+                }
+              }}
               onTouchMove={(e) => {
                 const el = scrollRef.current;
                 if (!el) return;
-                const atTop = el.scrollTop <= 0;
-                const atBottom = Math.ceil(el.scrollTop + el.clientHeight) >= el.scrollHeight;
-                // если не у края — не даём событию «подняться» до drag
-                if (!atTop && !atBottom) e.stopPropagation();
+                const atTop = el.scrollTop <= 5;
+                // Если не у края сверху — блокируем драг панели, разрешаем скролл
+                if (!atTop) {
+                  e.stopPropagation();
+                }
               }}
             >
               {children}

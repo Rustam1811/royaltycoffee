@@ -94,7 +94,7 @@ export const api = {
   }
 };
 
-export const FIREBASE_BASE = '/firebase-api';
+export const FIREBASE_BASE = '/api';
 
 export async function getFb(path: string, params?: Record<string, string>) {
   const qs = params ? '?' + new URLSearchParams(params).toString() : '';
@@ -103,4 +103,117 @@ export async function getFb(path: string, params?: Record<string, string>) {
   });
   if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
   return r.json();
+}
+
+// Безопасные API запросы с проверкой Content-Type
+interface ApiResponse<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+/**
+ * Безопасный API запрос с проверкой Content-Type и обработкой HTML ответов
+ */
+export async function safeApiRequest<T = unknown>(
+  path: string, 
+  params?: Record<string, string | number | boolean | undefined | null>,
+  options?: RequestInit
+): Promise<ApiResponse<T>> {
+  try {
+    const url = apiUrl(path, params);
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        ...options?.headers,
+      },
+    });
+
+    // Проверяем Content-Type ответа
+    const contentType = response.headers.get('content-type');
+    
+    if (!contentType?.includes('application/json')) {
+      // Если получили HTML вместо JSON, читаем текст для диагностики
+      const text = await response.text();
+      console.error('API вернул не JSON:', {
+        url,
+        status: response.status,
+        contentType,
+        text: text.substring(0, 200) + (text.length > 200 ? '...' : '')
+      });
+      
+      return {
+        success: false,
+        error: `API вернул HTML вместо JSON. Возможно, сервис недоступен или URL неверный.`
+      };
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        success: false,
+        error: `HTTP ${response.status}: ${errorText}`
+      };
+    }
+
+    const data = await response.json();
+    return {
+      success: true,
+      data
+    };
+
+  } catch (error) {
+    console.error('Ошибка API запроса:', error);
+    
+    if (error instanceof SyntaxError && error.message.includes('Unexpected token')) {
+      return {
+        success: false,
+        error: 'Сервер вернул некорректный JSON. Возможно, API сервис недоступен.'
+      };
+    }
+    
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Неизвестная ошибка'
+    };
+  }
+}
+
+/**
+ * Запрос с retry логикой для критически важных операций
+ */
+export async function safeApiRequestWithRetry<T = unknown>(
+  path: string, 
+  params?: Record<string, string | number | boolean | undefined | null>,
+  options?: RequestInit,
+  maxRetries: number = 2
+): Promise<ApiResponse<T>> {
+  let lastError: string = '';
+  
+  for (let i = 0; i <= maxRetries; i++) {
+    const result = await safeApiRequest<T>(path, params, options);
+    
+    if (result.success) {
+      return result;
+    }
+    
+    lastError = result.error || 'Неизвестная ошибка';
+    
+    // Не повторяем запрос если это явно проблема с данными
+    if (result.error?.includes('HTTP 4')) {
+      break;
+    }
+    
+    if (i < maxRetries) {
+      // Ждем перед повторным запросом
+      await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+    }
+  }
+  
+  return {
+    success: false,
+    error: lastError
+  };
 }

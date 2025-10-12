@@ -47,7 +47,8 @@ export interface ChartPoint {
 export interface ProcessedAnalytics extends AggregatedOrders {
   chartData: ChartPoint[];
   periodLabel: string;
-  currentPeriod: "day" | "week" | "month";
+  currentPeriod: "day" | "week" | "month" | "all";
+  rawOrders?: Order[]; // Добавляем сырые данные для детального анализа
 }
 
 type OrdersApiPayload = {
@@ -79,17 +80,30 @@ function toDate(value: unknown): Date {
 export async function getOrders(from: Date, to: Date): Promise<Order[]> {
   const { api } = await import("@/services/api");
   
+  console.log('🌐 API Request: fetching ALL completed orders without date filter');
+  
+  // НЕ передаём from/to - API вернёт ВСЕ completed заказы, фильтруем на клиенте
   const data = await api.get<OrdersApiPayload>("/orders", {
     action: "get",
     admin: "true",
-    from: from.toISOString(),
-    to: to.toISOString(),
   });
   const source = Array.isArray(data.orders) ? data.orders : [];
+  
+  console.log('📥 Raw data from API:', source);
+  console.log('📦 Total orders from API:', source.length);
 
-  return safeArray(source).map((order: unknown) => {
+  const allOrders = safeArray(source).map((order: unknown) => {
     const orderData = order as Record<string, unknown>;
     const createdAt = toDate(orderData.createdAt ?? orderData.timestamp ?? orderData.date);
+    
+    console.log('🔍 Order:', {
+      id: orderData.id,
+      createdAt: orderData.createdAt,
+      timestamp: orderData.timestamp,
+      date: orderData.date,
+      parsedDate: createdAt
+    });
+    
     return {
       id: String(orderData.id || ''),
       createdAt,
@@ -101,6 +115,23 @@ export async function getOrders(from: Date, to: Date): Promise<Order[]> {
       bonusEarned: safeParseNumber(orderData.bonusEarned, 0),
     } satisfies Order;
   });
+  
+  console.log('📦 Всего заказов с API:', allOrders.length);
+  
+  // Фильтруем на клиенте по диапазону дат
+  const filtered = allOrders.filter(order => {
+    const orderTime = order.createdAt.getTime();
+    return orderTime >= from.getTime() && orderTime <= to.getTime();
+  });
+  
+  console.log('✅ Отфильтровано по датам:', {
+    from: from.toISOString(),
+    to: to.toISOString(),
+    total: allOrders.length,
+    filtered: filtered.length
+  });
+  
+  return filtered;
 }
 
 export function aggregateOrders(orders: Order[]): AggregatedOrders {
@@ -166,31 +197,44 @@ export function aggregateOrders(orders: Order[]): AggregatedOrders {
   };
 }
 
-export function projectAnalytics(raw: AggregatedOrders, period: "day" | "week" | "month"): ProcessedAnalytics {
+export function projectAnalytics(raw: AggregatedOrders, period: "day" | "week" | "month" | "all"): ProcessedAnalytics {
   let chartData: ChartPoint[] = [];
   let periodLabel = "";
 
   if (period === "day") {
+    // Последние 24 часа - показываем по часам
+    chartData = Object.entries(raw.byHour)
+      .map(([hour, count]) => ({
+        name: `${hour}:00`,
+        orders: count,
+        revenue: 0 // Посчитаем выручку по часам позже если нужно
+      }))
+      .sort((a, b) => parseInt(a.name) - parseInt(b.name));
+    periodLabel = "Последние 24 часа";
+  } else if (period === "week") {
+    // Последние 7 дней - показываем по дням
+    chartData = raw.byDay.slice(-7).map((item) => ({
+      name: new Date(item.date).toLocaleDateString("ru-RU", { weekday: 'short', day: "2-digit", month: "2-digit" }),
+      orders: item.orders,
+      revenue: item.revenue,
+    }));
+    periodLabel = "Последние 7 дней";
+  } else if (period === "month") {
+    // Текущий месяц - показываем по дням
     chartData = raw.byDay.map((item) => ({
       name: new Date(item.date).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }),
       orders: item.orders,
       revenue: item.revenue,
     }));
-    periodLabel = "Дни";
-  } else if (period === "week") {
-    chartData = raw.byWeek.map((item) => ({
-      name: `Неделя ${new Date(item.weekStart).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}`,
-      orders: item.orders,
-      revenue: item.revenue,
-    }));
-    periodLabel = "Недели";
+    periodLabel = "Текущий месяц";
   } else {
+    // Все время - показываем по месяцам
     chartData = raw.byMonth.map((item) => ({
-      name: new Date(`${item.monthStart}-01`).toLocaleDateString("ru-RU", { month: "long", year: "numeric" }),
+      name: new Date(`${item.monthStart}-01`).toLocaleDateString("ru-RU", { month: "short", year: "numeric" }),
       orders: item.orders,
       revenue: item.revenue,
     }));
-    periodLabel = "Месяцы";
+    periodLabel = "Все время";
   }
 
   return {

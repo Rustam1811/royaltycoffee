@@ -14,23 +14,20 @@ export interface PremiumDrinkItem {
 
 interface Props { item: PremiumDrinkItem; onOpen: (id: string|number)=>void; index?: number; prefersReduced?: boolean; }
 
-export const DrinkCardPremiumImpl: React.FC<Props> = ({ item, onOpen, index = 0, prefersReduced = false }) => {
+export const DrinkCardPremiumImpl: React.FC<Props> = ({ item, onOpen }) => {
   const [loaded, setLoaded] = useState(false);
 
   return (
     <motion.button
-      layoutId={`drink-card-${item.id}`}
       onClick={() => onOpen(item.id)}
       data-fly-id={item.id}
-      initial={{ opacity: 0, scale: prefersReduced ? 1 : 0.98 }}
-      animate={{ opacity: 1, scale: 1 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       transition={{
-        delay: prefersReduced ? 0 : index * 0.25,
-        duration: prefersReduced ? 0 : 0.8,
-        ease: [0.25, 0.46, 0.45, 0.94]
+        delay: 0,
+        duration: 0.2
       }}
       whileTap={{ scale: 0.98 }}
-      whileHover={{ transition: { type: 'spring', stiffness: 300, damping: 35 } }}
       className="
         group relative flex flex-col
         w-full h-[320px] p-0
@@ -60,29 +57,22 @@ export const DrinkCardPremiumImpl: React.FC<Props> = ({ item, onOpen, index = 0,
 
       {/* Image section - clean and spacious */}
       <div className="relative flex-1 flex items-center justify-center p-6">
-        <div className="w-full aspect-[3/4] rounded-xl overflow-hidden bg-black/5">
-          {/* Loading skeleton */}
-          {!loaded && (
-            <div className="w-full h-full bg-gray-100 rounded-xl animate-pulse" />
-          )}
-          
-          {/* Product image - minimal drop shadow */}
-          <motion.img
-            layoutId={`drink-img-${item.id}`}
+        <div className="w-full aspect-[3/4] rounded-xl overflow-hidden bg-gray-100">
+          {/* Product image - NO layout animations, fixed aspect ratio */}
+          <img
             src={item.image}
             alt={item.name}
             loading="lazy"
             decoding="async"
-            fetchPriority="low"
             width={320}
             height={400}
             onLoad={() => setLoaded(true)}
+            style={{ aspectRatio: '3/4' }}
             className={`
-              w-full h-full object-cover will-change-transform
+              w-full h-full object-cover
               drop-shadow-sm
-              transition-all duration-300 ease-out
+              transition-opacity duration-300
               ${loaded ? 'opacity-100' : 'opacity-0'}
-              group-hover:scale-105
             `}
           />
         </div>
@@ -90,9 +80,7 @@ export const DrinkCardPremiumImpl: React.FC<Props> = ({ item, onOpen, index = 0,
 
       {/* Info section - minimal and clean */}
       <div className="flex flex-col p-6 pt-0">
-        <motion.h3
-          layoutId={`drink-title-${item.id}`}
-          className="
+        <h3 className="
             text-[16px] font-medium leading-tight
             text-black
             mb-3
@@ -100,7 +88,7 @@ export const DrinkCardPremiumImpl: React.FC<Props> = ({ item, onOpen, index = 0,
           "
         >
           {item.name}
-        </motion.h3>
+        </h3>
         
         <div className="flex items-center justify-between">
           <span className="text-[18px] font-semibold text-black">

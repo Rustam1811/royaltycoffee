@@ -29,7 +29,7 @@ function mapToStories(items: StoryItem[]) {
     header: {
       heading: 'Story',
       subheading: new Date(it.createdAt || Date.now()).toLocaleString(),
-      profileImage: '/favicon.png'
+      profileImage: '/coffeeaddict.jpg'
     }
   }));
 }

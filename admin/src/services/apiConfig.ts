@@ -1,7 +1,7 @@
 // 🔧 Конфигурация API endpoints для продакшена
 export const API_CONFIG = {
-  // Firebase Functions URLs (продакшн)
-  FIREBASE_BASE_URL: 'https://us-central1-coffeeaddict-c9d70.cloudfunctions.net',
+  // Firebase Functions URLs (продакшн) - теперь используем относительный путь /api для prod
+  FIREBASE_BASE_URL: '/api',
   
   // Local development URLs - используем отдельный API сервер для dev
   LOCAL_BASE_URL: 'http://localhost:3001/api',
@@ -11,7 +11,7 @@ export const API_CONFIG = {
     const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
     const isMainAppDev = isLocalhost && window.location.port === '5173';
     if (!isMainAppDev) {
-      // Всегда используем Firebase Functions для любых окружений, кроме главного dev на 5173
+      // Используем относительный /api путь для продакшена (Firebase Hosting rewrites обработают)
       return this.FIREBASE_BASE_URL;
     }
     return this.LOCAL_BASE_URL;
@@ -44,17 +44,17 @@ export const API_CONFIG = {
         SIMPLE_ORDER: `${base}/simple-order`,
       };
     } else {
-      // Для продакшена используем отдельные функции
+      // Для продакшена используем unified API
       return {
         STORIES: `${base}/stories`,
-        PROMOTIONS: `${base}/promotions`,
-        BONUS_SETTINGS: `${base}/bonusSettings`,
-        USER_BONUS: `${base}/userBonus`,
-        USE_BONUS: `${base}/useBonus`,
+        PROMOTIONS: `${base}/promo?action=promotions`,
+        BONUS_SETTINGS: `${base}/bonus?action=settings`,
+        USER_BONUS: `${base}/bonus`,
+        USE_BONUS: `${base}/bonus`,
         ORDERS: `${base}/orders`,
-        PROMO_CODES: `${base}/promoCodes`,
+        PROMO_CODES: `${base}/promo?action=codes`,
         PLACE_ORDER: `${base}/placeOrder`,
-        SIMPLE_ORDER: `${base}/simpleOrder`,
+        SIMPLE_ORDER: `${base}/placeOrder`,
       };
     }
   }

@@ -1,0 +1,5 @@
+{
+  "role": "admin",
+  "pushOptIn": true,
+  "email": "admin@mail.com"
+}

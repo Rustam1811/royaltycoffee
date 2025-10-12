@@ -7,25 +7,33 @@ import {
   ProcessedAnalytics,
 } from "@/services/analyticsService";
 
-type Period = "day" | "week" | "month";
-
-const MAX_RANGE: Record<Period, number> = {
-  day: 30,
-  week: 12,
-  month: 12,
-};
+type Period = "day" | "week" | "month" | "all";
 
 const MS_IN_DAY = 24 * 60 * 60 * 1000;
 
 const rangeForPeriod = (period: Period) => {
   const now = new Date();
-  const days =
-    period === "day"
-      ? MAX_RANGE.day
-      : period === "week"
-      ? MAX_RANGE.week * 7
-      : MAX_RANGE.month * 30;
-  const from = new Date(now.getTime() - days * MS_IN_DAY);
+  let from: Date;
+  
+  if (period === "day") {
+    // День = с 00:00:00 сегодняшнего дня
+    from = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    console.log('📅 Period DAY:', { from: from.toISOString(), to: now.toISOString(), fromHour: from.getHours() });
+  } else if (period === "week") {
+    // Неделя = последние 7 дней с 00:00:00
+    const weekStart = new Date(now.getTime() - 7 * MS_IN_DAY);
+    from = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate(), 0, 0, 0, 0);
+    console.log('📅 Period WEEK:', { from: from.toISOString(), to: now.toISOString() });
+  } else if (period === "month") {
+    // Текущий месяц с 1-го числа
+    from = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    console.log('📅 Period MONTH:', { from: from.toISOString(), to: now.toISOString() });
+  } else {
+    // Все время - создаём дату явно (год, месяц-1, день)
+    from = new Date(2000, 0, 1, 0, 0, 0, 0);
+    console.log('📅 Period ALL:', { from: from.toISOString(), to: now.toISOString() });
+  }
+  
   return { from, to: now };
 };
 
@@ -53,6 +61,9 @@ export function useAnalytics(period: Period) {
       
       const processed = projectAnalytics(rawAggregated, period);
       console.log('📈 Обработанная аналитика:', processed);
+
+      // Добавляем сырые данные для детального анализа
+      processed.rawOrders = fetched;
 
       setOrders(fetched);
       setAggregated(processed);

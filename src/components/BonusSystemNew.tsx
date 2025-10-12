@@ -9,6 +9,7 @@ import {
     CheckCircleIcon,
     ExclamationCircleIcon
 } from '@heroicons/react/24/outline';
+import { safeApiRequestWithRetry } from '../utils/api';
 
 interface BonusData {
     balance: number;
@@ -69,25 +70,38 @@ const BonusSystemNew: React.FC = () => {
     const fetchBonusData = async () => {
         try {
             const userId = getUserId();
-            const response = await fetch(`https://us-central1-coffeeaddict-c9d70.cloudfunctions.net/userBonus?userId=${userId}`);
-            if (response.ok) {
-                const data = await response.json();
-                setBonusData(data);
+            // Используем относительный API вместо абсолютного URL
+            const result = await safeApiRequestWithRetry('bonus', { action: 'user', userId });
+            
+            if (!result.success) {
+                console.error('Ошибка загрузки бонусных данных:', result.error);
+                return;
+            }
+
+            if (result.data) {
+                setBonusData(result.data as BonusData);
             }
         } catch (error) {
-            console.error('Ошибка загрузки бонусных данных:', error);
+            console.error('Критическая ошибка загрузки бонусных данных:', error);
         }
     };
 
     const fetchRewards = async () => {
         try {
-            const response = await fetch('https://us-central1-coffeeaddict-c9d70.cloudfunctions.net/bonusSettings');
-            if (response.ok) {
-                const data = await response.json();
+            // Используем относительный API вместо абсолютного URL
+            const result = await safeApiRequestWithRetry('bonus', { action: 'settings' });
+            
+            if (!result.success) {
+                console.error('Ошибка загрузки наград:', result.error);
+                return;
+            }
+
+            if (result.data) {
+                const data = result.data as { rewards?: Reward[] };
                 setRewards(data.rewards?.filter((r: Reward) => r.isActive) || []);
             }
         } catch (error) {
-            console.error('Ошибка загрузки наград:', error);
+            console.error('Критическая ошибка загрузки наград:', error);
         }
     };
 

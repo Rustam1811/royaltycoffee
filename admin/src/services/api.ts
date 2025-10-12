@@ -3,7 +3,13 @@
 
 type Json = unknown;
 
-const BASE = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_BASE?.trim() || '/api';
+let RAW_BASE = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_BASE?.trim();
+// Fallback to '/api' if env missing or clearly wrong (e.g., '/admin')
+if (!RAW_BASE || RAW_BASE === '/admin' || RAW_BASE === 'admin' || RAW_BASE === '/admin/') {
+  RAW_BASE = '/api';
+}
+// Ensure leading slash and no trailing slash
+const BASE = ('/' + RAW_BASE.replace(/^\/*/, '')).replace(/\/+$/,'');
 if (!BASE) throw new Error('VITE_API_BASE is missing. Set it in .env.production');
 
 function joinUrl(base: string, path: string) {
@@ -55,10 +61,17 @@ async function handle<T>(url: string, init: RequestInit): Promise<T> {
 }
 
 class ApiClient {
-  constructor(private base = BASE) {}
+  private logged = false;
+  constructor(private base = BASE) {
+    if (!this.logged) {
+      // One-time diagnostic log to verify API base in production
+      console.log('[ApiClient] resolved BASE =', this.base);
+      this.logged = true;
+    }
+  }
 
-  async get<T = Json>(path: string, params?: Record<string, any>, init?: RequestInit) {
-    const url = joinUrl(this.base, path) + toQuery(params);
+  async get<T = Json>(path: string, params?: Record<string, unknown>, init?: RequestInit) {
+  const url = joinUrl(this.base, path) + toQuery(params as Record<string, string | number | boolean | null | undefined> | undefined);
     const req = await withAuth({
       method: 'GET',
       credentials: 'same-origin',

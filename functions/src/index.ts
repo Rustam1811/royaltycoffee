@@ -4,6 +4,7 @@ import type { Request, Response } from 'express';
 import cors from "cors";
 import express from 'express';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 const corsHandler = cors({ origin: true });
 
@@ -155,71 +156,8 @@ export const useBonus = functions.https.onRequest((req, res) => {
   });
 });
 
-/**
- * Получение всех заказов (для аналитики и админки)
- */
-export const orders = functions.https.onRequest((req, res) => {
-  return corsHandler(req, res, async () => {
-    try {
-      if (req.method === "GET") {
-        const { userId, admin: isAdmin } = req.query as any;
-        if (isAdmin) {
-          // Админ панель - получаем все заказы
-          const snap = await db.collection("orders").orderBy("createdAt", "desc").limit(100).get();
-          const ordersData = snap.docs.map(doc => {
-            const d = doc.data() as any;
-            return {
-              id: doc.id,
-              userId: d.userId,
-              items: d.items,
-              amount: d.amount,
-              bonusUsed: d.bonusUsed || 0,
-              bonusEarned: d.bonusEarned || 0,
-              status: d.status || 'pending',
-              date: d.createdAt?.toDate()?.toISOString(),
-              createdAt: d.createdAt?.toDate()
-            };
-          });
-          res.status(200).json({ orders: ordersData });
-          return;
-        } else {
-          // Пользователь - только его заказы
-          if (!userId) { res.status(400).json({ error: "userId required" }); return; }
-          const snap = await db.collection("orders").where("userId", "==", userId).orderBy("createdAt", "desc").limit(10).get();
-          const ordersData = snap.docs.map(doc => {
-            const d = doc.data() as any;
-            return {
-              id: doc.id,
-              items: d.items,
-              amount: d.amount,
-              bonusEarned: d.bonusEarned,
-              bonusUsed: d.bonusUsed,
-              status: d.status || 'pending',
-              date: d.createdAt?.toDate()?.toISOString()
-            };
-          });
-          res.status(200).json(ordersData);
-          return;
-        }
-      }
-      if (req.method === "POST") {
-        // Создание нового заказа
-        const { userId, items, amount, bonusUsed = 0 } = req.body || {};
-        if (!userId || !items || !amount) { res.status(400).json({ error: "userId, items и amount обязательны" }); return; }
-        const orderData = { userId, items, amount, bonusUsed, status: "pending", createdAt: admin.firestore.Timestamp.now() };
-        const orderRef = await db.collection("orders").add(orderData);
-        res.json({ success: true, orderId: orderRef.id, order: { id: orderRef.id, ...orderData } });
-        return;
-      }
-      res.status(405).json({ error: "Method not allowed" });
-      return;
-    } catch (error) {
-      console.error("Ошибка в orders:", error);
-      res.status(500).json({ error: "Ошибка сервера" });
-      return;
-    }
-  });
-});
+
+// Old 1st Gen 'orders' function removed - use /api/orders in app function
 
 /**
  * Настройки бонусной системы
@@ -655,6 +593,183 @@ httpApp.post('/api/auth', async (req: Request, res: Response) => {
   }
 });
 
+// DEBUG endpoint для проверки что код обновлен
+httpApp.get('/api/debug-version', async (req: Request, res: Response) => {
+  return res.json({ 
+    version: 'v2.0-real-firestore-data',
+    timestamp: new Date().toISOString(),
+    message: 'Code updated successfully'
+  });
+});
+
+// Добавляем endpoint для orders
+httpApp.get('/api/orders', async (req: Request, res: Response) => {
+  try {
+    const { action, userId, admin: isAdmin, from, to } = req.query;
+    
+    if (action === 'get') {
+      console.log('📅 Orders API v2 REAL - Query params:', { userId, isAdmin, from, to });
+      
+      if (isAdmin === 'true') {
+        // Админ панель - получаем только завершенные заказы
+        console.log('📅 Orders API - Fetching completed orders');
+        
+        let query: admin.firestore.Query = db.collection("orders")
+          .where('status', '==', 'completed')
+          .orderBy('createdAt', 'desc')
+          .limit(500); // Берем последние 500 завершенных заказов
+        
+        const snap = await query.get();
+        
+        console.log('📦 Firestore returned:', snap.docs.length, 'completed orders');
+        
+        const ordersData = snap.docs.map(doc => {
+          const d = doc.data() as any;
+          return {
+            id: doc.id,
+            userId: d.userId,
+            items: d.items,
+            amount: d.amount || d.total || d.totalPrice || 0,
+            totalPrice: d.totalPrice || d.amount || d.total || 0,
+            bonusUsed: d.bonusUsed || 0,
+            bonusEarned: d.bonusEarned || 0,
+            status: d.status || 'pending',
+            date: d.createdAt?.toDate()?.toISOString(),
+            createdAt: d.createdAt?.toDate()?.toISOString() || d.createdAt,
+            timestamp: d.createdAt?.toDate()?.toISOString()
+          };
+        });
+        
+        // Фильтруем по датам на сервере (после получения из Firestore)
+        let filtered = ordersData;
+        if (from) {
+          const fromTime = new Date(from as string).getTime();
+          filtered = filtered.filter(o => new Date(o.createdAt || 0).getTime() >= fromTime);
+          console.log('🔍 Filtered by from date:', filtered.length);
+        }
+        
+        if (to) {
+          const toTime = new Date(to as string).getTime();
+          filtered = filtered.filter(o => new Date(o.createdAt || 0).getTime() <= toTime);
+          console.log('� Filtered by to date:', filtered.length);
+        }
+        
+        console.log('� Orders API - Returning:', filtered.length, 'orders');
+        
+        return res.status(200).json({ 
+          ok: true,
+          orders: filtered,
+          admin: true,
+          count: filtered.length,
+          filtered: !!(from || to)
+        });
+      } else {
+        // Пользователь - только его заказы
+        if (!userId) return sendErr(res, 'BAD_REQUEST', 'userId required', 400);
+        const snap = await db.collection("orders").where("userId", "==", userId).orderBy("createdAt", "desc").limit(10).get();
+        const ordersData = snap.docs.map(doc => {
+          const d = doc.data() as any;
+          return {
+            id: doc.id,
+            items: d.items,
+            amount: d.amount,
+            bonusEarned: d.bonusEarned,
+            bonusUsed: d.bonusUsed,
+            status: d.status || 'pending',
+            date: d.createdAt?.toDate()?.toISOString()
+          };
+        });
+        return res.status(200).json(ordersData);
+      }
+    }
+    
+    return sendErr(res, 'UNKNOWN_ACTION', 'Unknown action', 400);
+  } catch (e) {
+    console.error('Orders(app) error:', e);
+    return sendErr(res, 'INTERNAL', 'Internal error', 500);
+  }
+});
+
+// Endpoint для загрузки файлов (обходит CORS проблему)
+httpApp.post('/api/upload-story', async (req: Request, res: Response) => {
+  try {
+    const { fileData, fileName, mimeType } = req.body;
+    
+    if (!fileData || !fileName) {
+      return res.status(400).json({ success: false, error: 'Missing fileData or fileName' });
+    }
+
+    // Декодируем base64
+    const buffer = Buffer.from(fileData, 'base64');
+    
+    // Генерируем уникальное имя файла
+    const timestamp = Date.now();
+    const sanitizedName = fileName.replace(/[^a-zA-Z0-9.]/g, '_');
+    const storagePath = `stories/${timestamp}_${sanitizedName}`;
+    
+    // Загружаем в Storage через Admin SDK
+    const bucket = admin.storage().bucket();
+    const file = bucket.file(storagePath);
+    
+    await file.save(buffer, {
+      metadata: {
+        contentType: mimeType || 'image/jpeg',
+        metadata: {
+          firebaseStorageDownloadTokens: crypto.randomUUID(),
+        }
+      },
+      public: true,
+    });
+
+    // Получаем публичный URL
+    const [url] = await file.getSignedUrl({
+      action: 'read',
+      expires: '01-01-2500', // Бессрочный URL
+    });
+
+    return res.json({
+      success: true,
+      url,
+      path: storagePath,
+      contentType: mimeType || 'image/jpeg'
+    });
+  } catch (error: any) {
+    console.error('Upload error:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Upload failed' 
+    });
+  }
+});
+
 export const app = functions.https.onRequest(httpApp);
 
+// ─── Push Notification Functions ───
+import {
+  onNewOrderForAdmin,
+  onAchievementUnlocked,
+  onPromotionCreated,
+  onStoryCreated,
+  onOrderUpdated,
+  onNewsCreated
+} from './triggers';
+
+import {
+  reengageInactiveUsers,
+  testReengage
+} from './cron';
+
+// Export notification trigger functions
+export {
+  onNewOrderForAdmin,
+  onAchievementUnlocked,
+  onPromotionCreated,
+  onStoryCreated,
+  onOrderUpdated,
+  onNewsCreated,
+  reengageInactiveUsers,
+  testReengage
+};
+
 // ─── Существующие экспортируемые функции ниже остаются без изменений ───
+

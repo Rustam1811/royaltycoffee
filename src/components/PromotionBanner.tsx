@@ -103,8 +103,8 @@ export const PromotionBanner: React.FC<PromotionBannerProps> = ({
   if (list.length === 0) return null;
 
   return (
-    <div className={`${className} space-y-3`}>
-      <div className="flex items-center gap-2">
+    <div className={`${className}`}>
+      <div className="flex items-center gap-2 mb-3 px-4">
         <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-black text-white shadow-card">
           <MegaphoneIcon className="w-4 h-4" />
         </span>
@@ -117,7 +117,11 @@ export const PromotionBanner: React.FC<PromotionBannerProps> = ({
           initial="hidden"
           animate="show"
           exit="exit"
-          className="space-y-3"
+          className="flex gap-3 overflow-x-auto pb-2 px-4 snap-x snap-mandatory scrollbar-hide"
+          style={{
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+          }}
         >
           {list.map((promotion) => {
             const left = daysLeft(promotion.endDate);
@@ -128,32 +132,34 @@ export const PromotionBanner: React.FC<PromotionBannerProps> = ({
                 key={promotion.id}
                 variants={listItem(!!prefersReduced)}
                 className="
-                  relative overflow-hidden rounded-[var(--radius)]
-                  bg-surface shadow-card
-                  p-4 text-[var(--text-primary)]
+                  relative overflow-hidden rounded-3xl
+                  bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)]
+                  p-5 text-[var(--text-primary)]
+                  flex-shrink-0 w-[85vw] max-w-[360px] snap-center
                 "
               >
-                {/* мягкая аура вместо бордеров */}
-                <div className="pointer-events-none absolute inset-0 opacity-[0.06]">
-                  <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-black/10 blur-2xl" />
-                  <div className="absolute -bottom-12 -left-12 w-36 h-36 rounded-full bg-black/10 blur-2xl" />
-                </div>
+                {/* градиентный акцент для "горячих" акций */}
+                {isHot && (
+                  <div className="pointer-events-none absolute inset-0">
+                    <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-amber-500/10 blur-2xl" />
+                  </div>
+                )}
 
                 <div className="relative z-10 flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     {/* Чипы */}
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="inline-flex items-center gap-1 px-2 h-6 rounded-full text-[11px] font-semibold bg-black text-white shadow-press">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <span className="inline-flex items-center gap-1 px-2.5 h-6 rounded-full text-[11px] font-semibold bg-emerald-600 text-white shadow-sm">
                         <TagIcon className="w-3.5 h-3.5" />
                         Скидка {getDiscountText(promotion)}
                       </span>
                       {promotion.category && (
-                        <span className="inline-flex items-center px-2 h-6 rounded-full text-[11px] font-semibold bg-black/80 text-white shadow-press">
+                        <span className="inline-flex items-center px-2.5 h-6 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                           {promotion.category}
                         </span>
                       )}
                       {isHot && (
-                        <span className="inline-flex items-center gap-1 px-2 h-6 rounded-full text-[11px] font-semibold bg-black/70 text-white shadow-press">
+                        <span className="inline-flex items-center gap-1 px-2.5 h-6 rounded-full text-[11px] font-semibold bg-amber-500 text-white shadow-sm">
                           <ClockIcon className="w-3.5 h-3.5" />
                           {left === 0 ? 'Последний день' : `${left} дн.`}
                         </span>
@@ -191,9 +197,9 @@ export const PromotionBanner: React.FC<PromotionBannerProps> = ({
                     {/* Прогресс лимита (если есть) */}
                     {promotion.usageLimit ? (
                       <div className="mt-3">
-                        <div className="w-full h-1 rounded-full bg-black/10 overflow-hidden">
+                        <div className="w-full h-1.5 rounded-full bg-slate-100 border border-slate-200 overflow-hidden">
                           <motion.div
-                            className="h-full bg-black rounded-full"
+                            className="h-full bg-emerald-500 rounded-full"
                             initial={{ width: 0 }}
                             animate={{
                               width: `${Math.min(
@@ -210,7 +216,7 @@ export const PromotionBanner: React.FC<PromotionBannerProps> = ({
 
                   {/* картинка акции (если есть) */}
                   {promotion.imageUrl || promotion.image ? (
-                    <div className="w-24 h-24 rounded-xl overflow-hidden bg-white/50 border border-black/5 shadow-inner flex-shrink-0">
+                    <div className="w-24 h-24 rounded-xl overflow-hidden bg-slate-50 border-2 border-slate-200 shadow-sm flex-shrink-0">
                       <img
                         src={promotion.imageUrl || promotion.image}
                         alt=""

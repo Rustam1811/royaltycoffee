@@ -15,10 +15,21 @@ import { useCart, CartItem } from "../contexts/CartContext";
 import QRCode from "../components/QRCode";
 import OrderStatusBadge from "../components/OrderStatusBadge";
 import { apiUrl } from "../config/api";
+import { safeApiRequestWithRetry } from "../utils/api";
+import { useAuth } from "../auth/AuthContext";
+import { generateClientRequestId } from "../utils/uuid";
 
 interface PromoCode { code: string; description?: string; expiresAt?: string | Date; isUsed?: boolean; type?: 'fixed' | 'percentage'; discount?: number; }
 interface OrderItemLite { name: string; quantity: number; price: number; sizeKey?: string; milkKey?: string; syrupKey?: string; }
-interface ListedOrder { id: string; amount: number; status?: 'pending'|'accepted'|'ready'|'completed'|'test'|'unknown'; date?: string | number | Date; items?: OrderItemLite[]; }
+interface ListedOrder { 
+  id: string; 
+  orderNumberDisplay?: string; 
+  amount: number; 
+  status?: 'pending'|'accepted'|'ready'|'completed'|'test'|'unknown'; 
+  date?: string | number | Date; 
+  items?: OrderItemLite[]; 
+  deliveryType?: 'pickup' | 'delivery';
+}
 
 // Types for API responses (to avoid any)
 type ApiOrderItem = {
@@ -32,12 +43,14 @@ type ApiOrderItem = {
 
 type ApiOrder = {
   id: string;
+  orderNumberDisplay?: string;
   items?: ApiOrderItem[];
   amount?: number;
   totalAmount?: number;
   status?: string;
   date?: string;
   createdAt?: { seconds?: number } | string | number | null;
+  deliveryType?: 'pickup' | 'delivery';
 };
 
 // RU labels for modifier keys (fallback to raw key)
@@ -125,7 +138,10 @@ const EmptyCartState = ({ onGoToMenu }: { onGoToMenu: () => void }) => (
 // ———————————————————————————————————————————————
 // Страница заказа (переставил секции местами)
 const Order: React.FC = () => {
+  const history = useHistory();
   const { items, dispatch } = useCart();
+  const { user, showPhoneInput } = useAuth();
+  
   const [bonusData, setBonusData] = useState({
     balance: 0,
     level: "Новичок",
@@ -141,7 +157,7 @@ const Order: React.FC = () => {
   const [qrOpen, setQrOpen] = useState(false);
   const [qrPayload, setQrPayload] = useState<string | null>(null);
   const [lastPlaced, setLastPlaced] = useState<{ id: string; amount: number } | null>(null);
-  const history = useHistory();
+  const [deliveryType, setDeliveryType] = useState<'pickup' | 'delivery'>('pickup');
 
   // быстрый заказ из Home
   useEffect(() => {
@@ -160,14 +176,16 @@ const Order: React.FC = () => {
   }, [history, dispatch]);
 
   const amount = items.reduce((sum, x) => sum + x.price * x.quantity, 0);
-  const bonusEarned = Math.floor(amount * 0.05 * bonusData.multiplier);
+  // Бонусы начисляются сервером: 1% от суммы заказа (без учёта использованных бонусов)
+  const bonusEarned = Math.floor(amount * 0.01);
 
   const getUserId = () => {
+    if (user?.uid) return user.uid;
     try {
       const userData = localStorage.getItem("user");
       if (userData) {
-        const user = JSON.parse(userData);
-        return user.phone || user.id || "87053096206";
+        const u = JSON.parse(userData);
+        return u.phone || u.id || "87053096206";
       }
     } catch (e) {
       console.error("Ошибка парсинга user из localStorage:", e);
@@ -179,9 +197,19 @@ const Order: React.FC = () => {
   // загрузки
   const fetchOrders = useCallback(async () => {
     try {
-      const res = await fetch(apiUrl('orders', { action: 'get', userId }));
-      if (!res.ok) return;
-      const data = await res.json();
+      const result = await safeApiRequestWithRetry<ApiOrder[]>('orders', { action: 'get', userId });
+      
+      if (!result.success) {
+        console.error("Ошибка загрузки заказов:", result.error);
+        setOrders([]);
+        return;
+      }
+
+      const data = result.data;
+      if (!data) {
+        setOrders([]);
+        return;
+      }
 
       const toIso = (o: { createdAt?: unknown; date?: unknown }) => {
         const createdAt = o.createdAt;
@@ -194,12 +222,14 @@ const Order: React.FC = () => {
         return new Date().toISOString();
       };
 
-      const raw: ApiOrder[] = Array.isArray(data) ? data : (data.orders || []);
+      const raw: ApiOrder[] = Array.isArray(data) ? data : ((data as { orders?: ApiOrder[] }).orders || []);
       const normalized: ListedOrder[] = raw.map((o) => ({
         id: o.id,
+        orderNumberDisplay: o.orderNumberDisplay,
         amount: o.amount ?? o.totalAmount ?? 0,
         status: (o.status as ListedOrder['status']) || 'pending',
         date: o.date || toIso({ createdAt: o.createdAt, date: o.date }),
+        deliveryType: o.deliveryType || 'pickup',
         items: (o.items ?? []).map((it) => ({
           name: it.name ?? '',
           quantity: it.quantity ?? 0,
@@ -211,35 +241,53 @@ const Order: React.FC = () => {
       }));
       setOrders(normalized);
     } catch (error) {
-      console.error("Ошибка загрузки заказов:", error);
+      console.error("Критическая ошибка загрузки заказов:", error);
+      setOrders([]);
     }
   }, [userId]);
 
   const fetchBonusData = useCallback(async () => {
     try {
-      const response = await fetch(apiUrl('bonus', { action: 'user', userId }));
-      if (response.ok) {
-        const data = await response.json();
-        setBonusData(data);
+      const result = await safeApiRequestWithRetry('bonus', { action: 'user', userId });
+      
+      if (!result.success) {
+        console.error("Ошибка загрузки бонусных данных:", result.error);
+        setBonusData(null);
+        return;
+      }
+
+      if (result.data) {
+        setBonusData(result.data as { balance: number; level: string; multiplier: number });
       }
     } catch (error) {
-      console.error("Ошибка загрузки бонусных данных:", error);
+      console.error("Критическая ошибка загрузки бонусных данных:", error);
+      setBonusData(null);
     }
   }, [userId]);
 
   const fetchPromoCodes = useCallback(async () => {
     try {
-      const response = await fetch(apiUrl('promo', { action: 'codes', userId }));
-      if (response.ok) {
-        const data = await response.json();
-        setPromoCodes(
-          data.filter(
-            (code: PromoCode) => !code.isUsed && new Date(code.expiresAt || 0) > new Date()
-          )
-        );
+      const result = await safeApiRequestWithRetry<PromoCode[]>('promo', { action: 'codes', userId });
+      
+      if (!result.success) {
+        console.error("Ошибка загрузки промокодов:", result.error);
+        setPromoCodes([]);
+        return;
       }
+
+      if (!result.data) {
+        setPromoCodes([]);
+        return;
+      }
+
+      setPromoCodes(
+        result.data.filter(
+          (code: PromoCode) => !code.isUsed && new Date(code.expiresAt || 0) > new Date()
+        )
+      );
     } catch (error) {
-      console.error("Ошибка загрузки промокодов:", error);
+      console.error("Критическая ошибка загрузки промокодов:", error);
+      setPromoCodes([]);
     }
   }, [userId]);
 
@@ -267,10 +315,27 @@ const Order: React.FC = () => {
   // оформление заказа
   const handleOrder = async () => {
     if (items.length === 0) return;
+    
+    // Проверка наличия телефона - показываем модалку если нет
+    if (!user?.phone) {
+      showPhoneInput();
+      setToastMessage('Для оформления заказа укажите номер телефона');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      return;
+    }
+    
     setLoading(true);
     try {
+      // Генерируем clientRequestId для идемпотентности
+      const clientRequestId = generateClientRequestId();
+      
       const orderData = {
         userId,
+        clientRequestId,
+        customerName: user?.name || 'Клиент',
+        customerPhone: user?.phone,
+        deliveryType, // 'pickup' или 'delivery'
         items: items.map((item) => ({
           id: item.id,
           name: item.name,
@@ -281,11 +346,12 @@ const Order: React.FC = () => {
           milkKey: item.milkKey,
           syrupKey: item.syrupKey,
         })),
-        totalAmount: Math.max(0, amount - bonusToUse),
+        amount: Math.max(0, amount - bonusToUse),
+        bonusToUse: bonusToUse,
         customerInfo: {},
       };
 
-      const response = await fetch(apiUrl('orders', { action: 'place' }), {
+      const response = await fetch(apiUrl('placeOrder'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(orderData),
@@ -295,11 +361,16 @@ const Order: React.FC = () => {
 
       if (response.ok) {
         const newId: string = result?.order?.id || result?.orderId;
-        const total: number = result?.order?.amount || result?.order?.totalAmount || orderData.totalAmount;
+        const total: number = result?.order?.amount || result?.order?.totalAmount || orderData.amount;
+        const status: string = result?.order?.status || 'pending';
+        
         if (newId) {
           setLastPlaced({ id: newId, amount: total });
-          setQrPayload(JSON.stringify({ type: 'ORDER', id: newId, total }));
-          setQrOpen(true);
+          // QR код показываем только для готовых заказов
+          if (status === 'ready') {
+            setQrPayload(JSON.stringify({ type: 'ORDER', id: newId, total }));
+            setQrOpen(true);
+          }
         }
 
         dispatch({ type: 'CLEAR_CART' });
@@ -308,10 +379,11 @@ const Order: React.FC = () => {
         await fetchBonusData();
         await fetchPromoCodes();
 
-        const message = result.message || `Заказ оформлен! Показать QR бариста`;
+        // Показываем соответствующее сообщение в зависимости от статуса
+        const message = result.message || `Заказ #${newId.slice(-8)} принят! Ожидайте подтверждения.`;
         setToastMessage(message);
         setShowToast(true);
-        setTimeout(() => setShowToast(false), 4000);
+        setTimeout(() => setShowToast(false), 5000);
       } else {
         setToastMessage('Ошибка при оформлении заказа: ' + (result.error || 'Неизвестная ошибка'));
         setShowToast(true);
@@ -487,6 +559,37 @@ const Order: React.FC = () => {
                   </div>
                 </div>
 
+                {/* ПЕРЕКЛЮЧАТЕЛЬ ДОСТАВКИ/САМОВЫВОЗА */}
+                <div className="elev-card rounded-2xl p-4">
+                  <div className="text-sm font-bold text-slate-700 mb-3">Способ получения:</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setDeliveryType('pickup')}
+                      disabled={loading}
+                      className={`relative px-4 py-4 rounded-xl font-semibold text-sm transition-all ${
+                        deliveryType === 'pickup'
+                          ? 'bg-slate-900 text-white shadow-[0_8px_20px_-8px_rgba(0,0,0,0.35)]'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      <div className="text-2xl mb-1">🏪</div>
+                      <div>Самовывоз</div>
+                    </button>
+                    <button
+                      onClick={() => setDeliveryType('delivery')}
+                      disabled={loading}
+                      className={`relative px-4 py-4 rounded-xl font-semibold text-sm transition-all ${
+                        deliveryType === 'delivery'
+                          ? 'bg-slate-900 text-white shadow-[0_8px_20px_-8px_rgba(0,0,0,0.35)]'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      <div className="text-2xl mb-1">🚗</div>
+                      <div>Доставка</div>
+                    </button>
+                  </div>
+                </div>
+
                 <motion.button
                   onClick={handleOrder}
                   disabled={loading}
@@ -517,7 +620,7 @@ const Order: React.FC = () => {
                 <li key={order.id} className="elev-card rounded-2xl p-4">
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-extrabold text-slate-900">
-                      Заказ #{String(order.id).slice(-6)}
+                      Заказ #{order.orderNumberDisplay || String(order.id).slice(-6)}
                     </span>
                     <OrderStatusBadge
                       status={
@@ -530,6 +633,13 @@ const Order: React.FC = () => {
                     <span className="font-semibold text-slate-900">
                       {order.amount} ₸
                     </span>
+                  </div>
+                  <div className="text-xs text-slate-600 mb-2 flex items-center gap-1">
+                    {order.deliveryType === 'delivery' ? (
+                      <>🚗 Доставка</>
+                    ) : (
+                      <>🏪 Самовывоз</>
+                    )}
                   </div>
                   {!!order.items?.length && (
                     <div className="mt-2 bg-slate-50 rounded-xl p-2">

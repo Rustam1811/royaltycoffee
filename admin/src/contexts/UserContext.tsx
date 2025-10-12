@@ -9,7 +9,7 @@ interface Ctx { user: User | null; loading: boolean; logout: () => Promise<void>
 export const UserContext = createContext<Ctx>({ user: null, loading: true, logout: async () => {} });
 
 /** === НАСТРОЙКА ALLOWLIST (заполни своими адресами) === */
-const ADMIN_EMAILS   = ["admin121@gmail.com"];
+const ADMIN_EMAILS   = ["admin121@gmail.com", "admin@mail.com"];
 const BARISTA_EMAILS = ["barista121@gmail.com"];
 const OWNER_EMAILS   = ["owner121@gmail.com"];
 

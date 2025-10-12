@@ -184,20 +184,20 @@ const StoryManagement: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-base)]">
+    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-100 to-white pb-20">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -16 }}
         animate={{ opacity: 1, y: 0 }}
-        className="-mx-6 px-6 py-4 bg-gradient-to-r from-[var(--color-accent-orange)] to-[var(--color-accent-pink)]/80 backdrop-blur-md shadow-card"
+        className="-mx-6 px-6 py-4 bg-transparent shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)]"
       >
         <div className="max-w-7xl mx-auto flex justify-between items-center gap-3 flex-wrap">
-          <h1 className="text-2xl md:text-3xl font-bold text-white font-[var(--font-family-heading)]">Управление сторисами</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-white font-sans">Управление сторисами</h1>
           <motion.button
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => setShowModal(true)}
-            className="px-5 py-3 rounded-2xl text-[var(--color-accent-orange)] bg-white/90 hover:bg-white transition shadow-card"
+            className="px-5 py-3 rounded-3xl text-amber-600 bg-white/90 hover:bg-white transition shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)]"
           >
             <span className="inline-flex items-center gap-2 font-semibold">
               <PlusIcon className="w-5 h-5" /> Новый сторис
@@ -214,11 +214,11 @@ const StoryManagement: React.FC = () => {
         )}
 
         {!loading && stories.length === 0 && (
-          <div className="text-center py-16 bg-[var(--color-bg-elevated)] rounded-2xl shadow-card border border-[var(--color-border)]">
-            <div className="text-[var(--color-text-secondary)] text-lg mb-4">Нет созданных сторисов</div>
+          <div className="text-center py-16 bg-white rounded-3xl shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] border border-slate-200">
+            <div className="text-slate-600 text-lg mb-4">Нет созданных сторисов</div>
             <button
               onClick={() => setShowModal(true)}
-              className="px-6 py-3 rounded-2xl bg-gradient-to-r from-[var(--color-accent-orange)] to-[var(--color-accent-pink)] text-white font-semibold shadow-card"
+              className="px-6 py-3 rounded-3xl bg-slate-900 text-white font-semibold shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)]"
             >
               Создать первый сторис
             </button>
@@ -232,10 +232,10 @@ const StoryManagement: React.FC = () => {
               key={story.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-[var(--color-bg-elevated)] rounded-2xl shadow-card border border-[var(--color-border)] overflow-hidden"
+              className="bg-white rounded-3xl shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] border border-slate-200 overflow-hidden"
             >
               {/* Превью */}
-              <div className="h-64 bg-[var(--color-bg-hover)] relative">
+              <div className="h-64 bg-slate-100 relative">
                 {story.content.type === 'image' && story.content.url ? (
                   <img 
                     src={story.content.url} 
@@ -249,7 +249,7 @@ const StoryManagement: React.FC = () => {
                     muted
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[var(--color-accent-orange)] to-[var(--color-accent-pink)]">
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
                     <div className="text-center text-white p-4">
                       <h3 className="font-bold text-lg mb-2">{story.title}</h3>
                       <p className="text-sm opacity-90">{story.content.text}</p>
@@ -262,13 +262,13 @@ const StoryManagement: React.FC = () => {
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleEdit(story)}
-                      className="bg-white text-blue-600 hover:text-blue-800 p-2 rounded-full shadow-card"
+                      className="bg-white text-blue-600 hover:text-blue-800 p-2 rounded-full shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)]"
                     >
                       <PencilIcon className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => handleDelete(story.id)}
-                      className="bg-white text-red-600 hover:text-red-800 p-2 rounded-full shadow-card"
+                      className="bg-white text-red-600 hover:text-red-800 p-2 rounded-full shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)]"
                     >
                       <TrashIcon className="w-5 h-5" />
                     </button>
@@ -278,11 +278,11 @@ const StoryManagement: React.FC = () => {
                 {/* Статус */}
                 <div className="absolute top-3 left-3">
                   {isStoryActive(story) ? (
-                    <span className="px-2 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-[var(--color-accent-orange)] to-[var(--color-accent-pink)] text-white">
+                    <span className="px-2 py-1 rounded-full text-xs font-bold bg-slate-900 text-white">
                       Активен
                     </span>
                   ) : (
-                    <span className="px-2 py-1 rounded-full text-xs font-bold bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-text-secondary)]">
+                    <span className="px-2 py-1 rounded-full text-xs font-bold bg-white border border-slate-200 text-slate-600">
                       Неактивен
                     </span>
                   )}
@@ -298,36 +298,36 @@ const StoryManagement: React.FC = () => {
 
               {/* Информация */}
               <div className="p-4">
-                <h3 className="font-semibold text-lg text-[var(--color-text-primary)] mb-2 truncate">{story.title}</h3>
+                <h3 className="font-semibold text-lg text-slate-900 mb-2 truncate">{story.title}</h3>
                 
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-[var(--color-text-secondary)]">Просмотры:</span>
+                    <span className="text-slate-600">Просмотры:</span>
                     <div className="flex items-center gap-1">
-                      <EyeIcon className="w-4 h-4 text-[var(--color-text-secondary)]" />
-                      <span className="text-[var(--color-text-primary)]">{story.viewCount}</span>
+                      <EyeIcon className="w-4 h-4 text-slate-600" />
+                      <span className="text-slate-900">{story.viewCount}</span>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <span className="text-[var(--color-text-secondary)]">Длительность:</span>
+                    <span className="text-slate-600">Длительность:</span>
                     <div className="flex items-center gap-1">
-                      <ClockIcon className="w-4 h-4 text-[var(--color-text-secondary)]" />
-                      <span className="text-[var(--color-text-primary)]">{story.duration}с</span>
+                      <ClockIcon className="w-4 h-4 text-slate-600" />
+                      <span className="text-slate-900">{story.duration}с</span>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <span className="text-[var(--color-text-secondary)]">Осталось:</span>
+                    <span className="text-slate-600">Осталось:</span>
                     <span className={`font-semibold ${
-                      isStoryActive(story) ? 'text-[var(--color-accent-orange)]' : 'text-red-600'
+                      isStoryActive(story) ? 'text-amber-600' : 'text-red-600'
                     }`}>
                       {getTimeLeft(story)}
                     </span>
                   </div>
 
-                  <div className="pt-2 border-t border-[var(--color-border)]">
-                    <span className="text-xs text-[var(--color-text-secondary)]">
+                  <div className="pt-2 border-t border-slate-200">
+                    <span className="text-xs text-slate-600">
                       Создан: {formatDate(story.createdAt)}
                     </span>
                   </div>
@@ -344,28 +344,28 @@ const StoryManagement: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-[var(--color-bg-elevated)] border border-[var(--color-border)] rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-card"
+            className="bg-white border border-slate-200 rounded-3xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)]"
           >
-            <h2 className="text-2xl font-bold mb-6 text-[var(--color-text-primary)] font-[var(--font-family-heading)]">
+            <h2 className="text-2xl font-bold mb-6 text-slate-900 font-sans">
               {editingStory ? 'Редактировать сторис' : 'Новый сторис'}
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                <label className="block text-sm font-medium text-slate-600 mb-2">
                   Заголовок
                 </label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({...formData, title: e.target.value})}
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--color-bg-base)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-orange)]"
+                  className="w-full px-3 py-2 rounded-xl bg-gradient-to-b from-slate-100 via-slate-100 to-white pb-20 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-900"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                <label className="block text-sm font-medium text-slate-600 mb-2">
                   Тип контента
                 </label>
                 <div className="grid grid-cols-3 gap-3">
@@ -376,8 +376,8 @@ const StoryManagement: React.FC = () => {
                       onClick={() => setFormData({...formData, type: type.value as 'image' | 'video' | 'text'})}
                       className={`p-3 rounded-xl border-2 transition-colors flex flex-col items-center gap-2 ${
                         formData.type === type.value
-                          ? 'border-[var(--color-accent-orange)] bg-[color-mix(in_oklab,var(--color-accent-orange)_10%,transparent)] text-[var(--color-text-primary)]'
-                          : 'border-[var(--color-border)] hover:border-[var(--color-accent-orange)] text-[var(--color-text-secondary)]'
+                          ? 'border-[var(--color-accent-orange)] bg-[color-mix(in_oklab,var(--color-accent-orange)_10%,transparent)] text-slate-900'
+                          : 'border-slate-200 hover:border-[var(--color-accent-orange)] text-slate-600'
                       }`}
                     >
                       <type.icon className="w-6 h-6" />
@@ -388,13 +388,13 @@ const StoryManagement: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                <label className="block text-sm font-medium text-slate-600 mb-2">
                   Контент
                 </label>
                 <textarea
                   value={formData.content}
                   onChange={(e) => setFormData({...formData, content: e.target.value})}
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--color-bg-base)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-orange)]"
+                  className="w-full px-3 py-2 rounded-xl bg-gradient-to-b from-slate-100 via-slate-100 to-white pb-20 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-900"
                   rows={3}
                   required
                 />
@@ -421,14 +421,14 @@ const StoryManagement: React.FC = () => {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                <label className="block text-sm font-medium text-slate-600 mb-2">
                   Длительность показа (секунды)
                 </label>
                 <input
                   type="number"
-                  value={formData.duration}
+                  value={String(formData.duration || '')}
                   onChange={(e) => setFormData({...formData, duration: parseInt(e.target.value) || 5})}
-                  className="w-full px-3 py-2 rounded-xl bg-[var(--color-bg-base)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-orange)]"
+                  className="w-full px-3 py-2 rounded-xl bg-gradient-to-b from-slate-100 via-slate-100 to-white pb-20 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-900"
                   min="1"
                   max="30"
                 />
@@ -436,27 +436,27 @@ const StoryManagement: React.FC = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                  <label className="block text-sm font-medium text-slate-600 mb-2">
                     Ссылка для перехода
                   </label>
                   <input
                     type="url"
                     value={formData.linkUrl}
                     onChange={(e) => setFormData({...formData, linkUrl: e.target.value})}
-                    className="w-full px-3 py-2 rounded-xl bg-[var(--color-bg-base)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-orange)]"
+                    className="w-full px-3 py-2 rounded-xl bg-gradient-to-b from-slate-100 via-slate-100 to-white pb-20 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="https://example.com"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
+                  <label className="block text-sm font-medium text-slate-600 mb-2">
                     Текст кнопки
                   </label>
                   <input
                     type="text"
                     value={formData.linkText}
                     onChange={(e) => setFormData({...formData, linkText: e.target.value})}
-                    className="w-full px-3 py-2 rounded-xl bg-[var(--color-bg-base)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-orange)]"
+                    className="w-full px-3 py-2 rounded-xl bg-gradient-to-b from-slate-100 via-slate-100 to-white pb-20 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="Подробнее"
                   />
                 </div>
@@ -470,7 +470,7 @@ const StoryManagement: React.FC = () => {
                   onChange={(e) => setFormData({...formData, isActive: e.target.checked})}
                   className="accent-[var(--color-accent-orange)]"
                 />
-                <label htmlFor="isActiveStory" className="text-sm text-[var(--color-text-secondary)]">
+                <label htmlFor="isActiveStory" className="text-sm text-slate-600">
                   Активен (автоматически истекает через 24 часа)
                 </label>
               </div>
@@ -479,14 +479,14 @@ const StoryManagement: React.FC = () => {
                 <button
                   type="button"
                   onClick={reset}
-                  className="flex-1 px-4 py-2 rounded-2xl bg-[var(--color-bg-hover)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:bg-[color-mix(in_oklab,var(--color-bg-hover)_80%,white)] transition"
+                  className="flex-1 px-4 py-2 rounded-3xl bg-slate-100 text-slate-900 border border-slate-200 hover:bg-[color-mix(in_oklab,var(--color-bg-hover)_80%,white)] transition"
                 >
                   Отмена
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 px-4 py-2 rounded-2xl bg-gradient-to-r from-[var(--color-accent-orange)] to-[var(--color-accent-pink)] text-white font-semibold shadow-card disabled:opacity-60"
+                  className="flex-1 px-4 py-2 rounded-3xl bg-slate-900 text-white font-semibold shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] disabled:opacity-60"
                 >
                   {loading ? 'Сохранение...' : 'Сохранить'}
                 </button>

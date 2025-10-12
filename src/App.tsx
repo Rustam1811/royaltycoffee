@@ -1,22 +1,20 @@
-// src/App.tsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Switch, Route, Redirect, NavLink, useRouteMatch, useLocation } from "react-router-dom";
 import { motion, useReducedMotion } from 'framer-motion';
-import { HomeIcon, Squares2X2Icon, ShoppingBagIcon, CalendarDaysIcon, UserCircleIcon } from '@heroicons/react/24/solid';
+import { HomeIcon, Squares2X2Icon, ShoppingBagIcon, CreditCardIcon, UserCircleIcon } from '@heroicons/react/24/solid';
 
-// pages
 import Home from './pages/Home';
 import Profile from './pages/Profile';
 import Menu from './pages/menu/Menu';
 import Order from './pages/Order';
 import Booking from './pages/Booking';
+import Card from './pages/Card';
 import Login from './pages/Login';
 
-// Админка теперь развернута отдельно на /admin
-
-// contexts
 import { CartProvider } from './contexts/CartContext';
 import { AuthProvider, useAuth } from './auth/AuthContext';
+import { initializeFCM } from './services/messaging';
+import { createPWAUpdater } from './pwa/pwa-updater';
 
 import "./index.css";
 import { pageVariants } from './ui/motion';
@@ -25,7 +23,7 @@ const navItems = [
   { to: "/home", icon: HomeIcon, label: "Главная" },
   { to: "/menu", icon: Squares2X2Icon, label: "Меню" },
   { to: "/order", icon: ShoppingBagIcon, label: "Заказ" },
-  { to: "/booking", icon: CalendarDaysIcon, label: "Бронь" },
+  { to: "/card", icon: CreditCardIcon, label: "Карта" },
   { to: "/profile", icon: UserCircleIcon, label: "Профиль" },
 ];
 
@@ -95,11 +93,39 @@ const PrivateRoute: React.FC<{ component: React.ComponentType<Record<string, unk
   );
 };
 
-// AdminRoute удален - админка теперь отдельное приложение
-
 const AppContent: React.FC = () => {
   const location = useLocation();
   const prefersReduced = useReducedMotion();
+  const { user } = useAuth();
+  
+  useEffect(() => {
+    const pwaUpdater = createPWAUpdater({
+      autoReload: true
+    });
+    
+    pwaUpdater.init();
+    
+    return () => {
+      pwaUpdater.destroy();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      const hasAskedForNotifications = localStorage.getItem('notifications-asked');
+      
+      if (!hasAskedForNotifications && 'Notification' in window) {
+        setTimeout(() => {
+          initializeFCM().then(() => {
+            localStorage.setItem('notifications-asked', 'true');
+          });
+        }, 2000);
+      } else {
+        initializeFCM();
+      }
+    }
+  }, [user]);
+  
   return (
     <>
       <main className="pb-24 overflow-hidden min-h-screen">
@@ -121,6 +147,7 @@ const AppContent: React.FC = () => {
           <PrivateRoute exact path="/home" component={Home} />
           <PrivateRoute exact path="/menu" component={Menu} />
           <PrivateRoute exact path="/profile" component={Profile} />
+          <PrivateRoute exact path="/card" component={Card} />
           <PrivateRoute exact path="/booking" component={Booking} />
           <PrivateRoute exact path="/order" component={Order} />
           {/* /admin теперь отдельное приложение */}

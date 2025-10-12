@@ -29,6 +29,79 @@
       ]
     });
   }
+
+  // POST endpoints for creating new items
+  if (req.method === 'POST' && action === 'achievements') {
+    const { name, description, points, iconUrl } = req.body || {};
+    
+    if (!name || !description || !points) {
+      return res.status(400).json({ ok: false, error: 'Missing required fields: name, description, points' });
+    }
+    
+    const newAchievement = {
+      id: Date.now(),
+      name,
+      description,
+      points: parseInt(points),
+      iconUrl: iconUrl || null,
+      createdAt: new Date().toISOString()
+    };
+    
+    return res.status(201).json({ 
+      ok: true, 
+      message: 'Achievement created successfully',
+      achievement: newAchievement
+    });
+  }
+
+  if (req.method === 'POST' && action === 'promotions') {
+    const { title, description, discount, validFrom, validTo } = req.body || {};
+    
+    if (!title || !description || !discount) {
+      return res.status(400).json({ ok: false, error: 'Missing required fields: title, description, discount' });
+    }
+    
+    const newPromotion = {
+      id: Date.now(),
+      title,
+      description,
+      discount: parseInt(discount),
+      validFrom: validFrom || new Date().toISOString(),
+      validTo: validTo || null,
+      createdAt: new Date().toISOString()
+    };
+    
+    return res.status(201).json({ 
+      ok: true, 
+      message: 'Promotion created successfully',
+      promotion: newPromotion
+    });
+  }
+
+  // DELETE endpoints
+  if (req.method === 'DELETE' && action === 'promotions') {
+    const id = req.query?.id;
+    if (!id) {
+      return res.status(400).json({ ok: false, error: 'Missing promotion ID' });
+    }
+    return res.status(200).json({ 
+      ok: true, 
+      message: 'Promotion deleted successfully',
+      id 
+    });
+  }
+
+  if (req.method === 'DELETE' && action === 'achievements') {
+    const id = req.query?.id;
+    if (!id) {
+      return res.status(400).json({ ok: false, error: 'Missing achievement ID' });
+    }
+    return res.status(200).json({ 
+      ok: true, 
+      message: 'Achievement deleted successfully',
+      id 
+    });
+  }
   
-  return res.status(400).json({ ok: false, error: 'Invalid action. Use ?action=achievements or ?action=promotions' });
+  return res.status(400).json({ ok: false, error: 'Invalid action or method. Use GET/POST/DELETE with ?action=achievements or ?action=promotions' });
 };

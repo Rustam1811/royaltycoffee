@@ -8,7 +8,8 @@ import { UserContext } from '@/contexts/UserContext';
 const periodOptions = [
   { key: 'day', label: 'День' },
   { key: 'week', label: 'Неделя' },
-  { key: 'month', label: 'Месяц' }
+  { key: 'month', label: 'Месяц' },
+  { key: 'all', label: 'Все время' }
 ];
 
 /**
@@ -16,7 +17,7 @@ const periodOptions = [
  * Полностью рабочая с красивым интерфейсом
  */
 const Analytics: React.FC = () => {
-  const [period, setPeriod] = useState<'day' | 'week' | 'month'>('day');
+  const [period, setPeriod] = useState<'day' | 'week' | 'month' | 'all'>('day');
   const { aggregated, loading, error, refresh } = useAnalytics(period);
   const [refreshing, setRefreshing] = useState(false);
   const { user, loading: authLoading } = useContext(UserContext);
@@ -98,7 +99,7 @@ const Analytics: React.FC = () => {
           {periodOptions.map(opt => (
             <motion.button
               key={opt.key}
-              onClick={() => setPeriod(opt.key as 'day' | 'week' | 'month')}
+              onClick={() => setPeriod(opt.key as 'day' | 'week' | 'month' | 'all')}
               className={`flex-shrink-0 px-6 py-3 rounded-full font-semibold transition-all ${
                 period === opt.key 
                   ? 'bg-slate-900 text-white shadow-[0_14px_36px_-14px_rgba(0,0,0,0.55)]' 
@@ -166,7 +167,9 @@ const Analytics: React.FC = () => {
                     <CurrencyDollarIcon className="h-6 w-6 text-green-600" />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-600 uppercase tracking-wide font-medium">Общий доход</p>
+                    <p className="text-xs text-slate-600 uppercase tracking-wide font-medium">
+                      Выручка за {period === 'day' ? 'день' : period === 'week' ? 'неделю' : period === 'month' ? 'месяц' : 'все время'}
+                    </p>
                     <p className="text-lg font-bold text-slate-900">{aggregated.revenue?.toLocaleString() || 0} ₽</p>
                   </div>
                 </div>
@@ -181,7 +184,9 @@ const Analytics: React.FC = () => {
                     <ShoppingBagIcon className="h-6 w-6 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-600 uppercase tracking-wide font-medium">Всего заказов</p>
+                    <p className="text-xs text-slate-600 uppercase tracking-wide font-medium">
+                      Заказов за {period === 'day' ? 'день' : period === 'week' ? 'неделю' : period === 'month' ? 'месяц' : 'все время'}
+                    </p>
                     <p className="text-lg font-bold text-slate-900">{aggregated.totalOrders || 0}</p>
                   </div>
                 </div>
@@ -231,7 +236,12 @@ const Analytics: React.FC = () => {
                 <div className="p-3 bg-orange-100 rounded-2xl">
                   <FireIcon className="h-6 w-6 text-orange-600" />
                 </div>
-                <h2 className="text-lg font-bold text-slate-900 tracking-tight">Топ товаров</h2>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 tracking-tight">Топ товаров</h2>
+                  <p className="text-xs text-slate-600">
+                    за {period === 'day' ? 'день' : period === 'week' ? 'неделю' : period === 'month' ? 'месяц' : 'все время'}
+                  </p>
+                </div>
               </div>
               <div className="space-y-4">
                 {aggregated.topProducts && aggregated.topProducts.length > 0 ? (

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Быстрая проверка уведомлений</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      max-width: 600px;
+      width: 100%;
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+      font-size: 32px;
+    }
+    .status {
+      margin: 20px 0;
+      padding: 15px;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+    .status.good { background: #d1fae5; color: #065f46; }
+    .status.bad { background: #fee2e2; color: #991b1b; }
+    .status.warning { background: #fef3c7; color: #92400e; }
+    button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 10px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      margin: 10px 5px;
+      transition: all 0.3s;
+    }
+    button:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .info {
+      background: #f3f4f6;
+      padding: 20px;
+      border-radius: 10px;
+      margin: 20px 0;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .code {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      margin: 10px 0;
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+    .step {
+      margin: 15px 0;
+      padding: 15px;
+      border-left: 4px solid #667eea;
+      background: #f9fafb;
+    }
+    .step-number {
+      display: inline-block;
+      width: 30px;
+      height: 30px;
+      background: #667eea;
+      color: white;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 30px;
+      font-weight: bold;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔔 Проверка Push-уведомлений</h1>
+    <p style="color: #666; margin-bottom: 30px;">Пользователь: <strong>87053096206</strong></p>
+
+    <!-- Статусы -->
+    <div id="browser-status" class="status"></div>
+    <div id="sw-status" class="status"></div>
+
+    <!-- Кнопка проверки -->
+    <div style="text-align: center; margin: 30px 0;">
+      <button onclick="checkAll()">🔍 Проверить сейчас</button>
+      <button onclick="requestPermission()">1️⃣ Запросить разрешение</button>
+    </div>
+
+    <!-- Инструкция -->
+    <div class="info">
+      <h3 style="margin-bottom: 15px;">📋 Что нужно для работы уведомлений:</h3>
+      
+      <div class="step">
+        <span class="step-number">1</span>
+        <strong>Разрешение браузера</strong> — нажми кнопку "Запросить разрешение" выше и разреши в браузере
+      </div>
+
+      <div class="step">
+        <span class="step-number">2</span>
+        <strong>Зайди в приложение</strong> — открой <code>localhost:5173</code> (или прод)
+      </div>
+
+      <div class="step">
+        <span class="step-number">3</span>
+        <strong>Открой Профиль</strong> — внизу экрана нажми на иконку профиля
+      </div>
+
+      <div class="step">
+        <span class="step-number">4</span>
+        <strong>Прокрути вниз</strong> до раздела "Настройки уведомлений"
+      </div>
+
+      <div class="step">
+        <span class="step-number">5</span>
+        <strong>Нажми "Включить"</strong> — это сохранит FCM токен в базу
+      </div>
+
+      <div class="step">
+        <span class="step-number">6</span>
+        <strong>Тест!</strong> — создай заказ или попроси баристу принять существующий заказ
+      </div>
+    </div>
+
+    <!-- Техническая инфа -->
+    <details style="margin-top: 20px;">
+      <summary style="cursor: pointer; font-weight: bold; padding: 10px; background: #f3f4f6; border-radius: 5px;">
+        🔧 Техническая информация
+      </summary>
+      <div class="code" id="tech-info"></div>
+    </details>
+
+    <!-- Быстрый тест из консоли -->
+    <details style="margin-top: 20px;">
+      <summary style="cursor: pointer; font-weight: bold; padding: 10px; background: #f3f4f6; border-radius: 5px;">
+        💻 Для проверки в консоли приложения (F12)
+      </summary>
+      <div class="code">// Скопируй и вставь в консоль на localhost:5173
+
+// 1. Проверить профиль пользователя
+const checkUser = async () => {
+  const { getFirestore, doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+  const db = getFirestore();
+  const snap = await getDoc(doc(db, 'users', '87053096206'));
+  if (snap.exists()) {
+    const data = snap.data();
+    console.log('✅ Пользователь:', {
+      notificationsEnabled: data.notificationsEnabled,
+      fcmToken: data.fcmToken ? '✅ Есть' : '❌ Нет',
+      pushOptIn: data.pushOptIn
+    });
+  } else {
+    console.error('❌ Пользователь не найден!');
+  }
+};
+
+checkUser();</div>
+    </details>
+  </div>
+
+  <script>
+    function updateStatus() {
+      const browserStatus = document.getElementById('browser-status');
+      const swStatus = document.getElementById('sw-status');
+      const techInfo = document.getElementById('tech-info');
+
+      // Проверка разрешения
+      const permission = 'Notification' in window ? Notification.permission : 'not-supported';
+      
+      if (permission === 'granted') {
+        browserStatus.className = 'status good';
+        browserStatus.innerHTML = '✅ <strong>Разрешение браузера:</strong> Получено';
+      } else if (permission === 'denied') {
+        browserStatus.className = 'status bad';
+        browserStatus.innerHTML = '❌ <strong>Разрешение браузера:</strong> Запрещено (измени в настройках браузера)';
+      } else if (permission === 'default') {
+        browserStatus.className = 'status warning';
+        browserStatus.innerHTML = '⚠️ <strong>Разрешение браузера:</strong> Не запрошено (нажми кнопку выше)';
+      } else {
+        browserStatus.className = 'status bad';
+        browserStatus.innerHTML = '❌ <strong>Браузер не поддерживает уведомления</strong>';
+      }
+
+      // Проверка Service Worker
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(regs => {
+          const hasSW = regs.length > 0;
+          if (hasSW) {
+            swStatus.className = 'status good';
+            swStatus.innerHTML = `✅ <strong>Service Worker:</strong> Зарегистрирован (${regs.length} активных)`;
+          } else {
+            swStatus.className = 'status warning';
+            swStatus.innerHTML = '⚠️ <strong>Service Worker:</strong> Не зарегистрирован (откроется автоматически при входе в приложение)';
+          }
+        });
+      } else {
+        swStatus.className = 'status bad';
+        swStatus.innerHTML = '❌ <strong>Service Worker не поддерживается</strong>';
+      }
+
+      // Техническая информация
+      techInfo.textContent = `
+Browser: ${navigator.userAgent}
+Notification API: ${'Notification' in window ? 'Поддерживается' : 'НЕ поддерживается'}
+Permission: ${permission}
+Service Worker API: ${'serviceWorker' in navigator ? 'Поддерживается' : 'НЕ поддерживается'}
+Push API: ${'PushManager' in window ? 'Поддерживается' : 'НЕ поддерживается'}
+
+VAPID Key: BKPPcrrCt_ZQW8zIuxACO86IxEMQ8aOWKuJFeqONaI6eSyh8zVAdebf0TM_fGylIRjmnPDyiDwpuq5kC5bNNKmU
+Firebase Project: coffeeaddict-c9d70
+User ID: 87053096206
+
+Deployed Functions:
+- onOrderStatusChanged (v2, europe-west1) ✅ Для уведомлений о заказах
+- onPromotionCreated (v2, europe-west1) ✅ Для акций
+- onStoryCreated (v1, us-central1) ✅ Для историй
+- reengageInactiveUsers (v1, us-central1) ✅ CRON реактивация
+      `.trim();
+    }
+
+    function checkAll() {
+      updateStatus();
+      alert('✅ Проверка завершена! Смотри результаты выше.');
+    }
+
+    async function requestPermission() {
+      if (!('Notification' in window)) {
+        alert('❌ Этот браузер не поддерживает уведомления');
+        return;
+      }
+
+      try {
+        const permission = await Notification.requestPermission();
+        updateStatus();
+        
+        if (permission === 'granted') {
+          alert('✅ Разрешение получено!\n\nТеперь:\n1. Открой приложение (localhost:5173)\n2. Зайди в Профиль\n3. Включи уведомления в настройках');
+          
+          // Показать тестовое уведомление
+          new Notification('🎉 Отлично!', {
+            body: 'Уведомления работают! Теперь включи их в приложении.',
+            icon: 'https://coffeeaddict-c9d70.web.app/favicon.png'
+          });
+        } else if (permission === 'denied') {
+          alert('❌ Разрешение отклонено.\n\nЧтобы исправить:\n1. Нажми на иконку замка в адресной строке\n2. Найди "Уведомления"\n3. Разреши уведомления\n4. Обнови страницу');
+        } else {
+          alert('ℹ️ Разрешение не дано');
+        }
+      } catch (error) {
+        alert('❌ Ошибка: ' + error.message);
+      }
+    }
+
+    // Автоматическая проверка при загрузке
+    window.addEventListener('load', updateStatus);
+  </script>
+</body>
+</html>

@@ -114,8 +114,8 @@ export const drinkCategories: DrinkCategory[] = [
           { id: 3, title: "Крепость", type: "slider", min: 1, max: 3, default: 2 }
         ],
         togetherBetter: [
-          { id: 1001, name: "Круассан классический", image: "/food/сытные-круассаны/круассан-классический.png" },
-          { id: 1201, name: "Печенье Слимс", image: "/food/выпечка/печенье-слимс.png" }
+          { id: 1001, name: "Круассан классический", image: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400&h=400&fit=crop" },
+          { id: 1201, name: "Печенье Слимс", image: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&h=400&fit=crop" }
         ],
         badges: ["HIT"],
         promo: "Покупай утром до 10:00 - скидка 15%",
@@ -159,8 +159,8 @@ export const drinkCategories: DrinkCategory[] = [
           { id: 4, title: "Молоко", type: "select", options: ["Без молока", "Обычное", "Овсяное"], default: "Без молока" }
         ],
         togetherBetter: [
-          { id: 1002, name: "Круассан с сыром", image: "/food/сытные-круассаны/круассан-с-сыром.png" },
-          { id: 1101, name: "Панини Моцарелла Песто", image: "/food/панини/панини-моцарелла-песто.png" }
+          { id: 1002, name: "Круассан с сыром", image: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400&h=400&fit=crop" },
+          { id: 1101, name: "Панини Моцарелла Песто", image: "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=400&h=400&fit=crop" }
         ],
         badges: [],
         promo: "Купи 2 - получи 3-й в подарок по воскресеньям",
@@ -202,8 +202,8 @@ export const drinkCategories: DrinkCategory[] = [
           { id: 3, title: "Молоко", type: "select", options: ["Без молока", "Обычное", "Овсяное"], default: "Без молока" }
         ],
         togetherBetter: [
-          { id: 1202, name: "Миндальный круассан", image: "/food/выпечка/миндальный-круассан.png" },
-          { id: 1205, name: "Коричное пирожное", image: "/food/выпечка/пирожное-шу-с-шоколадом.png" }
+          { id: 1202, name: "Миндальный круассан", image: "https://images.unsplash.com/photo-1623334044303-241021148842?w=400&h=400&fit=crop" },
+          { id: 1205, name: "Коричное пирожное", image: "https://images.unsplash.com/photo-1587241321921-91aaab6f2d3a?w=400&h=400&fit=crop" }
         ],
         badges: ["NEW"],
         promo: "Новинка! Попробуй альтернативный способ заваривания",
@@ -245,8 +245,8 @@ export const drinkCategories: DrinkCategory[] = [
           { id: 2, title: "Интенсивность", type: "slider", min: 1, max: 5, default: 3 }
         ],
         togetherBetter: [
-          { id: 1204, name: "Шоколадный круассан", image: "/food/выпечка/шоколадный-круассан.png" },
-          { id: 1207, name: "Трайфл", image: "/food/выпечка/трайфл.png" }
+          { id: 1204, name: "Шоколадный круассан", image: "https://images.unsplash.com/photo-1612182062975-321b9aabfbd0?w=400&h=400&fit=crop" },
+          { id: 1207, name: "Трайфл", image: "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=400&h=400&fit=crop" }
         ],
         badges: [],
         promo: "Для ценителей - особый способ приготовления",
@@ -289,8 +289,8 @@ export const drinkCategories: DrinkCategory[] = [
           { id: 2, title: "Степень обжарки", type: "select", options: ["Светлая", "Средняя", "Темная"], default: "Средняя" }
         ],
         togetherBetter: [
-          { id: 1005, name: "Круассан лосось гурме", image: "/food/сытные-круассаны/круассан-лосось-гурме.png" },
-          { id: 1104, name: "Панини лосось гурме", image: "/food/панини/панини-лосось-гурме.png" }
+          { id: 1005, name: "Круассан лосось гурме", image: "https://images.unsplash.com/photo-1501200291289-c5a76c232e5f?w=400&h=400&fit=crop" },
+          { id: 1104, name: "Панини лосось гурме", image: "https://images.unsplash.com/photo-1509722747041-616f39b57569?w=400&h=400&fit=crop" }
         ],
         badges: ["HIT"],
         promo: "Комплект для истинных ценителей кофе",
@@ -307,7 +307,7 @@ export const drinkCategories: DrinkCategory[] = [
   {
     id: 2,
     title: 'menu.categories.seasonal',
-    image: 'https://example.com/seasonal-category.jpeg',
+    image: '/drinks/сезонное/кола-бро-клубника-черника.png',
     products: [
       {
         id: 201,
@@ -341,8 +341,8 @@ export const drinkCategories: DrinkCategory[] = [
           { id: 3, title: "Газировка", type: "toggle", default: true }
         ],
         togetherBetter: [
-          { id: 1203, name: "Фисташковый круассан", image: "/food/выпечка/фисташковый-круассан.png" },
-          { id: 1201, name: "Печенье Слимс", image: "/food/выпечка/печенье-слимс.png" }
+          { id: 1203, name: "Фисташковый круассан", image: "https://images.unsplash.com/photo-1549903072-7e6e0bedb7fb?w=400&h=400&fit=crop" },
+          { id: 1201, name: "Печенье Слимс", image: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&h=400&fit=crop" }
         ],
         badges: ["NEW", "HIT"],
         promo: "Летний хит! Освежающий вкус ягод",
@@ -385,8 +385,8 @@ export const drinkCategories: DrinkCategory[] = [
           { id: 3, title: "Температура", type: "select", options: ["Горячий", "Тёплый"], default: "Горячий" }
         ],
         togetherBetter: [
-          { id: 1206, name: "Эклер де ната", image: "/food/выпечка/паштел-де-ната.png" },
-          { id: 1205, name: "Коричное пирожное", image: "/food/выпечка/пирожное-шу-с-шоколадом.png" }
+          { id: 1206, name: "Эклер де ната", image: "https://images.unsplash.com/photo-1509365390695-33aae31befc1?w=400&h=400&fit=crop" },
+          { id: 1205, name: "Коричное пирожное", image: "https://images.unsplash.com/photo-1587241321921-91aaab6f2d3a?w=400&h=400&fit=crop" }
         ],
         badges: [],
         promo: "Согревающий напиток с восточными нотами",
@@ -429,8 +429,8 @@ export const drinkCategories: DrinkCategory[] = [
           { id: 3, title: "Лёд", type: "toggle", default: false }
         ],
         togetherBetter: [
-          { id: 1207, name: "Трайфл", image: "/food/выпечка/трайфл.png" },
-          { id: 1202, name: "Миндальный круассан", image: "/food/выпечка/миндальный-круассан.png" }
+          { id: 1207, name: "Трайфл", image: "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=400&h=400&fit=crop" },
+          { id: 1202, name: "Миндальный круассан", image: "https://images.unsplash.com/photo-1623334044303-241021148842?w=400&h=400&fit=crop" }
         ],
         badges: ["NEW"],
         promo: "Расслабляющий напиток для умиротворения",
@@ -473,8 +473,8 @@ export const drinkCategories: DrinkCategory[] = [
           { id: 3, title: "Газировка", type: "toggle", default: false }
         ],
         togetherBetter: [
-          { id: 1203, name: "Фисташковый круассан", image: "/food/выпечка/фисташковый-круассан.png" },
-          { id: 1004, name: "Круассан с говядиной", image: "/food/сытные-круассаны/круассан-с-говядиной.png" }
+          { id: 1203, name: "Фисташковый круассан", image: "https://images.unsplash.com/photo-1549903072-7e6e0bedb7fb?w=400&h=400&fit=crop" },
+          { id: 1004, name: "Круассан с говядиной", image: "https://images.unsplash.com/photo-1530610476181-d83430b64dcd?w=400&h=400&fit=crop" }
         ],
         badges: ["HIT"],
         promo: "Вкус тропиков в сердце Астаны",
@@ -518,8 +518,8 @@ export const drinkCategories: DrinkCategory[] = [
           { id: 3, title: "Топпинг", type: "multi", options: ["Орехи", "Шоколадная стружка", "Карамель"], default: [] }
         ],
         togetherBetter: [
-          { id: 1204, name: "Шоколадный круассан", image: "/food/выпечка/шоколадный-круассан.png" },
-          { id: 1201, name: "Печенье Слимс", image: "/food/выпечка/печенье-слимс.png" }
+          { id: 1204, name: "Шоколадный круассан", image: "https://images.unsplash.com/photo-1612182062975-321b9aabfbd0?w=400&h=400&fit=crop" },
+          { id: 1201, name: "Печенье Слимс", image: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&h=400&fit=crop" }
         ],
         badges: [],
         promo: "Десерт и кофе в одном стакане!",
@@ -536,7 +536,7 @@ export const drinkCategories: DrinkCategory[] = [
   {
     id: 3,
     title: 'menu.categories.milk_coffee',
-    image: 'https://example.com/milk-coffee-category.jpeg',
+    image: '/drinks/кофе-с-молоком/капучино.png',
     products: [
       {
         id: 301,
@@ -570,8 +570,8 @@ export const drinkCategories: DrinkCategory[] = [
           { id: 4, title: "Температура", type: "select", options: ["Горячий", "Тёплый"], default: "Горячий" }
         ],
         togetherBetter: [
-          { id: 1001, name: "Круассан классический", image: "/food/сытные-круассаны/круассан-классический.png" },
-          { id: 1202, name: "Миндальный круассан", image: "/food/выпечка/миндальный-круассан.png" }
+          { id: 1001, name: "Круассан классический", image: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400&h=400&fit=crop" },
+          { id: 1202, name: "Миндальный круассан", image: "https://images.unsplash.com/photo-1623334044303-241021148842?w=400&h=400&fit=crop" }
         ],
         badges: ["HIT"],
         promo: "Классика жанра - идеально для завтрака",
@@ -614,8 +614,8 @@ export const drinkCategories: DrinkCategory[] = [
           { id: 3, title: "Сироп", type: "multi", options: ["Ваниль", "Карамель"], default: [] }
         ],
         togetherBetter: [
-          { id: 1204, name: "Шоколадный круассан", image: "/food/выпечка/шоколадный-круассан.png" },
-          { id: 1101, name: "Панини Моцарелла Песто", image: "/food/панини/панини-моцарелла-песто.png" }
+          { id: 1204, name: "Шоколадный круассан", image: "https://images.unsplash.com/photo-1612182062975-321b9aabfbd0?w=400&h=400&fit=crop" },
+          { id: 1101, name: "Панини Моцарелла Песто", image: "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=400&h=400&fit=crop" }
         ],
         badges: [],
         promo: "Для ценителей крепкого кофе с молоком",
@@ -658,8 +658,8 @@ export const drinkCategories: DrinkCategory[] = [
           { id: 3, title: "Сироп", type: "multi", options: ["Ваниль", "Карамель", "Лесной орех"], default: [] }
         ],
         togetherBetter: [
-          { id: 1205, name: "Миндальный круассан", image: "/food/выпечка/миндальный-круассан.png" },
-          { id: 1301, name: "Тирамису", image: "/food/десерты/тирамису.png" }
+          { id: 1205, name: "Миндальный круассан", image: "https://images.unsplash.com/photo-1623334044303-241021148842?w=400&h=400&fit=crop" },
+          { id: 1301, name: "Тирамису", image: "https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=400&h=400&fit=crop" }
         ],
         badges: ["ХИТ"],
         promo: "Классический латте с нежной молочной пеной",
@@ -704,8 +704,8 @@ export const drinkCategories: DrinkCategory[] = [
           
         ],
         togetherBetter: [
-          { id: 1302, name: "Брауни", image: "/food/десерты/брауни.png" },
-          { id: 1206, name: "Шоколадный маффин", image: "/food/выпечка/шоколадный-маффин.png" }
+          { id: 1302, name: "Брауни", image: "https://images.unsplash.com/photo-1607920591413-4ec007e70023?w=400&h=400&fit=crop" },
+          { id: 1206, name: "Шоколадный маффин", image: "https://images.unsplash.com/photo-1426869884541-df7117556757?w=400&h=400&fit=crop" }
         ],
         badges: [],
         promo: "Кофе с шоколадом и взбитыми сливками",
@@ -747,8 +747,8 @@ export const drinkCategories: DrinkCategory[] = [
           { id: 2, title: "Размер", type: "select", options: ["Одинарный", "Двойной"], default: "Одинарный" }
         ],
         togetherBetter: [
-          { id: 1207, name: "Канноли", image: "/food/выпечка/канноли.png" },
-          { id: 1102, name: "Панини Прошутто", image: "/food/панини/панини-прошутто.png" }
+          { id: 1207, name: "Канноли", image: "https://images.unsplash.com/photo-1518047601542-79f18c655718?w=400&h=400&fit=crop" },
+          { id: 1102, name: "Панини Прошутто", image: "https://images.unsplash.com/photo-1509722747041-616f39b57569?w=400&h=400&fit=crop" }
         ],
         badges: ["НОВИНКА"],
         promo: "Эспрессо с каплей молочной пены",
@@ -790,8 +790,8 @@ export const drinkCategories: DrinkCategory[] = [
           { id: 2, title: "Температура молока", type: "select", options: ["Горячее", "Теплое"], default: "Горячее" }
         ],
         togetherBetter: [
-          { id: 1208, name: "Мадлен", image: "/food/выпечка/мадлен.png" },
-          { id: 1103, name: "Тост Авокадо", image: "/food/панини/тост-авокадо.png" }
+          { id: 1208, name: "Мадлен", image: "https://images.unsplash.com/photo-1587241321921-91aaab6f2d3a?w=400&h=400&fit=crop" },
+          { id: 1103, name: "Тост Авокадо", image: "https://images.unsplash.com/photo-1541519227354-08fa5d50c44d?w=400&h=400&fit=crop" }
         ],
         badges: [],
         promo: "Испанский кофе с равными частями эспрессо и молока",
@@ -808,7 +808,7 @@ export const drinkCategories: DrinkCategory[] = [
   {
   id: 4,
   title: 'menu.categories.alternative_drinks',
-  image: 'https://example.com/alternative-drinks-category.jpeg',
+  image: '/drinks/альтернативные/матча-латте.png',
   products: [
     {
       id: 401,
@@ -842,8 +842,8 @@ export const drinkCategories: DrinkCategory[] = [
         { id: 3, title: "Лед", type: "select", options: ["Горячий", "Холодный"], default: "Горячий" }
       ],
       togetherBetter: [
-        { id: 1303, name: "Моти", image: "/food/десерты/моти.png" },
-        { id: 1209, name: "Зеленые маффины", image: "/food/выпечка/зеленые-маффины.png" }
+        { id: 1303, name: "Моти", image: "https://images.unsplash.com/photo-1582716401667-c8c5c2a5c46c?w=400&h=400&fit=crop" },
+        { id: 1209, name: "Зеленые маффины", image: "https://images.unsplash.com/photo-1576618148400-f54bed99fcfd?w=400&h=400&fit=crop" }
       ],
       badges: ["НОВИНКА", "ХИТ"],
       promo: "Японский зеленый чай с молоком",
@@ -888,8 +888,8 @@ export const drinkCategories: DrinkCategory[] = [
         { id: 3, title: "Температура", type: "select", options: ["Горячий", "Теплый"], default: "Горячий" }
       ],
       togetherBetter: [
-        { id: 1205, name: "Имбирное печенье", image: "/food/выпечка/имбирное-печенье.png" },
-        { id: 1401, name: "Медовые пряники", image: "/food/десерты/медовые-пряники.png" }
+        { id: 1205, name: "Имбирное печенье", image: "https://images.unsplash.com/photo-1606890737921-8e91d2c78f7f?w=400&h=400&fit=crop" },
+        { id: 1401, name: "Медовые пряники", image: "https://images.unsplash.com/photo-1607478900766-efe13248b125?w=400&h=400&fit=crop" }
       ],
       badges: ["БЕЗ КОФЕИНА"],
       promo: "Золотое молоко с куркумой и специями",
@@ -933,8 +933,8 @@ export const drinkCategories: DrinkCategory[] = [
         { id: 3, title: "Сладость", type: "slider", min: 0, max: 2, default: 1 }
       ],
       togetherBetter: [
-        { id: 1302, name: "Ягодный чизкейк", image: "/food/десерты/ягодный-чизкейк.png" },
-        { id: 1208, name: "Овсяное печенье", image: "/food/выпечка/овсяное-печенье.png" }
+        { id: 1302, name: "Ягодный чизкейк", image: "https://images.unsplash.com/photo-1533134242116-8518c8a20431?w=400&h=400&fit=crop" },
+        { id: 1208, name: "Овсяное печенье", image: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&h=400&fit=crop" }
       ],
       badges: ["НОВИНКА", "СУПЕРФУД"],
       promo: "Яркий розовый напиток с пользой свеклы",
@@ -978,8 +978,8 @@ export const drinkCategories: DrinkCategory[] = [
         { id: 1, title: "Молоко", type: "select", options: ["Кокосовое", "Миндальное", "Овсяное"], default: "Кокосовое" },
       ],
       togetherBetter: [
-        { id: 1304, name: "Кокосовые макаруны", image: "/food/десерты/кокосовые-макаруны.png" },
-        { id: 1210, name: "Протеиновые батончики", image: "/food/выпечка/протеиновые-батончики.png" }
+        { id: 1304, name: "Кокосовые макаруны", image: "https://images.unsplash.com/photo-1576618148602-c183b6f0b2a1?w=400&h=400&fit=crop" },
+        { id: 1210, name: "Протеиновые батончики", image: "https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=400&h=400&fit=crop" }
       ],
       badges: ["НОВИНКА", "ХИТ", "СУПЕРФУД"],
       promo: "Голубое чудо природы для здоровья",
@@ -1023,8 +1023,8 @@ export const drinkCategories: DrinkCategory[] = [
         { id: 2, title: "Молоко", type: "select", options: ["Без молока", "Овсяное", "Миндальное"], default: "Без молока" },
       ],
       togetherBetter: [
-        { id: 1211, name: "Гранола домашняя", image: "/food/выпечка/гранола-домашняя.png" },
-        { id: 1405, name: "Энергетические шарики", image: "/food/десерты/энергетические-шарики.png" }
+        { id: 1211, name: "Гранола домашняя", image: "https://images.unsplash.com/photo-1526318896980-cf78c088247c?w=400&h=400&fit=crop" },
+        { id: 1405, name: "Энергетические шарики", image: "https://images.unsplash.com/photo-1599599810769-bcde5a160d32?w=400&h=400&fit=crop" }
       ],
       badges: ["АДАПТОГЕН"],
       promo: "Кофе с экстрактами грибов чага и рейши",
@@ -1067,8 +1067,8 @@ export const drinkCategories: DrinkCategory[] = [
         { id: 2, title: "Сладость", type: "slider", min: 0, max: 2, default: 0 },
       ],
       togetherBetter: [
-        { id: 1201, name: "Печенье слимс", image: "/food/выпечка/печенье-слимс.png" },
-        { id: 1406, name: "Домашние пряники", image: "/food/десерты/домашние-пряники.png" }
+        { id: 1201, name: "Печенье слимс", image: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&h=400&fit=crop" },
+        { id: 1406, name: "Домашние пряники", image: "https://images.unsplash.com/photo-1607478900766-efe13248b125?w=400&h=400&fit=crop" }
       ],
       badges: ["БЕЗ КОФЕИНА", "КЛАССИКА"],
       promo: "Традиционная альтернатива кофе из цикория",

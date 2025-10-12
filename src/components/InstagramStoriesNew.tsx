@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Heart, Eye } from 'lucide-react';
 import { StoriesService, Story } from '../services/stories';
+import { db } from '../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 type StoryWithProgress = Story & { viewed: boolean };
 
@@ -41,12 +43,28 @@ const timeAgo = (d?: string | number | Date) => {
 
 // Stories ring (увеличил размер + убрал blur)
 const StoriesRing: React.FC<StoriesRingProps> = ({ story, onOpen }) => {
+  // DEBUG: выводим mediaUrl для проверки
+  console.log('🖼️ Story Ring:', story.id, 'mediaUrl:', story.mediaUrl, 'contentType:', story.contentType);
+  
+  // Проверяем что это изображение (может быть "image" или "image/jpeg" и т.д.)
+  const isImage = story.contentType?.startsWith('image/') || story.contentType === 'image';
+  
   const content =
-    story.contentType?.startsWith('image/') && story.mediaUrl ? (
-      <div
-        className="w-full h-full rounded-full bg-cover bg-center"
-        style={{ backgroundImage: `url(${story.mediaUrl})` }}
-      />
+    isImage && story.mediaUrl ? (
+      <div className="w-full h-full rounded-full overflow-hidden">
+        <img 
+          src={story.mediaUrl} 
+          alt={story.author}
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            console.error('❌ Image load error for story:', story.id, 'URL:', story.mediaUrl);
+            console.error('Error details:', e);
+          }}
+          onLoad={() => {
+            console.log('✅ Image loaded successfully:', story.id);
+          }}
+        />
+      </div>
     ) : story.contentType === 'text/plain' && story.text ? (
       <div
         className="w-full h-full rounded-full flex items-center justify-center text-white text-[11px] font-bold text-center px-2 leading-tight"
@@ -64,6 +82,8 @@ const StoriesRing: React.FC<StoriesRingProps> = ({ story, onOpen }) => {
       </div>
     );
 
+  const isCloseFriends = story.audience === 'close-friends';
+  
   return (
     <button
       onClick={onOpen}
@@ -72,7 +92,7 @@ const StoriesRing: React.FC<StoriesRingProps> = ({ story, onOpen }) => {
         story.viewed ? 'opacity-60' : 'opacity-100'
       }`}
     >
-      <span className="ring2 relative block w-[88px] h-[88px]">
+      <span className={`ring2 relative block w-[88px] h-[88px] ${isCloseFriends ? 'close-friends' : ''}`}>
         {/* внутренняя таблетка: БЕЗ blur и полупрозрачности */}
         <span className="ring2-inner absolute inset-[5px] rounded-full bg-white overflow-hidden">
           {content}
@@ -154,11 +174,19 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     const dx = t.clientX - (touchStart?.x ?? 0);
     const dy = t.clientY - (touchStart?.y ?? 0);
     if (Math.abs(dx) > 50 && Math.abs(dy) < 120) {
-      dx > 0 ? onPrevious() : onNext();
+      if (dx > 0) {
+        onPrevious();
+      } else {
+        onNext();
+      }
     } else if (Math.abs(dx) < 40 && Math.abs(dy) < 40) {
       const { width, left } = (e.currentTarget as HTMLElement).getBoundingClientRect();
       const x = t.clientX - left;
-      x < width / 2 ? onPrevious() : onNext();
+      if (x < width / 2) {
+        onPrevious();
+      } else {
+        onNext();
+      }
     }
     setTouchStart(null);
     setPaused(false);
@@ -167,7 +195,11 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   const onMouseUp = (e: React.MouseEvent) => {
     const { width, left } = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const x = e.clientX - left;
-    x < width / 2 ? onPrevious() : onNext();
+    if (x < width / 2) {
+      onPrevious();
+    } else {
+      onNext();
+    }
     setPaused(false);
   };
 
@@ -186,9 +218,17 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
 
   if (!current) return null;
 
+  // Проверяем что это изображение (может быть "image" или "image/jpeg" и т.д.)
+  const isImage = current.contentType?.startsWith('image/') || current.contentType === 'image';
+
   const content =
-    current.contentType?.startsWith('image/') && current.mediaUrl ? (
-      <img src={current.mediaUrl} alt="" className="max-w-full max-h-full object-contain" loading="eager" />
+    isImage && current.mediaUrl ? (
+      <img 
+        src={current.mediaUrl} 
+        alt="" 
+        className="w-full h-full object-cover" 
+        loading="eager"
+      />
     ) : current.contentType === 'text/plain' && current.text ? (
       <div className="w-full h-full flex items-center justify-center p-8" style={{ background: getGradient(current.gradient) }}>
         <div className="text-2xl md:text-3xl font-bold text-white text-center leading-snug drop-shadow">
@@ -274,23 +314,100 @@ export const InstagramStoriesNew: React.FC = () => {
   const [authorIdx, setAuthorIdx] = useState(0);
   const [storyIdx, setStoryIdx] = useState(0);
   const [open, setOpen] = useState(false);
+  const [isCloseFriend, setIsCloseFriend] = useState<boolean | null>(null); // null = ещё не проверили
+
+  // Получить ID пользователя из localStorage
+  const getUserId = useCallback(() => {
+    try {
+      const userData = localStorage.getItem('user');
+      if (userData) {
+        const u = JSON.parse(userData);
+        return u.phone || u.id || u.userId || '';
+      }
+    } catch {
+      // ignore
+    }
+    return '';
+  }, []);
+
+  // Проверить статус близкого друга
+  useEffect(() => {
+    const checkCloseFriendStatus = async () => {
+      try {
+        const userId = getUserId();
+        if (!userId) {
+          console.log('⚠️ User ID не найден в localStorage');
+          setIsCloseFriend(false); // если нет ID - точно не близкий друг
+          return;
+        }
+
+        console.log('🔍 Проверяем статус близкого друга для:', userId);
+        const userRef = doc(db, 'users', userId);
+        const userSnap = await getDoc(userRef);
+        
+        if (userSnap.exists()) {
+          const userData = userSnap.data();
+          const closeFriendStatus = userData.isCloseFriend === true;
+          console.log('✅ Статус близкого друга:', closeFriendStatus);
+          setIsCloseFriend(closeFriendStatus);
+        } else {
+          console.log('⚠️ Документ пользователя не найден в Firestore');
+          setIsCloseFriend(false); // если документа нет - не близкий друг
+        }
+      } catch (err) {
+        console.error('❌ Ошибка проверки статуса близкого друга:', err);
+        setIsCloseFriend(false); // при ошибке - не близкий друг
+      }
+    };
+
+    checkCloseFriendStatus();
+  }, [getUserId]);
 
   const loadStories = useCallback(async () => {
+    // НЕ загружаем stories пока не проверили статус!
+    if (isCloseFriend === null) {
+      console.log('⏳ Ждём проверки статуса близкого друга...');
+      return;
+    }
+
     try {
       setLoading(true);
       const all = await StoriesService.getAll();
-      const withFlags: StoryWithProgress[] = all.map((s) => ({ ...s, viewed: false }));
+      
+      console.log('📚 Всего stories загружено:', all.length);
+      console.log('👤 Статус близкого друга:', isCloseFriend);
+      
+      // Фильтруем stories: если пользователь НЕ близкий друг - скрываем close-friends stories
+      const filtered = all.filter(story => {
+        console.log(`📖 Story "${story.text?.slice(0, 30) || 'без текста'}" - аудитория: ${story.audience || 'everyone'}`);
+        
+        if (story.audience === 'close-friends') {
+          const show = isCloseFriend === true;
+          console.log(`🔐 Story для избранных - показываем: ${show} (isCloseFriend: ${isCloseFriend})`);
+          return show;
+        }
+        console.log(`✅ Story для всех - показываем: true`);
+        return true; // обычные stories видят все
+      });
+      
+      console.log('✅ После фильтрации stories:', filtered.length);
+      
+      const withFlags: StoryWithProgress[] = filtered.map((s) => ({ ...s, viewed: false }));
       setStories(withFlags);
     } catch (e) {
       console.error('Failed to load stories', e);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isCloseFriend]);
 
+  // Загружаем stories ТОЛЬКО когда статус проверен
   useEffect(() => {
-    loadStories();
-  }, [loadStories]);
+    if (isCloseFriend !== null) {
+      console.log('🚀 Статус проверен, загружаем stories');
+      loadStories();
+    }
+  }, [isCloseFriend, loadStories]);
 
   const groups = useMemo(() => {
     const g: Record<string, StoryWithProgress[]> = {};
@@ -375,15 +492,20 @@ export const InstagramStoriesNew: React.FC = () => {
   }
 
   return (
-    <div className="p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-semibold text-slate-900 tracking-tight">Stories</h2>
+    <div className="py-2">
+      {/* Убрали надпись Stories - оставили только ленту */}
+      
+      {/* Кнопка обновления статуса и stories */}
+      <div className="flex justify-end mb-2 px-4">
         <button
-          onClick={loadStories}
-          className="text-sm text-slate-500 hover:text-slate-800 active:scale-95 transition"
-          aria-label="Reload stories"
+          onClick={() => {
+            console.log('🔄 Принудительное обновление stories и статуса');
+            window.location.reload();
+          }}
+          className="text-xs text-slate-500 hover:text-slate-800 active:scale-95 transition"
+          aria-label="Обновить stories"
         >
-          ⟳
+          ⟳ Обновить
         </button>
       </div>
 

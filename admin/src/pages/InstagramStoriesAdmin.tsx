@@ -494,7 +494,7 @@ const InstagramStoriesAdmin: React.FC = () => {
                     type="range"
                     min={1}
                     max={15}
-                    value={formData.duration}
+                    value={String(formData.duration || '')}
                     onChange={(e) => setFormData({ ...formData, duration: Number(e.target.value) })}
                     className="w-full"
                   />

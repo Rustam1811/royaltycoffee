@@ -3,10 +3,6 @@ import React, { useState } from 'react';
 import { setPersistence, browserLocalPersistence, signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
-const allowed = (import.meta.env.VITE_ALLOWED_EMAILS as string | undefined)?.split(',')
-  .map(s => s.trim().toLowerCase())
-  .filter(Boolean) ?? [];
-
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [pass, setPass]  = useState('');
@@ -20,16 +16,12 @@ export default function LoginPage() {
     try {
       const em = email.trim().toLowerCase();
       await setPersistence(auth, browserLocalPersistence);
-      const cred = await signInWithEmailAndPassword(auth, em, pass.trim());
-      if (allowed.length && !allowed.includes(cred.user.email?.toLowerCase() || '')) {
-        setErr('Доступ запрещён (email не в списке).');
-        setLoading(false);
-        return;
-      }
-      window.location.replace('/admin/orders');
-    } catch (e: any) {
-      console.error('Email login error', e);
-      setErr(e?.message ?? 'Ошибка входа');
+      await signInWithEmailAndPassword(auth, em, pass.trim());
+      // Проверка email убрана - делается в RequireAuth
+      window.location.replace('/admin/users');
+    } catch (error) {
+      console.error('Email login error', error);
+      setErr('Ошибка входа');
     } finally {
       setLoading(false);
     }

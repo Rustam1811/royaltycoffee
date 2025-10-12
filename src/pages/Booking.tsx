@@ -250,7 +250,7 @@ const Booking: React.FC = () => {
   // Thank you (тот же светлый стиль, карточка с премиум-тенью)
   if (showThankYou && bookingDetails) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-white to-slate-50 flex flex-col items-center justify-center p-6 font-sans">
+      <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-100 to-white flex flex-col items-center justify-center p-6 font-sans">
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -293,7 +293,7 @@ const Booking: React.FC = () => {
   // ───────────────────────────────────────────────────────────
   // Main (хедер — стекло, карточка — elev-card/elev-card-strong)
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-slate-50 font-sans text-slate-900">
+    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-100 to-white font-sans text-slate-900">
       <header
         className="
           sticky top-0 z-30 px-4 py-3

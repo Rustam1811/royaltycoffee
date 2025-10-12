@@ -20,6 +20,7 @@ export interface Story {
   views: number;
   likes: number;
   reactions: string[];
+  audience?: 'everyone' | 'close-friends'; // ДОБАВЛЕНО!
 }
 
 const storiesCol = collection(db, 'stories');
@@ -32,6 +33,9 @@ export async function getAll() {
 
 export async function create(payload: Partial<Story>) {
   const nowIso = new Date().toISOString();
+  
+  console.log('📝 Создаём story с audience:', payload.audience);
+  
   const docRef = await addDoc(storiesCol, {
     title: payload.title || 'Story',
     author: payload.author || 'Anonymous',
@@ -49,8 +53,12 @@ export async function create(payload: Partial<Story>) {
     views: 0,
     likes: 0,
     reactions: [],
+    audience: payload.audience || 'everyone', // ДОБАВЛЕНО!
     _serverCreatedAt: serverTimestamp(),
   });
+  
+  console.log('✅ Story создана с ID:', docRef.id, 'audience:', payload.audience || 'everyone');
+  
   return docRef.id;
 }
 

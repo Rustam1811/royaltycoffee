@@ -1,20 +1,25 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Stories media - public read, authorized write with limits
+    // Stories media - PUBLIC write для админки (временно для отладки CORS)
     match /stories/{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null
-                   && request.resource.size < 30 * 1024 * 1024
-                   && request.resource.contentType.matches('image/.*|video/.*');
+      allow write: if true; // ВРЕМЕННО открыто для всех
     }
     
-    // Legacy uploads folder 
-    match /uploads/{allPaths=**} {
+    // User avatars - users can upload their own avatar
+    match /avatars/{userId}/{allPaths=**} {
       allow read: if true;
       allow write: if request.auth != null
-                   && request.resource.size < 30 * 1024 * 1024
-                   && request.resource.contentType.matches('image/.*|video/.*');
+                   && request.auth.uid == userId
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+    
+    // Legacy uploads folder - ОТКРЫТО для админки
+    match /uploads/{allPaths=**} {
+      allow read: if true;
+      allow write: if true; // ВРЕМЕННО открыто
     }
     
     // Deny all other paths

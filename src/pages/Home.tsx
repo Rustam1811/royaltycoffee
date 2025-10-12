@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { apiUrl } from '../config/api';
 import { listContainer, listItem } from '../ui/motion';
 
-interface OrderItem { name: string; quantity: number }
+interface OrderItem { name: string; quantity: number; price?: number }
 interface Order { amount?: number; items?: OrderItem[] }
 
 const getUserData = () => {
@@ -28,7 +28,9 @@ const getUserData = () => {
         },
       };
     }
-  } catch {}
+  } catch (error) {
+    console.error('Error getting user info:', error);
+  }
   return {
     name: 'Гость',
     avatar: 'https://images.unsplash.com/photo-1531123414780-f74242c2b052?auto=format&fit=crop&w=300&h=300&q=80',
@@ -71,21 +73,6 @@ const HomePage: React.FC = () => {
   }), []);
   const getDrinkImage = useCallback((name: string) => drinkImages[name] || drinkImages['Капучино'], [drinkImages]);
 
-  const getMenuItemByName = useCallback((itemName: string) => {
-    for (const category of drinkCategories) {
-      const item = category.products.find((product) => t(product.name) === itemName);
-      if (item) {
-        return {
-          id: item.id,
-          name: itemName,
-          price: item.price,
-          image: item.image.startsWith('/') ? `${window.location.origin}${item.image}` : item.image,
-        };
-      }
-    }
-    return { id: Date.now(), name: itemName, price: 1500, image: getDrinkImage(itemName) };
-  }, [t, getDrinkImage]);
-
   const [favoriteItem, setFavoriteItem] = useState<{ id: number | string; name: string; price?: number; image: string }>({
     name: user.favoriteDrink?.name || 'Капучино',
     price: 1500,
@@ -100,7 +87,9 @@ const HomePage: React.FC = () => {
         const u = JSON.parse(userData);
         return u.phone || u.id || u.userId || '87053096206';
       }
-    } catch {}
+    } catch (error) {
+      console.error('Error loading orders:', error);
+    }
     return '87053096206';
   };
 
@@ -111,21 +100,59 @@ const HomePage: React.FC = () => {
         const response = await fetch(apiUrl('orders', { action: 'get', userId }));
         if (response.ok) {
           const orders: Order[] = await response.json();
-          const counts: Record<string, number> = {};
-          orders.forEach((order) => order.items?.forEach((it) => { counts[it.name] = (counts[it.name] || 0) + it.quantity; }));
-          if (Object.keys(counts).length > 0) {
-            const favName = Object.keys(counts).reduce((a, b) => (counts[a] > counts[b] ? a : b));
-            const menuItem = getMenuItemByName(favName);
-            setFavoriteItem(menuItem);
-            const u = getUserData();
-            localStorage.setItem('user', JSON.stringify({ ...u, favoriteDrink: menuItem }));
+          const itemCounts: Record<string, { count: number; price: number }> = {};
+          
+          // Подсчитываем количество и запоминаем цену из последнего заказа
+          orders.forEach((order) => 
+            order.items?.forEach((it) => {
+              if (!itemCounts[it.name]) {
+                itemCounts[it.name] = { count: 0, price: it.price || 0 };
+              }
+              itemCounts[it.name].count += it.quantity;
+              itemCounts[it.name].price = it.price || itemCounts[it.name].price; // обновляем цену
+            })
+          );
+          
+          if (Object.keys(itemCounts).length > 0) {
+            // Находим самый популярный напиток
+            const favName = Object.keys(itemCounts).reduce((a, b) => 
+              (itemCounts[a].count > itemCounts[b].count ? a : b)
+            );
+            
+            // Ищем в меню для получения картинки
+            let found = false;
+            for (const category of drinkCategories) {
+              const item = category.products.find((p) => 
+                t(p.name) === favName || p.name === favName
+              );
+              if (item) {
+                setFavoriteItem({
+                  id: item.id,
+                  name: favName,
+                  price: itemCounts[favName].price, // берём цену из заказа!
+                  image: item.image.startsWith('/') ? `${window.location.origin}${item.image}` : item.image
+                });
+                found = true;
+                break;
+              }
+            }
+            
+            // Если не нашли в меню - используем данные из заказа
+            if (!found) {
+              setFavoriteItem({
+                id: Date.now(),
+                name: favName,
+                price: itemCounts[favName].price,
+                image: getDrinkImage(favName)
+              });
+            }
           }
         }
-      } catch {
-        // ignore
+      } catch (err) {
+        console.error('Error loading favorite drink:', err);
       }
     })();
-  }, [getMenuItemByName]);
+  }, [t, getDrinkImage]);
 
   const handleQuickOrder = () => {
     history.push('/order', { quickOrder: true, selectedItem: { id: favoriteItem.id, name: favoriteItem.name, image: favoriteItem.image, price: favoriteItem.price || 1500 } });
@@ -140,24 +167,25 @@ const HomePage: React.FC = () => {
         </div>
       </header>
 
-      <main className="p-4 space-y-8 pb-28">
+      <main className="space-y-8 pb-28">
         {/* Stories — теперь без серого блюра внутри колец и крупнее */}
-        <section>
+        <section className="px-4">
           <InstagramStoriesNew />
         </section>
 
-        {/* Акции */}
-        <section>
-          <PromotionBanner maxItems={2} />
-        </section>
-
         {/* Быстрый заказ — ЧИСТО БЕЛАЯ карточка */}
-        <section>
+        <section className="px-4">
           <div className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden">
             <div className="p-6">
               <div className="flex items-center gap-4">
-                <div className="relative w-16 h-16 rounded-2xl overflow-hidden shadow-[0_12px_32px_-16px_rgba(0,0,0,0.45)]">
-                  <img src={favoriteItem.image} className="w-full h-full object-cover" alt="" />
+                <div className="relative w-16 h-16 rounded-full overflow-hidden shadow-[0_12px_32px_-16px_rgba(0,0,0,0.45)]">
+                  {user.avatar ? (
+                    <img src={user.avatar} className="w-full h-full object-cover" alt="" />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center text-white text-xl font-bold">
+                      {user.name?.charAt(0)?.toUpperCase() || 'U'}
+                    </div>
+                  )}
                 </div>
                 <div className="min-w-0">
                   <h2 className="text-lg font-bold text-slate-900 truncate">С возвращением, {user.name}!</h2>
@@ -177,14 +205,19 @@ const HomePage: React.FC = () => {
           </div>
         </section>
 
+        {/* Акции — full-width горизонтальный скролл */}
+        <section className="-mx-0">
+          <PromotionBanner showAll={true} />
+        </section>
+
         {/* Достижения */}
-        <section>
+        <section className="px-4">
           <AchievementList />
         </section>
 
         {/* Подборка */}
-        <section>
-          <div className="px-5 mt-6">
+        <section className="px-4">
+          <div className="mt-6">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-bold tracking-tight">{curatedListData.title}</h2>
               <button className="text-sm text-slate-500">Смотреть все</button>

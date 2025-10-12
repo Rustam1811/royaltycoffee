@@ -1,6 +1,7 @@
 import { initializeApp, getApps, FirebaseApp, FirebaseError } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { getMessaging, Messaging } from 'firebase/messaging';
 
 // Web Firebase initialization (Vite env vars prefixed with VITE_)
 const firebaseConfig = {
@@ -57,4 +58,20 @@ if (existingApps.length > 0) {
 
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+
+// Initialize Firebase Cloud Messaging (only on client, guard for SSR)
+let messaging: Messaging | null = null;
+if (typeof window !== 'undefined') {
+  try {
+    messaging = getMessaging(app);
+  } catch (error) {
+    console.error('Failed to initialize Firebase Messaging:', error);
+  }
+}
+
+export function getMessagingOrNull(): Messaging | null {
+  return messaging;
+}
+
+export { messaging };
 export default app;

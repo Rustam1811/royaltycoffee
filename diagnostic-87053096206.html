@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Диагностика уведомлений - 87053096206</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+    .user-id {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 30px;
+    }
+    .section {
+      margin: 20px 0;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 10px;
+      border-left: 4px solid #667eea;
+    }
+    .section h2 {
+      font-size: 18px;
+      margin-bottom: 15px;
+      color: #333;
+    }
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .status-item:last-child { border-bottom: none; }
+    .label {
+      font-weight: 500;
+      color: #555;
+    }
+    .value {
+      font-family: 'Courier New', monospace;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: white;
+    }
+    .value.yes {
+      color: #10b981;
+      font-weight: bold;
+    }
+    .value.no {
+      color: #ef4444;
+      font-weight: bold;
+    }
+    button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin: 5px;
+      transition: all 0.3s;
+    }
+    button:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .success {
+      background: #10b981;
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 15px 0;
+      display: none;
+    }
+    .error {
+      background: #ef4444;
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 15px 0;
+      display: none;
+    }
+    .actions {
+      margin-top: 20px;
+      text-align: center;
+    }
+    #log {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 20px;
+      display: none;
+    }
+    .log-line {
+      margin: 3px 0;
+    }
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔔 Диагностика Push-уведомлений</h1>
+    <div class="user-id">Пользователь: <strong>87053096206</strong></div>
+
+    <div id="loading" class="loading">
+      <p>⏳ Загрузка данных...</p>
+    </div>
+
+    <div id="content" style="display: none;">
+      <div class="section">
+        <h2>📱 Браузер</h2>
+        <div class="status-item">
+          <span class="label">Разрешение:</span>
+          <span class="value" id="permission">-</span>
+        </div>
+        <div class="status-item">
+          <span class="label">Service Worker:</span>
+          <span class="value" id="sw">-</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>👤 Профиль пользователя</h2>
+        <div class="status-item">
+          <span class="label">Уведомления включены:</span>
+          <span class="value" id="notifEnabled">-</span>
+        </div>
+        <div class="status-item">
+          <span class="label">FCM Token (старый):</span>
+          <span class="value" id="fcmToken">-</span>
+        </div>
+        <div class="status-item">
+          <span class="label">pushOptIn:</span>
+          <span class="value" id="pushOptIn">-</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>🔐 FCM Токены (новый формат)</h2>
+        <div class="status-item">
+          <span class="label">Количество токенов:</span>
+          <span class="value" id="tokensCount">-</span>
+        </div>
+        <div id="tokensList"></div>
+      </div>
+
+      <div class="section">
+        <h2>🎯 Диагноз</h2>
+        <div id="diagnosis"></div>
+      </div>
+
+      <div class="actions">
+        <button id="btnPermission">1. Запросить разрешение браузера</button>
+        <button id="btnEnable">2. Включить уведомления в профиле</button>
+        <button id="btnGetToken">3. Получить FCM токен</button>
+        <button id="btnTest">4. Тестовое уведомление</button>
+      </div>
+
+      <div id="success" class="success"></div>
+      <div id="error" class="error"></div>
+      <div id="log"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getFirestore, doc, getDoc, collection, getDocs, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+    import { getMessaging, getToken } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBpNDja80x7MtlE7851R36zdOoqcNwC-Fk",
+      authDomain: "coffeeaddict-c9d70.firebaseapp.com",
+      projectId: "coffeeaddict-c9d70",
+      storageBucket: "coffeeaddict-c9d70.firebasestorage.app",
+      messagingSenderId: "148979196662",
+      appId: "1:148979196662:web:ef1b3fe13f80e5645b82d7"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const messaging = getMessaging(app);
+    const userId = '87053096206';
+
+    let userData = null;
+    let tokensData = [];
+
+    function log(message, type = 'info') {
+      const logDiv = document.getElementById('log');
+      logDiv.style.display = 'block';
+      const line = document.createElement('div');
+      line.className = 'log-line';
+      const timestamp = new Date().toLocaleTimeString();
+      line.textContent = `[${timestamp}] ${message}`;
+      logDiv.appendChild(line);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function showSuccess(message) {
+      const el = document.getElementById('success');
+      el.textContent = message;
+      el.style.display = 'block';
+      setTimeout(() => el.style.display = 'none', 5000);
+    }
+
+    function showError(message) {
+      const el = document.getElementById('error');
+      el.textContent = message;
+      el.style.display = 'block';
+      setTimeout(() => el.style.display = 'none', 5000);
+    }
+
+    async function checkUser() {
+      try {
+        log('Загружаю данные пользователя...');
+        
+        // Профиль
+        const userDoc = await getDoc(doc(db, 'users', userId));
+        if (!userDoc.exists()) {
+          showError('Пользователь не найден!');
+          return;
+        }
+        
+        userData = userDoc.data();
+        log('✅ Профиль загружен');
+
+        // Токены (новый формат)
+        const tokensSnap = await getDocs(collection(db, `users/${userId}/tokens`));
+        tokensData = [];
+        tokensSnap.forEach(tokenDoc => {
+          tokensData.push({ id: tokenDoc.id, ...tokenDoc.data() });
+        });
+        log(`Найдено токенов: ${tokensData.length}`);
+
+        // Обновляем UI
+        updateUI();
+      } catch (error) {
+        log('❌ Ошибка: ' + error.message);
+        showError('Ошибка загрузки: ' + error.message);
+      }
+    }
+
+    function updateUI() {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('content').style.display = 'block';
+
+      // Браузер
+      const permission = Notification.permission;
+      const permEl = document.getElementById('permission');
+      permEl.textContent = permission;
+      permEl.className = 'value ' + (permission === 'granted' ? 'yes' : 'no');
+
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        const swEl = document.getElementById('sw');
+        const hasSW = regs.some(r => r.active?.scriptURL.includes('firebase-messaging-sw.js'));
+        swEl.textContent = hasSW ? 'Зарегистрирован ✅' : 'Не найден ❌';
+        swEl.className = 'value ' + (hasSW ? 'yes' : 'no');
+      });
+
+      // Профиль
+      const notifEnabled = userData?.notificationsEnabled ?? false;
+      const notifEl = document.getElementById('notifEnabled');
+      notifEl.textContent = notifEnabled ? 'Да ✅' : 'Нет ❌';
+      notifEl.className = 'value ' + (notifEnabled ? 'yes' : 'no');
+
+      const hasFcmToken = !!userData?.fcmToken;
+      const fcmEl = document.getElementById('fcmToken');
+      fcmEl.textContent = hasFcmToken ? 'Есть ✅' : 'Нет ❌';
+      fcmEl.className = 'value ' + (hasFcmToken ? 'yes' : 'no');
+
+      const pushOptIn = userData?.pushOptIn ?? false;
+      const pushEl = document.getElementById('pushOptIn');
+      pushEl.textContent = pushOptIn ? 'Да ✅' : 'Нет ❌';
+      pushEl.className = 'value ' + (pushOptIn ? 'yes' : 'no');
+
+      // Токены
+      const tokensCountEl = document.getElementById('tokensCount');
+      tokensCountEl.textContent = tokensData.length;
+      tokensCountEl.className = 'value ' + (tokensData.length > 0 ? 'yes' : 'no');
+
+      const tokensList = document.getElementById('tokensList');
+      tokensList.innerHTML = '';
+      tokensData.forEach((token, i) => {
+        const item = document.createElement('div');
+        item.className = 'status-item';
+        item.innerHTML = `
+          <span class="label">Token ${i + 1}:</span>
+          <span class="value yes">${token.id.substring(0, 20)}...</span>
+        `;
+        tokensList.appendChild(item);
+      });
+
+      // Диагноз
+      const diagnosisEl = document.getElementById('diagnosis');
+      diagnosisEl.innerHTML = '';
+      
+      const problems = [];
+      
+      if (permission !== 'granted') {
+        problems.push('❌ Браузер не дал разрешение на уведомления');
+      }
+      
+      if (!hasFcmToken && tokensData.length === 0) {
+        problems.push('❌ Нет FCM токена (требуется для получения уведомлений)');
+      }
+      
+      if (!notifEnabled) {
+        problems.push('❌ Уведомления выключены в профиле пользователя');
+      }
+
+      if (problems.length === 0) {
+        diagnosisEl.innerHTML = '<div style="color: #10b981; font-weight: bold; padding: 15px; background: #d1fae5; border-radius: 8px;">✅ ВСЁ НАСТРОЕНО ПРАВИЛЬНО! Уведомления должны приходить.</div>';
+      } else {
+        diagnosisEl.innerHTML = problems.map(p => `<div style="color: #ef4444; padding: 5px 0;">${p}</div>`).join('');
+      }
+    }
+
+    // Кнопки
+    document.getElementById('btnPermission').onclick = async () => {
+      try {
+        log('Запрашиваю разрешение браузера...');
+        const permission = await Notification.requestPermission();
+        log('Результат: ' + permission);
+        if (permission === 'granted') {
+          showSuccess('✅ Разрешение получено!');
+        } else {
+          showError('❌ Разрешение отклонено');
+        }
+        updateUI();
+      } catch (error) {
+        log('❌ Ошибка: ' + error.message);
+        showError('Ошибка: ' + error.message);
+      }
+    };
+
+    document.getElementById('btnEnable').onclick = async () => {
+      try {
+        log('Включаю уведомления в профиле...');
+        await updateDoc(doc(db, 'users', userId), {
+          notificationsEnabled: true,
+          pushOptIn: true
+        });
+        log('✅ Уведомления включены');
+        showSuccess('✅ Уведомления включены в профиле!');
+        await checkUser();
+      } catch (error) {
+        log('❌ Ошибка: ' + error.message);
+        showError('Ошибка: ' + error.message);
+      }
+    };
+
+    document.getElementById('btnGetToken').onclick = async () => {
+      try {
+        if (Notification.permission !== 'granted') {
+          showError('Сначала дай разрешение браузера (кнопка 1)');
+          return;
+        }
+
+        log('Получаю FCM токен...');
+        
+        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        log('Service Worker зарегистрирован');
+
+        // VAPID ключ из Firebase Console
+        const vapidKey = 'BKPPcrrCt_ZQW8zIuxACO86IxEMQ8aOWKuJFeqONaI6eSyh8zVAdebf0TM_fGylIRjmnPDyiDwpuq5kC5bNNKmU';
+        
+        const token = await getToken(messaging, {
+          vapidKey: vapidKey,
+          serviceWorkerRegistration: registration
+        });
+
+        if (token) {
+          log('✅ Токен получен: ' + token.substring(0, 30) + '...');
+          
+          // Сохраняем в профиль (старый формат)
+          await updateDoc(doc(db, 'users', userId), {
+            fcmToken: token,
+            notificationsEnabled: true
+          });
+          
+          log('✅ Токен сохранён в профиль');
+          showSuccess('✅ FCM токен получен и сохранён!');
+          await checkUser();
+        } else {
+          showError('❌ Не удалось получить токен');
+        }
+      } catch (error) {
+        log('❌ Ошибка: ' + error.message);
+        showError('Ошибка: ' + error.message);
+      }
+    };
+
+    document.getElementById('btnTest').onclick = async () => {
+      alert('Для теста:\n1. Открой Firestore Console\n2. Найди коллекцию "orders"\n3. Выбери заказ с userId = 87053096206\n4. Измени status на "accepted"\n5. Жди уведомление через 2-3 секунды!');
+    };
+
+    // Загрузка при старте
+    checkUser();
+  </script>
+</body>
+</html>

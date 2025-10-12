@@ -40,16 +40,16 @@ interface AchievementListProps {
 }
 
 // —————————————————————————————————————————————————————————
-// UI helpers (премиум-палитра без бордеров)
+// UI helpers - стиль как у белой карточки приветствия
 const cardBase =
-  'rounded-2xl bg-surface shadow-card p-4 transition-[transform,box-shadow] will-change-transform';
-const cardHover = 'hover:shadow-float hover:-translate-y-[1px]';
+  'rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] p-6 transition-all duration-200 will-change-transform';
+const cardHover = '';
 const pillBase =
   'inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold';
-const pillMuted = 'bg-black/5 text-slate-700';
-const pillStrong = 'bg-black text-white';
-const progressTrack = 'w-20 h-1.5 rounded-full bg-black/10 overflow-hidden';
-const progressBar = 'h-full rounded-full bg-black';
+const pillMuted = 'bg-slate-100 text-slate-700 border border-slate-200';
+const pillStrong = 'bg-slate-900 text-white border-2 border-slate-900';
+const progressTrack = 'w-20 h-1.5 rounded-full bg-slate-100 border border-slate-200 overflow-hidden';
+const progressBar = 'h-full rounded-full bg-slate-900';
 
 // category → emoji (без внешних иконок)
 const categoryEmoji = (category: string) => {
@@ -151,7 +151,7 @@ export const AchievementList: React.FC<AchievementListProps> = ({
     if (!currentUser) return;
     try {
       const res = await fetch(
-        `https://us-central1-coffeeaddict-c9d70.cloudfunctions.net/achievements/${currentUser}`
+        `/api/promo?action=achievements&userId=${currentUser}`
       );
       if (res.ok) {
         const j = await res.json();
@@ -188,7 +188,7 @@ export const AchievementList: React.FC<AchievementListProps> = ({
     if (!currentUser) return;
     try {
       const res = await fetch(
-        `https://us-central1-coffeeaddict-c9d70.cloudfunctions.net/achievements`,
+        `/api/promo?action=achievements`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -248,6 +248,25 @@ export const AchievementList: React.FC<AchievementListProps> = ({
 
   const active = achievements.filter((a) => a.isActive);
 
+  // Фильтруем: показываем только достижения с прогрессом или полученные
+  const filteredAchievements = currentUser 
+    ? active.filter((a, index) => {
+        const { key } = getStatus(a);
+        const condObj =
+          typeof a.condition === 'object' && a.condition
+            ? a.condition
+            : { type: 'orders_count', value: 1 };
+        const progress = userProgress[condObj.type] || 0;
+        
+        // Показываем если:
+        // 1. Уже получено (claimed)
+        // 2. Разблокировано но не получено (unlocked)
+        // 3. Есть прогресс (progress > 0)
+        // 4. Это первое достижение (чтобы показать хоть что-то новичкам)
+        return key === 'claimed' || key === 'unlocked' || progress > 0 || index === 0;
+      })
+    : []; // Без авторизации не показываем достижения
+
   return (
     <section className={`${className}`}>
       <div className="flex items-center justify-between mb-3">
@@ -259,22 +278,29 @@ export const AchievementList: React.FC<AchievementListProps> = ({
 
       <div className="space-y-3">
         <AnimatePresence initial={false}>
-          {active.map((a) => {
+          {filteredAchievements.map((a) => {
             const { key, pct } = getStatus(a);
             const isClaimed = key === 'claimed';
             const isUnlocked = key === 'unlocked';
             const isCompleted = key === 'completed';
             const inProgress = key === 'in_progress';
 
-            // легкая подсветка состояния — без бордеров
-            const glow =
+            // Стиль карточки в зависимости от статуса
+            const borderColor =
               isClaimed
-                ? 'shadow-[0_18px_40px_-18px_rgba(16,185,129,0.55)]'
+                ? 'border-emerald-500 bg-emerald-50/30'
                 : isUnlocked
-                ? 'shadow-[0_18px_40px_-18px_rgba(245,158,11,0.55)]'
+                ? 'border-amber-500 bg-amber-50/30'
                 : isCompleted
-                ? 'shadow-[0_18px_40px_-18px_rgba(59,130,246,0.55)]'
-                : '';
+                ? 'border-blue-500 bg-blue-50/30'
+                : 'border-slate-200 bg-white';
+
+            const condObj =
+              typeof a.condition === 'object' && a.condition
+                ? a.condition
+                : { type: 'orders_count', value: 1 };
+            const progress = userProgress[condObj.type] || 0;
+            const required = condObj.value || 1;
 
             return (
               <motion.div
@@ -282,7 +308,7 @@ export const AchievementList: React.FC<AchievementListProps> = ({
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -12 }}
-                className={`${cardBase} ${cardHover} ${glow}`}
+                className={`${cardBase} ${cardHover} ${borderColor}`}
               >
                 <div className="flex gap-3">
                   {/* Emoji badge */}
@@ -328,8 +354,8 @@ export const AchievementList: React.FC<AchievementListProps> = ({
                               transition={{ duration: 0.4, ease: 'easeOut' }}
                             />
                           </div>
-                          <span className="text-[11px] text-slate-600 tabular-nums">
-                            {Math.round(pct)}%
+                          <span className="text-[11px] font-semibold text-slate-700 tabular-nums">
+                            {progress}/{required}
                           </span>
                         </div>
                       )}
@@ -363,12 +389,16 @@ export const AchievementList: React.FC<AchievementListProps> = ({
         </AnimatePresence>
       </div>
 
-      {active.length === 0 && (
+      {filteredAchievements.length === 0 && (
         <div className={`${cardBase} text-center`}>
           <div className="w-12 h-12 mx-auto mb-2 rounded-2xl bg-black/5 flex items-center justify-center">
             <TrophyIcon className="w-6 h-6 text-slate-500" />
           </div>
-          <p className="text-slate-600 text-sm">Достижения скоро появятся</p>
+          <p className="text-slate-600 text-sm">
+            {currentUser 
+              ? 'Совершите заказ чтобы получить первое достижение!' 
+              : 'Войдите чтобы отслеживать достижения'}
+          </p>
         </div>
       )}
     </section>

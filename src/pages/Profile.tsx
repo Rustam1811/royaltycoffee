@@ -3,6 +3,8 @@ import { motion, Variants, useReducedMotion } from 'framer-motion';
 import { StarIcon, CurrencyDollarIcon, ShoppingBagIcon, PencilIcon } from '@heroicons/react/24/solid';
 import { AchievementList } from '../components/AchievementList';
 import { PromotionBanner } from '../components/PromotionBanner';
+import { EditProfileModal } from '../components/EditProfileModal';
+import { useAuth } from '../auth/AuthContext';
 import { apiUrl } from '../config/api';
 
 // Types for orders fetched from API
@@ -15,38 +17,10 @@ interface Order {
   items?: OrderItem[];
 }
 
-// Получаем данные пользователя из localStorage
-const getUserData = () => {
-  try {
-    const userData = localStorage.getItem('user');
-    if (userData) return JSON.parse(userData);
-  } catch (e) {
-    console.warn('Failed to parse user data from localStorage', e);
-  }
-  return {
-    id: '87053096206',
-    name: 'Пользователь',
-    phone: '87053096206',
-    avatar:
-      'https://images.unsplash.com/photo-1531123414780-f74242c2b052?auto=format&fit=crop&w=300&h=300&q=80',
-  };
-};
-
-const saveUserData = (userData: { id: string; name: string; phone: string; avatar: string }) => {
-  try {
-    localStorage.setItem('user', JSON.stringify(userData));
-  } catch (e) {
-    console.warn('Failed to save user data to localStorage', e);
-  }
-};
+// Default fallback avatar
+const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1531123414780-f74242c2b052?auto=format&fit=crop&w=300&h=300&q=80';
 
 const initialUserProfile = {
-  name: 'Манарбек',
-  avatar:
-    'https://images.unsplash.com/photo-1531123414780-f74242c2b052?auto=format&fit=crop&w=300&h=300&q=80',
-  stamps: 10,
-  rarity: 'common',
-  stampsToReward: 10,
   bonusData: {
     balance: 0,
     level: 'Новичок',
@@ -55,7 +29,6 @@ const initialUserProfile = {
     totalOrders: 0,
     multiplier: 1.0,
   },
-  recentOrders: [],
   orderStats: {
     totalSpent: 0,
     favoriteItem: 'Капучино',
@@ -134,14 +107,14 @@ const StatsBar: React.FC<StatsBarProps> = ({ bonusData }) => (
 
 const UltimateProfilePage: React.FC = () => {
   const [profile, setProfile] = useState(initialUserProfile);
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [tempUserName, setTempUserName] = useState('');
+  const [showEditModal, setShowEditModal] = useState(false);
   const prefersReduced = useReducedMotion();
+  const { user, updateProfile } = useAuth();
 
   const fetchBonusData = useCallback(async () => {
+    if (!user?.uid) return;
     try {
-      const userId = getUserId();
-      const response = await fetch(apiUrl('bonus', { action: 'user', userId }));
+      const response = await fetch(apiUrl('bonus', { action: 'user', userId: user.uid }));
       if (response.ok) {
         const bonusData = await response.json();
         setProfile((prev) => ({ ...prev, bonusData }));
@@ -149,14 +122,20 @@ const UltimateProfilePage: React.FC = () => {
     } catch (e) {
       console.error('Failed to fetch bonus data', e);
     }
-  }, []);
+  }, [user?.uid]);
 
   const fetchOrderStats = useCallback(async () => {
+    if (!user?.uid) return;
     try {
-      const userId = getUserId();
-      const response = await fetch(apiUrl('orders', { action: 'get', userId }));
+      const url = apiUrl('orders', { action: 'get', userId: user.uid });
+      console.log('[Profile] Fetching orders from:', url);
+      console.log('[Profile] User ID:', user.uid);
+      
+      const response = await fetch(url);
       if (response.ok) {
         const orders: Order[] = await response.json();
+        console.log('[Profile] Orders received:', orders.length, orders);
+        
         const totalSpent = orders.reduce((sum, order) => sum + order.amount, 0);
         const averageOrderValue = orders.length > 0 ? Math.round(totalSpent / orders.length) : 0;
         const itemCounts: Record<string, number> = {};
@@ -165,47 +144,24 @@ const UltimateProfilePage: React.FC = () => {
             itemCounts[item.name] = (itemCounts[item.name] || 0) + item.quantity;
           });
         });
-        const favoriteItem = Object.keys(itemCounts).reduce((a, b) => (itemCounts[a] > itemCounts[b] ? a : b), 'Капучино');
+        const favoriteItem = Object.keys(itemCounts).length > 0 
+          ? Object.keys(itemCounts).reduce((a, b) => (itemCounts[a] > itemCounts[b] ? a : b), 'Капучино')
+          : 'Капучино';
         setProfile((prev) => ({ ...prev, orderStats: { totalSpent, favoriteItem, averageOrderValue } }));
+      } else {
+        console.error('[Profile] Failed to fetch orders:', response.status, await response.text());
       }
     } catch (e) {
       console.error('Failed to fetch order stats', e);
     }
-  }, []);
+  }, [user?.uid]);
 
   useEffect(() => {
-    fetchBonusData();
-    fetchOrderStats();
-    const userData = getUserData();
-    setTempUserName(userData.name || 'Пользователь');
-  }, [fetchBonusData, fetchOrderStats]);
-
-  const getUserId = () => {
-    try {
-      const userData = localStorage.getItem('user');
-      if (userData) {
-        const user = JSON.parse(userData);
-        return user.phone || user.id || user.userId || '87053096206';
-      }
-    } catch (e) {
-      console.warn('Failed to read user id from localStorage', e);
+    if (user?.uid) {
+      fetchBonusData();
+      fetchOrderStats();
     }
-    return '87053096206';
-  };
-
-  const handleSaveProfile = () => {
-    const userData = getUserData();
-    const updatedUserData = { ...userData, name: tempUserName };
-    saveUserData(updatedUserData);
-    setProfile((prev) => ({ ...prev, name: tempUserName }));
-    setIsEditingProfile(false);
-  };
-
-  const handleCancelEdit = () => {
-    const userData = getUserData();
-    setTempUserName(userData.name || 'Пользователь');
-    setIsEditingProfile(false);
-  };
+  }, [user?.uid, fetchBonusData, fetchOrderStats]);
 
   const sectionVariants: Variants = {
     hidden: { opacity: 0 },
@@ -218,7 +174,7 @@ const UltimateProfilePage: React.FC = () => {
   };
 
   return (
-    <div className="bg-white min-h-screen font-sans text-black">
+    <div className="min-h-screen font-sans bg-gradient-to-b from-slate-100 via-slate-100 to-white text-black">
       <header className="sticky top-0 z-10 bg-white p-4 shadow-[inset_0_-1px_0_rgba(0,0,0,0.06)]">
         <h1 className="text-2xl font-extrabold text-black text-center">Профиль</h1>
       </header>
@@ -227,36 +183,23 @@ const UltimateProfilePage: React.FC = () => {
         <motion.section custom={0} initial="hidden" animate="visible" variants={sectionVariants}>
           <div className="bg-surface rounded-3xl shadow-card p-6">
             <div className="flex items-center gap-4 mb-4">
-              <img src={getUserData().avatar} alt="Аватар" className="w-20 h-20 rounded-full object-cover shadow-lg shadow-[0_0_0_4px_white]" />
-              {isEditingProfile ? (
-                <div className="flex-1">
-                  <input
-                    type="text"
-                    value={tempUserName}
-                    onChange={(e) => setTempUserName(e.target.value)}
-                    className="text-3xl font-extrabold text-slate-900 bg-transparent shadow-[inset_0_-2px_0_rgba(59,130,246,1)] focus:shadow-[inset_0_-2px_0_rgba(37,99,235,1)] w-full"
-                    autoFocus
-                  />
-                  <div className="flex gap-2 mt-3">
-                    <button onClick={handleSaveProfile} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors text-sm font-semibold">
-                      Сохранить
-                    </button>
-                    <button onClick={handleCancelEdit} className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors text-sm font-semibold">
-                      Отмена
-                    </button>
-                  </div>
+              <img 
+                src={user?.avatar || DEFAULT_AVATAR} 
+                alt="Аватар" 
+                className="w-20 h-20 rounded-full object-cover shadow-lg shadow-[0_0_0_4px_white]" 
+              />
+              <div className="flex items-center justify-between w-full">
+                <div>
+                  <h2 className="text-3xl font-extrabold text-slate-900">{user?.name || 'Пользователь'}</h2>
+                  <p className="text-slate-500 text-sm mt-1">{user?.phone || 'Добавьте номер телефона'}</p>
                 </div>
-              ) : (
-                <div className="flex items-center justify-between w-full">
-                  <div>
-                    <h2 className="text-3xl font-extrabold text-slate-900">{getUserData().name}</h2>
-                    <p className="text-slate-500 text-sm mt-1">Нажмите на карандаш для редактирования</p>
-                  </div>
-                  <button onClick={() => setIsEditingProfile(true)} className="bg-blue-500 hover:bg-blue-600 text-white p-3 rounded-xl transition-colors shadow-lg">
-                    <PencilIcon className="w-5 h-5" />
-                  </button>
-                </div>
-              )}
+                <button 
+                  onClick={() => setShowEditModal(true)} 
+                  className="bg-slate-900 hover:bg-black text-white p-3 rounded-xl transition-colors shadow-[0_8px_24px_-12px_rgba(0,0,0,0.4)]"
+                >
+                  <PencilIcon className="w-5 h-5" />
+                </button>
+              </div>
             </div>
           </div>
         </motion.section>
@@ -308,6 +251,13 @@ const UltimateProfilePage: React.FC = () => {
           <PromotionBanner showAll={false} maxItems={2} />
         </motion.section>
       </main>
+
+      {/* Edit Profile Modal */}
+      <EditProfileModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        onSave={updateProfile}
+      />
     </div>
   );
 };

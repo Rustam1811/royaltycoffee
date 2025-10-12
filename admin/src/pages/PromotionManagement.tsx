@@ -14,6 +14,8 @@ import {
 import { CheckCircleIcon as CheckSolid } from '@heroicons/react/24/solid';
 import { api } from '../services/api';
 import { toISODate, safeStringValue } from '../utils/date';
+import { useImageUpload } from '../hooks/useImageUpload';
+import { ImageUploader } from '../components/ImageUploader';
 
 interface Promotion {
   id: string;
@@ -64,6 +66,9 @@ const PromotionManagement: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Promotion | null>(null);
 
+  // Image upload hook
+  const { uploading, progress, error: uploadError, upload, reset: resetUpload } = useImageUpload();
+
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -99,7 +104,7 @@ const PromotionManagement: React.FC = () => {
     }
   };
 
-  const resetForm = () =>
+  const resetForm = () => {
     setForm({
       title: '',
       description: '',
@@ -113,6 +118,15 @@ const PromotionManagement: React.FC = () => {
       targetAudience: 'all_users',
       isActive: true,
     });
+    resetUpload();
+  };
+
+  const handleImageUpload = async (file: File) => {
+    const result = await upload(file);
+    if (result) {
+      setForm({ ...form, image: result.url });
+    }
+  };
 
   const onEdit = (p: Promotion) => {
     setEditing(p);
@@ -189,19 +203,19 @@ const PromotionManagement: React.FC = () => {
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="bg-[var(--color-bg-base)] min-h-screen"
+      className="bg-gradient-to-b from-slate-100 via-slate-100 to-white min-h-screen pb-20"
     >
       <div className="max-w-7xl mx-auto p-6">
         {/* Header */}
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="sticky top-0 z-10 -mx-6 mb-6 px-6 py-4 bg-gradient-to-r from-[var(--color-accent-orange)] to-[var(--color-accent-pink)]/80 backdrop-blur-md shadow-card rounded-2xl"
+          className="sticky top-0 z-10 -mx-6 mb-6 px-6 py-4 bg-transparent shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] rounded-3xl"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <TagIcon className="w-7 h-7 text-white drop-shadow" />
-              <h1 className="text-2xl font-bold text-white font-[var(--font-family-heading)]">
+              <h1 className="text-2xl font-bold text-slate-900 font-sans">
                 Управление акциями
               </h1>
             </div>
@@ -213,7 +227,7 @@ const PromotionManagement: React.FC = () => {
               }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="bg-white/90 text-[var(--color-accent-orange)] px-5 py-3 rounded-2xl font-semibold shadow-card hover:bg-white transition-all duration-200 flex items-center gap-2"
+              className="bg-slate-900 text-white px-5 py-3 rounded-3xl font-semibold shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] hover:bg-white transition-all duration-200 flex items-center gap-2"
             >
               <PlusIcon className="w-5 h-5" />
               Новая акция
@@ -221,7 +235,7 @@ const PromotionManagement: React.FC = () => {
           </div>
           {/* quick stats */}
           <div className="mt-4 flex gap-3">
-            <span className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold bg-[var(--color-bg-hover)] text-[var(--color-text-secondary)] ring-1 ring-[var(--color-border)]">
+            <span className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold bg-slate-100 text-slate-600 ring-1 ring-slate-300">
               {promotions.length} всего
             </span>
             <span className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold bg-emerald-500/12 text-emerald-700 ring-1 ring-emerald-500/30">
@@ -240,28 +254,28 @@ const PromotionManagement: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-[var(--color-bg-elevated)] rounded-2xl shadow-card p-6 mb-8"
+          className="bg-white rounded-3xl shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] p-6 mb-8"
         >
           <div className="flex flex-col md:flex-row gap-4 items-stretch">
-            <div className="flex-1 bg-[var(--color-bg-hover)] rounded-2xl px-4">
+            <div className="flex-1 bg-slate-100 rounded-3xl px-4">
               <div className="flex items-center gap-3 h-12">
-                <MagnifyingGlassIcon className="w-5 h-5 text-[var(--color-text-secondary)]" />
+                <MagnifyingGlassIcon className="w-5 h-5 text-slate-600" />
                 <input
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                   placeholder="Поиск по названию или описанию…"
-                  className="w-full bg-transparent outline-none text-sm text-[var(--color-text-primary)] font-[var(--font-family-base)]"
+                  className="w-full bg-transparent outline-none text-sm text-slate-900 font-sans"
                 />
               </div>
             </div>
 
-            <div className="bg-[var(--color-bg-hover)] rounded-2xl px-4 min-w-[200px]">
+            <div className="bg-slate-100 rounded-3xl px-4 min-w-[200px]">
               <div className="flex items-center gap-3 h-12">
-                <FunnelIcon className="w-5 h-5 text-[var(--color-text-secondary)]" />
+                <FunnelIcon className="w-5 h-5 text-slate-600" />
                 <select
                   value={cat}
                   onChange={(e) => setCat(e.target.value)}
-                  className="bg-transparent outline-none text-sm text-[var(--color-text-primary)] font-[var(--font-family-base)] w-full"
+                  className="bg-transparent outline-none text-sm text-slate-900 font-sans w-full"
                 >
                   {CATEGORIES.map((c) => (
                     <option key={c.value} value={c.value}>
@@ -272,13 +286,13 @@ const PromotionManagement: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-[var(--color-bg-hover)] rounded-2xl px-4 min-w-[180px]">
+            <div className="bg-slate-100 rounded-3xl px-4 min-w-[180px]">
               <div className="flex items-center gap-3 h-12">
-                <CheckSolid className="w-5 h-5 text-[var(--color-text-secondary)]" />
+                <CheckSolid className="w-5 h-5 text-slate-600" />
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value as 'all' | 'active' | 'inactive')}
-                  className="bg-transparent outline-none text-sm text-[var(--color-text-primary)] font-[var(--font-family-base)] w-full"
+                  className="bg-transparent outline-none text-sm text-slate-900 font-sans w-full"
                 >
                   <option value="all">Все статусы</option>
                   <option value="active">Активные</option>
@@ -305,12 +319,12 @@ const PromotionManagement: React.FC = () => {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: i * 0.1 }}
-                  className="bg-[var(--color-bg-elevated)] rounded-2xl shadow-card p-6"
+                  className="bg-white rounded-3xl shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] p-6"
                 >
-                  <div className="h-40 bg-[var(--color-bg-hover)] rounded-2xl mb-4 animate-pulse" />
-                  <div className="h-4 bg-[var(--color-bg-hover)] rounded mb-2 animate-pulse" />
-                  <div className="h-3 bg-[var(--color-bg-hover)] rounded mb-6 animate-pulse" />
-                  <div className="h-10 bg-[var(--color-bg-hover)] rounded-2xl animate-pulse" />
+                  <div className="h-40 bg-slate-100 rounded-3xl mb-4 animate-pulse" />
+                  <div className="h-4 bg-slate-100 rounded mb-2 animate-pulse" />
+                  <div className="h-3 bg-slate-100 rounded mb-6 animate-pulse" />
+                  <div className="h-10 bg-slate-100 rounded-3xl animate-pulse" />
                 </motion.div>
               ))}
             </motion.div>
@@ -319,11 +333,11 @@ const PromotionManagement: React.FC = () => {
               key="empty"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="text-center text-[var(--color-text-secondary)] py-16 bg-[var(--color-bg-elevated)] rounded-2xl shadow-card"
+              className="text-center text-slate-600 py-16 bg-white rounded-3xl shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)]"
             >
-              <TagIcon className="w-16 h-16 mx-auto mb-4 opacity-50 text-[var(--color-accent-orange)]" />
-              <h3 className="text-lg font-bold text-[var(--color-text-primary)] font-[var(--font-family-heading)]">Акций пока нет</h3>
-              <p className="text-sm text-[var(--color-text-secondary)] font-[var(--font-family-base)] mt-2">Создайте первую акцию, чтобы порадовать гостей.</p>
+              <TagIcon className="w-16 h-16 mx-auto mb-4 opacity-50 text-amber-600" />
+              <h3 className="text-lg font-bold text-slate-900 font-sans">Акций пока нет</h3>
+              <p className="text-sm text-slate-600 font-sans mt-2">Создайте первую акцию, чтобы порадовать гостей.</p>
             </motion.div>
           ) : (
             <motion.div
@@ -342,7 +356,7 @@ const PromotionManagement: React.FC = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
                     whileHover={{ scale: 1.02 }}
-                    className="bg-[var(--color-bg-elevated)] rounded-2xl shadow-card overflow-hidden border border-[var(--color-border)] hover:shadow-lg transition-all duration-300"
+                    className="bg-white rounded-3xl shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden border border-slate-200 hover:shadow-lg transition-all duration-300"
                   >
                     {/* Image */}
                     {p.image && (
@@ -354,16 +368,16 @@ const PromotionManagement: React.FC = () => {
                             onClick={() => onEdit(p)}
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
-                            className="w-10 h-10 rounded-2xl bg-white/90 hover:bg-white shadow-card flex items-center justify-center transition-all duration-200"
+                            className="w-10 h-10 rounded-3xl bg-white/90 hover:bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] flex items-center justify-center transition-all duration-200"
                             title="Редактировать"
                           >
-                            <PencilIcon className="w-4 h-4 text-[var(--color-text-primary)]" />
+                            <PencilIcon className="w-4 h-4 text-slate-900" />
                           </motion.button>
                           <motion.button
                             onClick={() => onDelete(p.id)}
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
-                            className="w-10 h-10 rounded-2xl bg-white/90 hover:bg-white shadow-card flex items-center justify-center transition-all duration-200"
+                            className="w-10 h-10 rounded-3xl bg-white/90 hover:bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] flex items-center justify-center transition-all duration-200"
                             title="Удалить"
                           >
                             <TrashIcon className="w-4 h-4 text-red-600" />
@@ -375,7 +389,7 @@ const PromotionManagement: React.FC = () => {
                           <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${
                             active 
                               ? 'bg-emerald-500/12 text-emerald-700 ring-1 ring-emerald-500/30' 
-                              : 'bg-[var(--color-bg-hover)] text-[var(--color-text-secondary)] ring-1 ring-[var(--color-border)]'
+                              : 'bg-slate-100 text-slate-600 ring-1 ring-slate-300'
                           }`}>
                             {active ? 'Активна' : 'Неактивна'}
                           </span>
@@ -387,8 +401,8 @@ const PromotionManagement: React.FC = () => {
                     <div className="p-6">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-lg font-bold text-[var(--color-text-primary)] font-[var(--font-family-heading)] mb-2 line-clamp-2">{p.title}</h3>
-                          <p className="text-sm text-[var(--color-text-secondary)] font-[var(--font-family-base)] line-clamp-3">{p.description}</p>
+                          <h3 className="text-lg font-bold text-slate-900 font-sans mb-2 line-clamp-2">{p.title}</h3>
+                          <p className="text-sm text-slate-600 font-sans line-clamp-3">{p.description}</p>
                         </div>
                         {!p.image && (
                           <div className="flex gap-2">
@@ -396,7 +410,7 @@ const PromotionManagement: React.FC = () => {
                               onClick={() => onEdit(p)} 
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
-                              className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors p-2 rounded-xl hover:bg-[var(--color-bg-hover)]"
+                              className="text-slate-600 hover:text-slate-900 transition-colors p-2 rounded-xl hover:bg-slate-100"
                             >
                               <PencilIcon className="w-5 h-5" />
                             </motion.button>
@@ -404,7 +418,7 @@ const PromotionManagement: React.FC = () => {
                               onClick={() => onDelete(p.id)} 
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
-                              className="text-red-600 hover:text-red-700 transition-colors p-2 rounded-xl hover:bg-[var(--color-bg-hover)]"
+                              className="text-red-600 hover:text-red-700 transition-colors p-2 rounded-xl hover:bg-slate-100"
                             >
                               <TrashIcon className="w-5 h-5" />
                             </motion.button>
@@ -413,11 +427,11 @@ const PromotionManagement: React.FC = () => {
                       </div>
 
                       {/* Discount card */}
-                      <div className="mt-4 rounded-2xl bg-gradient-to-br from-[var(--color-accent-orange)]/10 via-[var(--color-accent-pink)]/6 to-transparent ring-1 ring-[var(--color-accent-orange)]/20 p-4 text-center">
-                        <div className="text-3xl font-bold text-[var(--color-text-primary)] font-[var(--font-family-heading)]">
+                      <div className="mt-4 rounded-3xl bg-gradient-to-br from-[var(--color-accent-orange)]/10 via-[var(--color-accent-pink)]/6 to-transparent ring-1 ring-[var(--color-accent-orange)]/20 p-4 text-center">
+                        <div className="text-3xl font-bold text-slate-900 font-sans">
                           {p.discountType === 'percentage' ? `${p.discountValue}%` : `${p.discountValue}₸`}
                         </div>
-                        <div className="text-xs text-[var(--color-text-secondary)] font-[var(--font-family-base)] mt-1">
+                        <div className="text-xs text-slate-600 font-sans mt-1">
                           {p.discountType === 'percentage' ? 'скидка' : 'фиксированная скидка'}
                         </div>
                       </div>
@@ -425,25 +439,25 @@ const PromotionManagement: React.FC = () => {
                       {/* Meta */}
                       <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                         <div className="flex items-center justify-between">
-                          <span className="text-[var(--color-text-secondary)] font-[var(--font-family-base)]">Период</span>
-                          <span className="flex items-center gap-1 text-[var(--color-text-primary)] font-[var(--font-family-base)]">
+                          <span className="text-slate-600 font-sans">Период</span>
+                          <span className="flex items-center gap-1 text-slate-900 font-sans">
                             <CalendarIcon className="w-4 h-4" />
                             {fmtDate(p.startDate)} — {fmtDate(p.endDate)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-[var(--color-text-secondary)] font-[var(--font-family-base)]">Категория</span>
-                          <span className="text-[var(--color-text-primary)] font-[var(--font-family-base)]">{p.category}</span>
+                          <span className="text-slate-600 font-sans">Категория</span>
+                          <span className="text-slate-900 font-sans">{p.category}</span>
                         </div>
                         {p.minOrderAmount > 0 && (
                           <div className="flex items-center justify-between">
-                            <span className="text-[var(--color-text-secondary)] font-[var(--font-family-base)]">Мин. заказ</span>
-                            <span className="text-[var(--color-text-primary)] font-[var(--font-family-base)]">{p.minOrderAmount}₸</span>
+                            <span className="text-slate-600 font-sans">Мин. заказ</span>
+                            <span className="text-slate-900 font-sans">{p.minOrderAmount}₸</span>
                           </div>
                         )}
                         <div className="flex items-center justify-between">
-                          <span className="text-[var(--color-text-secondary)] font-[var(--font-family-base)]">Использований</span>
-                          <span className="text-[var(--color-text-primary)] font-[var(--font-family-base)]">{p.usageCount}</span>
+                          <span className="text-slate-600 font-sans">Использований</span>
+                          <span className="text-slate-900 font-sans">{p.usageCount}</span>
                         </div>
                       </div>
 
@@ -451,8 +465,8 @@ const PromotionManagement: React.FC = () => {
                       <div className="mt-4 flex items-center justify-between">
                         <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${
                           p.targetAudience === 'all_users' 
-                            ? 'bg-[var(--color-bg-hover)] text-[var(--color-text-secondary)] ring-1 ring-[var(--color-border)]' 
-                            : 'bg-gradient-to-r from-[var(--color-accent-orange)]/10 to-[var(--color-accent-pink)]/10 text-[var(--color-accent-orange)] ring-1 ring-[var(--color-accent-orange)]/20'
+                            ? 'bg-slate-100 text-slate-600 ring-1 ring-slate-300' 
+                            : 'bg-gradient-to-r from-[var(--color-accent-orange)]/10 to-[var(--color-accent-pink)]/10 text-amber-600 ring-1 ring-[var(--color-accent-orange)]/20'
                         }`}>
                           {p.targetAudience === 'all_users' ? 'Все пользователи' : 'Постоянные'}
                         </span>
@@ -461,7 +475,7 @@ const PromotionManagement: React.FC = () => {
                             <CheckCircleIcon className="w-4 h-4" /> Действует
                           </span>
                         ) : (
-                          <span className="text-[var(--color-text-secondary)] text-sm font-[var(--font-family-base)]">Неактивна</span>
+                          <span className="text-slate-600 text-sm font-sans">Неактивна</span>
                         )}
                       </div>
                     </div>
@@ -486,11 +500,11 @@ const PromotionManagement: React.FC = () => {
                 initial={{ opacity: 0, scale: 0.96, y: 10 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.96, y: 10 }}
-                className="relative mx-auto mt-8 w-[min(920px,92vw)] bg-[var(--color-bg-elevated)] rounded-2xl shadow-card flex flex-col max-h-[90vh]"
+                className="relative mx-auto mt-8 w-[min(920px,92vw)] bg-white rounded-3xl shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] flex flex-col max-h-[90vh]"
               >
                 {/* Modal header */}
-                <div className="px-6 py-4 bg-gradient-to-b from-[var(--color-bg-elevated)] to-[var(--color-bg-elevated)]/60 border-b border-[var(--color-border)] shrink-0">
-                  <h2 className="text-xl font-bold text-[var(--color-text-primary)] font-[var(--font-family-heading)]">
+                <div className="px-6 py-4 bg-gradient-to-b from-[var(--color-bg-elevated)] to-[var(--color-bg-elevated)]/60 border-b border-slate-200 shrink-0">
+                  <h2 className="text-xl font-bold text-slate-900 font-sans">
                     {editing ? 'Редактировать акцию' : 'Новая акция'}
                   </h2>
                 </div>
@@ -500,45 +514,45 @@ const PromotionManagement: React.FC = () => {
                     {/* form left (2 cols) */}
                     <div className="md:col-span-2 space-y-4">
                       <div>
-                        <label className="block text-sm font-semibold text-[var(--color-text-primary)] font-[var(--font-family-base)] mb-2">Название</label>
+                        <label className="block text-sm font-semibold text-slate-900 font-sans mb-2">Название</label>
                         <input
                           value={form.title}
                           onChange={(e) => setForm({ ...form, title: e.target.value })}
-                          className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-orange)] transition-all duration-200 text-[var(--color-text-primary)] font-[var(--font-family-base)]"
+                          className="w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all duration-200 text-slate-900 font-sans"
                           required
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-[var(--color-text-primary)] font-[var(--font-family-base)] mb-2">Описание</label>
+                        <label className="block text-sm font-semibold text-slate-900 font-sans mb-2">Описание</label>
                         <textarea
                           value={form.description}
                           onChange={(e) => setForm({ ...form, description: e.target.value })}
                           rows={3}
-                          className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-orange)] transition-all duration-200 text-[var(--color-text-primary)] font-[var(--font-family-base)]"
+                          className="w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all duration-200 text-slate-900 font-sans"
                           required
                         />
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-semibold text-[var(--color-text-primary)] font-[var(--font-family-base)] mb-2">Тип скидки</label>
+                          <label className="block text-sm font-semibold text-slate-900 font-sans mb-2">Тип скидки</label>
                           <select
                             value={form.discountType}
                             onChange={(e) => setForm({ ...form, discountType: e.target.value as 'percentage' | 'fixed' })}
-                            className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-orange)] transition-all duration-200 text-[var(--color-text-primary)] font-[var(--font-family-base)]"
+                            className="w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all duration-200 text-slate-900 font-sans"
                           >
                             <option value="percentage">Процент (%)</option>
                             <option value="fixed">Фиксированная (₸)</option>
                           </select>
                         </div>
                         <div>
-                          <label className="block text-sm font-semibold text-[var(--color-text-primary)] font-[var(--font-family-base)] mb-2">Размер скидки</label>
+                          <label className="block text-sm font-semibold text-slate-900 font-sans mb-2">Размер скидки</label>
                           <input
                             type="number"
-                            value={form.discountValue}
+                            value={String(form.discountValue || '')}
                             onChange={(e) => setForm({ ...form, discountValue: Number(e.target.value) || 0 })}
-                            className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-orange)] transition-all duration-200 text-[var(--color-text-primary)] font-[var(--font-family-base)]"
+                            className="w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all duration-200 text-slate-900 font-sans"
                             min={0}
                             step={form.discountType === 'percentage' ? 1 : 1}
                             required
@@ -548,37 +562,36 @@ const PromotionManagement: React.FC = () => {
 
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-semibold text-[var(--color-text-primary)] font-[var(--font-family-base)] mb-2">Дата начала</label>
+                          <label className="block text-sm font-semibold text-slate-900 font-sans mb-2">Дата начала</label>
                           <input
                             type="date"
                             value={toISODate(form.startDate)}
                             onChange={(e) => setForm({ ...form, startDate: toISODate(e.target.value) })}
-                            className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-orange)] transition-all duration-200 text-[var(--color-text-primary)] font-[var(--font-family-base)]"
+                            className="w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all duration-200 text-slate-900 font-sans"
                             required
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-semibold text-[var(--color-text-primary)] font-[var(--font-family-base)] mb-2">Дата окончания</label>
+                          <label className="block text-sm font-semibold text-slate-900 font-sans mb-2">Дата окончания</label>
                           <input
                             type="date"
                             value={toISODate(form.endDate)}
                             onChange={(e) => setForm({ ...form, endDate: toISODate(e.target.value) })}
-                            className="w-full rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-base)] px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-orange)] transition-all duration-200 text-[var(--color-text-primary)] font-[var(--font-family-base)]"
+                            className="w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all duration-200 text-slate-900 font-sans"
                             required
                           />
                         </div>
                       </div>
 
-                      <div>
-                        <label className="block text-sm font-semibold text-[var(--color-text-primary)] font-[var(--font-family-base)] mb-2">Изображение</label>
-                        <input
-                          type="text"
-                          value={form.image}
-                          onChange={(e) => setForm({ ...form, image: e.target.value })}
-                          placeholder="https://…"
-                          className="w-full rounded-xl border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-amber-500"
-                        />
-                      </div>
+                      {/* Image uploader */}
+                      <ImageUploader
+                        imageUrl={form.image}
+                        onImageChange={(url) => setForm({ ...form, image: url })}
+                        uploading={uploading}
+                        progress={progress}
+                        error={uploadError}
+                        onUpload={handleImageUpload}
+                      />
                     </div>
                     {/* preview right (1 col) */}
                     <div className="md:col-span-1 elev-card overflow-hidden flex flex-col justify-between">

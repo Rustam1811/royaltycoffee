@@ -5,6 +5,7 @@ import path from "path";
 export default defineConfig({
   plugins: [react()],
   base: "/admin/",
+  envDir: "../", // Read .env from parent directory
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),

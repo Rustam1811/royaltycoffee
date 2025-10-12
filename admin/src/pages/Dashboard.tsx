@@ -1,7 +1,11 @@
 import React, { useContext } from 'react';
 import { motion } from 'framer-motion';
+import { useHistory } from 'react-router-dom';
 import { UserContext } from '@/contexts/UserContext';
-import { ChartBarIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/outline';
+import { 
+  ChartBarIcon, 
+  ClipboardDocumentListIcon
+} from '@heroicons/react/24/outline';
 
 interface Stat {
   label: string;
@@ -11,6 +15,7 @@ interface Stat {
 
 const Dashboard: React.FC = () => {
   const { user, loading } = useContext(UserContext);
+  const history = useHistory();
 
   const stats: Stat[] = [
     { label: 'Новые заказы сегодня', value: 24, roles: ['owner', 'admin'] },
@@ -18,14 +23,14 @@ const Dashboard: React.FC = () => {
     { label: 'Общая выручка', value: '₸1,200,000', roles: ['owner'] },
   ];
 
-  // Показываем индикатор загрузки в стиле клиентского приложения
+  // Показываем индикатор загрузки в стиле Analytics
   if (loading) {
     return (
-      <div className="min-h-screen font-sans bg-admin-bg-primary">
+      <div className="min-h-screen font-sans bg-gradient-to-b from-slate-100 via-slate-100 to-white pb-20">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-admin-primary border-t-transparent mx-auto mb-4"></div>
-            <p className="text-admin-text-secondary">Загрузка панели управления...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-900 border-t-transparent mx-auto mb-4"></div>
+            <p className="text-slate-600">Загрузка...</p>
           </div>
         </div>
       </div>
@@ -35,10 +40,11 @@ const Dashboard: React.FC = () => {
   // Проверяем, что пользователь загружен
   if (!user) {
     return (
-      <div className="min-h-screen font-sans bg-admin-bg-primary">
+      <div className="min-h-screen font-sans bg-gradient-to-b from-slate-100 via-slate-100 to-white pb-20">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
-            <p className="text-admin-text-secondary">Необходима авторизация</p>
+            <p className="text-slate-600">Необходима авторизация</p>
+            <p className="text-sm text-slate-500 mt-2">Пожалуйста, войдите в систему</p>
           </div>
         </div>
       </div>
@@ -67,12 +73,12 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen font-sans bg-admin-bg-primary pb-20">
+    <div className="min-h-screen font-sans bg-gradient-to-b from-slate-100 via-slate-100 to-white pb-20">
       <div className="px-4 py-6">
         <motion.h1 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-2xl font-extrabold tracking-tight text-admin-text-primary mb-6"
+          className="text-2xl font-extrabold tracking-tight text-slate-900 mb-6"
         >
           ☕ Панель управления
         </motion.h1>
@@ -148,6 +154,7 @@ const Dashboard: React.FC = () => {
                 key={shortcut.id}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
+                onClick={() => history.push(shortcut.route)}
                 className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden p-6 cursor-pointer"
               >
                 <div className="flex items-center mb-4">

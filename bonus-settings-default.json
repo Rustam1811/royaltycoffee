@@ -1,0 +1,76 @@
+{
+  "baseRate": 5,
+  "pointsPerRuble": 1,
+  "minOrderForBonus": 200,
+  "multipliers": {
+    "weekend": 2.0,
+    "morning": 1.5,
+    "evening": 1.2,
+    "vip": 1.5
+  },
+  "categories": {
+    "coffee": { "multiplier": 1.2, "name": "Кофе" },
+    "desserts": { "multiplier": 1.1, "name": "Десерты" },
+    "breakfast": { "multiplier": 1.3, "name": "Завтраки" }
+  },
+  "rewards": [
+    { 
+      "id": "coffee_free", 
+      "points": 100, 
+      "reward": "Бесплатный кофе", 
+      "description": "Любой кофе на выбор",
+      "discount": 500,
+      "type": "fixed",
+      "isActive": true 
+    },
+    { 
+      "id": "discount_10", 
+      "points": 500, 
+      "reward": "Скидка 10%", 
+      "description": "На весь заказ",
+      "discount": 10,
+      "type": "percentage",
+      "isActive": true 
+    },
+    { 
+      "id": "dessert_free", 
+      "points": 1000, 
+      "reward": "Бесплатный десерт", 
+      "description": "Любой десерт на выбор",
+      "discount": 800,
+      "type": "fixed",
+      "category": "desserts",
+      "isActive": true 
+    }
+  ],
+  "levels": [
+    { 
+      "level": 1, 
+      "name": "Новичок", 
+      "minPoints": 0, 
+      "benefits": "Базовые бонусы",
+      "bonusMultiplier": 1.0
+    },
+    { 
+      "level": 2, 
+      "name": "Любитель", 
+      "minPoints": 500, 
+      "benefits": "x1.2 бонусы",
+      "bonusMultiplier": 1.2
+    },
+    { 
+      "level": 3, 
+      "name": "Эксперт", 
+      "minPoints": 1500, 
+      "benefits": "x1.5 бонусы + раннее уведомление",
+      "bonusMultiplier": 1.5
+    },
+    { 
+      "level": 4, 
+      "name": "VIP", 
+      "minPoints": 2000, 
+      "benefits": "x2 бонусы + приоритет",
+      "bonusMultiplier": 2.0
+    }
+  ]
+}

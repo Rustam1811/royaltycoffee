@@ -4,14 +4,10 @@ import { getFirestore, collection, query, orderBy, limit, getDocs } from 'fireba
 import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
 import { parseLoyaltyPayload } from '@/utils/parseLoyaltyPayload';
 
-// Supports QR and common 1D barcodes (Code128/EAN, etc.)
-
-// Using shared parser from utils/parseLoyaltyPayload
-
 async function fetchLedger(uid: string) {
   const db = getFirestore();
   const col = collection(db, 'users', uid, 'ledger');
-  const q = query(col, orderBy('ts', 'desc'), limit(3));
+  const q = query(col, orderBy('ts', 'desc'), limit(5));
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
 }
@@ -20,7 +16,6 @@ async function callApi(path: string, body: unknown) {
   const base: string = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_BASE || '/api';
   const url = base.replace(/\/$/, '') + path;
 
-  // Attach token if available
   const { auth } = await import('@/lib/firebase');
   const token = await auth.currentUser?.getIdToken();
 
@@ -42,34 +37,144 @@ async function callApi(path: string, body: unknown) {
   return res.json();
 }
 
+type CartItem = { id: string; name: string; price: number; qty: number };
+
 export default function PosPage() {
-  const [input, setInput] = useState<string>('');
-  const [redeem, setRedeem] = useState<number>(0);
+  // Корзина
+  const [items, setItems] = useState<CartItem[]>([]);
+  const [newItemName, setNewItemName] = useState<string>('');
+  const [newItemPrice, setNewItemPrice] = useState<string>('');
+
+  // Клиент (сканируется на этапе оплаты)
   const [targetUid, setTargetUid] = useState<string | null>(null);
+  const [customerName, setCustomerName] = useState<string>('');
+  const [customerPhone, setCustomerPhone] = useState<string>('');
   const [balance, setBalance] = useState<number>(0);
   const [ledger, setLedger] = useState<Array<any>>([]);
+  
+  // Бонусы
+  const [redeem, setRedeem] = useState<number>(0);
+
+  // UI состояния
+  const [scanning, setScanning] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [processing, setProcessing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [scanning, setScanning] = useState<boolean>(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [input, setInput] = useState<string>('');
+  const [globalListen, setGlobalListen] = useState<boolean>(true);
+
+  // Сканер камеры
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scannerControls = useRef<IScannerControls | null>(null);
   const hasScanned = useRef<boolean>(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const toastTimer = useRef<number | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
-  const [globalListen, setGlobalListen] = useState<boolean>(true);
+  
+  // Пистолет сканер
   const scanBufRef = useRef<string>('');
   const scanTimesRef = useRef<number[]>([]);
   const lastTimeRef = useRef<number>(0);
   const resetTimerRef = useRef<number | null>(null);
 
-  type CartItem = { id: string; name: string; price: number; qty: number };
-  const [items, setItems] = useState<CartItem[]>([]);
-  const [newItemName, setNewItemName] = useState<string>('');
-  const [newItemPrice, setNewItemPrice] = useState<string>('');
+  // Итоговая сумма корзины
+  const totalSum = useMemo(() => {
+    return items.reduce((acc, it) => acc + it.price * it.qty, 0);
+  }, [items]);
 
-  const handleResolveTarget = useCallback(async (override?: string) => {
+  // Максимум бонусов для списания (30%)
+  const maxRedeem = useMemo(() => Math.floor(totalSum * 0.3), [totalSum]);
+
+  // Начисление бонусов (1%)
+  const accrueAmount = useMemo(() => Math.floor(totalSum * 0.01), [totalSum]);
+
+  // Финальная сумма с учетом бонусов
+  const finalSum = useMemo(() => Math.max(0, totalSum - redeem), [totalSum, redeem]);
+
+  // Добавить товар в корзину
+  const addItem = useCallback(() => {
+    const name = newItemName.trim();
+    const price = Number(newItemPrice);
+    if (!name || price <= 0) return;
+    
+    const existing = items.find(it => it.name === name && it.price === price);
+    if (existing) {
+      setItems(items.map(it => 
+        it.id === existing.id ? { ...it, qty: it.qty + 1 } : it
+      ));
+    } else {
+      setItems([...items, { id: uuidv4(), name, price, qty: 1 }]);
+    }
+    
+    setNewItemName('');
+    setNewItemPrice('');
+  }, [newItemName, newItemPrice, items]);
+
+  // Добавить быструю сумму
+  const addQuickAmount = useCallback((amount: number) => {
+    setItems([...items, { id: uuidv4(), name: 'Товар', price: amount, qty: 1 }]);
+  }, [items]);
+
+  // Удалить товар
+  const removeItem = useCallback((id: string) => {
+    setItems(items.filter(it => it.id !== id));
+  }, [items]);
+
+  // Изменить количество
+  const changeQty = useCallback((id: string, delta: number) => {
+    setItems(items.map(it => {
+      if (it.id !== id) return it;
+      const newQty = it.qty + delta;
+      return newQty > 0 ? { ...it, qty: newQty } : it;
+    }).filter(it => it.qty > 0));
+  }, [items]);
+
+  // Очистить корзину
+  const clearCart = useCallback(() => {
+    setItems([]);
+    setRedeem(0);
+  }, []);
+
+  // Обработка штрих-кода товара (добавляет в корзину)
+  const handleProductBarcode = useCallback((barcode: string) => {
+    // Простая логика: пытаемся извлечь цену из штрих-кода
+    // Если это штрих-код формата EAN-13, последние цифры могут быть ценой
+    // Для примера: если штрих-код содержит "1000", "2000" и т.д., используем это
+    
+    let price = 0;
+    let name = 'Товар';
+    
+    // Попытка определить цену из штрих-кода
+    const priceMatch = barcode.match(/(\d{4})$/); // последние 4 цифры
+    if (priceMatch) {
+      price = parseInt(priceMatch[1]);
+    }
+    
+    // Если цена не определена, используем дефолт
+    if (price === 0) {
+      price = 1000; // дефолтная цена
+      name = `Товар (${barcode.substring(0, 8)})`;
+    } else {
+      name = `Товар (${barcode.substring(0, 8)})`;
+    }
+    
+    // Проверяем, есть ли такой товар уже
+    const existing = items.find(it => it.name === name);
+    if (existing) {
+      setItems(items.map(it => 
+        it.id === existing.id ? { ...it, qty: it.qty + 1 } : it
+      ));
+    } else {
+      setItems([...items, { id: uuidv4(), name, price, qty: 1 }]);
+    }
+    
+    setToast(`Добавлен: ${name} — ${price}₸`);
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 1500);
+  }, [items]);
+
+  // Сканировать клиента (вызывается на этапе оплаты)
+  const handleScanCustomer = useCallback(async (override?: string) => {
     setError(null);
     const raw = (typeof override === 'string' ? override : input || '').trim();
     if (!raw) return;
@@ -81,474 +186,481 @@ export default function PosPage() {
       }
       const payload = parsed.uid || parsed.cardId || raw;
       const resp = await callApi('/pos/scan', { payload });
-      const { uid, balance: apiBalance } = (resp?.data || {}) as { uid: string; balance: number };
-      if (!uid) throw new Error('Неподдерживаемый код/пользователь не найден');
+      const { uid, balance: apiBalance, name, phone } = (resp?.data || {}) as { uid: string; balance: number; name?: string; phone?: string };
+      if (!uid) throw new Error('Пользователь не найден');
+      
       setTargetUid(uid);
+      setCustomerName(name || 'Клиент');
+      setCustomerPhone(phone || '');
       setBalance(Number(apiBalance || 0));
       const lg = await fetchLedger(uid);
       setLedger(lg);
       setInput('');
-      // keep focus for next scan
-      setTimeout(() => { inputRef.current?.focus(); }, 0);
-      // toast
-      const idShown = raw.startsWith('loyalty:') ? uid : (parsed?.uid || parsed?.cardId || raw);
-      setToast(`Считан ${idShown}, баланс: ${Number(apiBalance || 0)}`);
+      
+      setToast(`${name || 'Клиент'} (${phone || uid}), баланс: ${Number(apiBalance || 0)}₸`);
       if (toastTimer.current) window.clearTimeout(toastTimer.current);
       toastTimer.current = window.setTimeout(() => setToast(null), 2500);
     } catch (e: any) {
       const msg = e?.status === 400
         ? 'Неподдерживаемый код'
         : e?.status === 404
-          ? 'Пользователь не найден'
-          : (e instanceof Error ? e.message : 'Ошибка при поиске');
+        ? 'Клиент не найден'
+        : 'Ошибка сканирования';
       setError(msg);
-      setInput('');
-      setTimeout(() => { inputRef.current?.focus(); }, 0);
     } finally {
       setLoading(false);
     }
   }, [input]);
 
-  const total = useMemo(() => items.reduce((sum, it) => sum + it.price * it.qty, 0), [items]);
-  const redeemMax = useMemo(() => Math.min(Math.floor(total * 0.3), balance), [total, balance]);
-  const earnDisplay = useMemo(() => {
-    const base = Math.max(total - Math.min(redeem, redeemMax), 0);
-    return Math.ceil(base * 0.01);
-  }, [total, redeem, redeemMax]);
-
-  const addItem = useCallback((name: string, price: number) => {
-    if (!name || !isFinite(price) || price <= 0) return;
-    setItems(prev => [...prev, { id: uuidv4(), name, price: Math.floor(price), qty: 1 }]);
-  }, []);
-
-  const inc = useCallback((id: string) => {
-    setItems(prev => prev.map(it => it.id === id ? { ...it, qty: it.qty + 1 } : it));
-  }, []);
-
-  const dec = useCallback((id: string) => {
-    setItems(prev => prev.map(it => it.id === id ? { ...it, qty: Math.max(0, it.qty - 1) } : it).filter(it => it.qty > 0));
-  }, []);
-
-  const removeItem = useCallback((id: string) => {
-    setItems(prev => prev.filter(it => it.id !== id));
-  }, []);
-
-  const handleQuickSum = useCallback((amount: number) => {
-    addItem(`Быстрая сумма ${amount}`, amount);
-  }, [addItem]);
-
-  const clampRedeem = useCallback((v: number) => {
-    if (!isFinite(v) || v < 0) return 0;
-    return Math.min(Math.floor(v), redeemMax);
-  }, [redeemMax]);
-
-  useEffect(() => {
-    setRedeem(prev => clampRedeem(prev));
-  }, [redeemMax, clampRedeem]);
-
-  const humanizeError = (status?: number): string => {
-    if (status === 401 || status === 403) return 'Недостаточно прав для операции';
-    if (status === 404) return 'Пользователь не найден';
-    if (status === 422 || status === 400) return 'Нарушены лимиты операции';
-    return 'Внутренняя ошибка сервера';
-  };
-
+  // Подтверждение и оплата
   const doConfirm = useCallback(async () => {
-    if (!targetUid) return;
-    if (total <= 0) return;
-    setProcessing(true); setError(null);
+    if (!targetUid) {
+      setError('Сначала отсканируйте клиента');
+      return;
+    }
+    if (items.length === 0) {
+      setError('Корзина пуста');
+      return;
+    }
+    
+    setProcessing(true);
+    setError(null);
+    
     try {
-      const storeId = 'main';
-      const orderId = uuidv4();
-      const totalAmount = Math.floor(total);
-      const toRedeem = clampRedeem(redeem);
-      let newBalance = balance;
-
-      if (toRedeem > 0) {
-        const redeemBody = {
+      // Создаём заказ
+      const orderData = {
+        items: items.map(it => ({
+          name: it.name,
+          quantity: it.qty,
+          price: it.price
+        })),
+        total: finalSum,
+        userPhone: customerPhone,
+        customerName: customerName,
+        useBonuses: redeem > 0
+      };
+      
+      const orderResp = await callApi('/api/orders?action=create', orderData);
+      console.log('Order created:', orderResp);
+      
+      // Списываем бонусы если используются
+      if (redeem > 0) {
+        const redeemResp = await callApi('/pos/redeem', {
           uid: targetUid,
-          orderTotal: totalAmount,
-          bonusesUsed: toRedeem,
-          storeId,
-          idempotencyKey: uuidv4(),
-          orderId
-        };
-        const r = await callApi('/pos/redeem', redeemBody);
-        newBalance = Number(r?.data?.balance ?? newBalance);
+          amount: redeem
+        });
+        console.log('Redeem response:', redeemResp);
       }
-
-      const baseForEarn = Math.max(totalAmount - toRedeem, 0);
-      const bonusesEarned = Math.ceil(baseForEarn * 0.01);
-
-      if (bonusesEarned > 0 || baseForEarn >= 0) {
-        const accrueBody = {
+      
+      // Начисляем бонусы за покупку
+      if (accrueAmount > 0) {
+        const accrueResp = await callApi('/pos/accrue', {
           uid: targetUid,
-          orderTotal: baseForEarn,
-          bonusesEarned,
-          storeId,
-          idempotencyKey: uuidv4(),
-          orderId
-        };
-        const a = await callApi('/pos/accrue', accrueBody);
-        newBalance = Number(a?.data?.balance ?? newBalance);
+          amount: accrueAmount,
+          reason: 'Покупка в POS'
+        });
+        console.log('Accrue response:', accrueResp);
       }
-
-      setBalance(newBalance);
+      
+      // Обновляем историю
       const lg = await fetchLedger(targetUid);
       setLedger(lg);
-
-      setToast(`Начислено +${Math.ceil(Math.max(total - toRedeem, 0) * 0.01)} / Списано −${toRedeem}. Новый баланс: ${newBalance}`);
+      
+      // Обновляем баланс
+      const newBalance = balance - redeem + accrueAmount;
+      setBalance(newBalance);
+      
+      setToast(`✅ Оплата ${finalSum}₸ успешна!`);
       if (toastTimer.current) window.clearTimeout(toastTimer.current);
       toastTimer.current = window.setTimeout(() => setToast(null), 3000);
-
-      setItems([]);
-      setRedeem(0);
-      setInput('');
-      setTargetUid(null);
-      setTimeout(() => { inputRef.current?.focus(); }, 0);
+      
+      // Очищаем всё
+      setTimeout(() => {
+        setItems([]);
+        setRedeem(0);
+        setTargetUid(null);
+        setCustomerName('');
+        setCustomerPhone('');
+        setBalance(0);
+        setLedger([]);
+      }, 1000);
+      
     } catch (e: any) {
-      const msg = humanizeError(e?.status);
+      const msg = e?.detail?.error || e.message || 'Ошибка операции';
       setError(msg);
     } finally {
       setProcessing(false);
     }
-  }, [targetUid, total, redeem, clampRedeem, balance]);
+  }, [targetUid, items, redeem, accrueAmount, finalSum, balance, customerName, customerPhone]);
 
-  // Start/stop camera scanner
+  // Camera scanner
   useEffect(() => {
-    async function startScanner() {
-      if (!videoRef.current) return;
-      try {
-        hasScanned.current = false;
-        const reader = new BrowserMultiFormatReader();
-        const devices = await BrowserMultiFormatReader.listVideoInputDevices();
-        let deviceId: string | undefined = undefined;
-        if (devices && devices.length) {
-          const back = devices.find(d => /back|rear|environment/i.test(d.label));
-          deviceId = (back || devices[devices.length - 1]).deviceId;
-        }
+    if (!scanning || !videoRef.current) {
+      scannerControls.current?.stop();
+      scannerControls.current = null;
+      hasScanned.current = false;
+      return;
+    }
 
-        const controls = await reader.decodeFromVideoDevice(
-          deviceId,
-          videoRef.current,
-          (result, err, controls) => {
-            if (controls && !scannerControls.current) {
-              scannerControls.current = controls;
-            }
-            if (result && !hasScanned.current) {
-              hasScanned.current = true;
-              const text = result.getText();
-              setInput(text);
-              setScanning(false); // close UI
-              // Give UI a tick to close, then resolve
-              setTimeout(() => {
-                void handleResolveTarget(text);
-              }, 0);
-            }
-          }
-        );
-        scannerControls.current = controls;
-      } catch (e) {
-        setError('Не удалось запустить камеру. Разрешите доступ или используйте ввод вручную.');
+    const reader = new BrowserMultiFormatReader();
+    hasScanned.current = false;
+
+    reader.decodeFromVideoDevice(undefined, videoRef.current, (result, error, controls) => {
+      if (!scannerControls.current) scannerControls.current = controls;
+      if (result && !hasScanned.current) {
+        hasScanned.current = true;
+        const txt = result.getText();
+        setInput(txt);
+        controls.stop();
         setScanning(false);
+        void handleScanCustomer(txt);
       }
-    }
-
-    if (scanning) {
-      void startScanner();
-    } else {
-      if (scannerControls.current) {
-        try { scannerControls.current.stop(); } catch {}
-        scannerControls.current = null;
-      }
-    }
+    }).catch((err) => {
+      console.warn('Decode error:', err);
+    });
 
     return () => {
-      if (scannerControls.current) {
-        try { scannerControls.current.stop(); } catch {}
-        scannerControls.current = null;
-      }
+      scannerControls.current?.stop();
+      scannerControls.current = null;
     };
-  }, [scanning, handleResolveTarget]);
+  }, [scanning, handleScanCustomer]);
 
-  // Keep the input focused on mount
+  // Pistol scanner global listener
   useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  useEffect(() => () => { if (toastTimer.current) window.clearTimeout(toastTimer.current); }, []);
-
-  // Global pistol-scanner listener
-  useEffect(() => {
-    if (!globalListen) return;
-
-    const resetBuffer = () => {
+    if (!globalListen) {
+      if (resetTimerRef.current) window.clearTimeout(resetTimerRef.current);
       scanBufRef.current = '';
       scanTimesRef.current = [];
       lastTimeRef.current = 0;
-    };
+      return;
+    }
 
-    const scheduleReset = () => {
-      if (resetTimerRef.current) window.clearTimeout(resetTimerRef.current);
-      resetTimerRef.current = window.setTimeout(() => {
-        resetBuffer();
-      }, 300);
-    };
-
-    const onKeyPress = (e: KeyboardEvent) => {
-      const active = document.activeElement as HTMLElement | null;
-      if (active === inputRef.current) return; // our input handles its own
-
-      // Only buffer printable characters
-      if (e.key && e.key.length === 1) {
-        const now = performance.now();
-        if (lastTimeRef.current && now - lastTimeRef.current > 300) {
-          resetBuffer();
+    const handleKey = (e: KeyboardEvent) => {
+      const now = Date.now();
+      if (e.key === 'Enter') {
+        if (scanBufRef.current.trim().length > 0) {
+          const val = scanBufRef.current.trim();
+          scanBufRef.current = '';
+          scanTimesRef.current = [];
+          void handleScanCustomer(val);
         }
-        if (lastTimeRef.current) {
-          scanTimesRef.current.push(now - lastTimeRef.current);
-        }
+        return;
+      }
+
+      if (e.key.length === 1) {
+        if (resetTimerRef.current) window.clearTimeout(resetTimerRef.current);
+        resetTimerRef.current = window.setTimeout(() => {
+          scanBufRef.current = '';
+          scanTimesRef.current = [];
+        }, 200);
+
+        const delta = now - lastTimeRef.current;
         lastTimeRef.current = now;
+        
         scanBufRef.current += e.key;
-        scheduleReset();
+        if (delta > 0 && delta < 1000) {
+          scanTimesRef.current.push(delta);
+        }
+
+        const rapidCount = scanTimesRef.current.filter(d => d <= 50).length;
+        if (rapidCount >= 3) {
+          // Pistol scanner detected
+        }
       }
     };
 
-    const onKeyDown = (e: KeyboardEvent) => {
-      const active = document.activeElement as HTMLElement | null;
-      if (active === inputRef.current) return;
-      if (e.key !== 'Enter') return;
-
-      const s = scanBufRef.current.trim();
-      if (!s) return;
-      const isRapid = scanTimesRef.current.length > 0 && scanTimesRef.current.every((d) => d <= 50);
-      if (isRapid) {
-        e.preventDefault();
-        e.stopPropagation();
-        const payload = s;
-        resetBuffer();
-        setTimeout(() => { inputRef.current?.focus(); }, 0);
-        void handleResolveTarget(payload);
-      } else {
-        resetBuffer();
-      }
-    };
-
-    window.addEventListener('keypress', onKeyPress, { passive: true });
-    window.addEventListener('keydown', onKeyDown, { passive: false });
+    window.addEventListener('keydown', handleKey);
     return () => {
-      window.removeEventListener('keypress', onKeyPress as any);
-      window.removeEventListener('keydown', onKeyDown as any);
+      window.removeEventListener('keydown', handleKey);
       if (resetTimerRef.current) window.clearTimeout(resetTimerRef.current);
-      resetTimerRef.current = null;
-      scanBufRef.current = '';
-      scanTimesRef.current = [];
-      lastTimeRef.current = 0;
     };
-  }, [globalListen, handleResolveTarget]);
+  }, [globalListen, handleScanCustomer]);
 
   return (
-    <div className="p-4 max-w-3xl mx-auto space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">POS — Сканирование и операции</h1>
-      </div>
-      {toast && (
-        <div className="fixed top-4 right-4 z-50">
-          <div className="bg-emerald-600 text-white px-4 py-2 rounded shadow">
-            {toast}
-          </div>
+    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-100 to-white pb-20">
+      <div className="px-4 py-6 max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">POS-Терминал</h1>
+          <p className="text-sm text-slate-600">Кассовая система для бариста</p>
         </div>
-      )}
 
-      <div className="bg-white rounded shadow p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <button
-            className="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700 text-sm"
-            onClick={() => setScanning(s => !s)}
-          >
-            {scanning ? 'Остановить сканер' : 'Сканировать'}
-          </button>
-          <label className="flex items-center gap-2 text-sm text-gray-700 select-none">
-            <input
-              type="checkbox"
-              className="accent-indigo-600"
-              checked={globalListen}
-              onChange={(e) => setGlobalListen(e.target.checked)}
-            />
-            Слушать пистолет глобально
-          </label>
-          <input
-            className="border rounded px-2 py-1 flex-1"
-            placeholder="UID или Card ID"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            ref={inputRef}
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                void handleResolveTarget();
-              }
-            }}
-          />
-          <button
-            className="px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm"
-            onClick={() => void handleResolveTarget()}
-            disabled={loading}
-          >
-            Найти
-          </button>
-        </div>
-        <p className="text-xs text-gray-500">Поддерживается формат QR payload: loyalty:uid=&lt;uid&gt;&amp;v=1</p>
-
-        {scanning && (
-          <div className="mt-3 border rounded overflow-hidden relative">
-            <video ref={videoRef} className="w-full h-[320px] object-cover bg-black" muted playsInline />
-            <div className="absolute inset-0 pointer-events-none">
-              <div className="absolute inset-10 border-2 border-emerald-400/80 rounded" />
+        {/* Toast */}
+        {toast && (
+          <div className="fixed top-4 right-4 z-50">
+            <div className="bg-emerald-600 text-white px-6 py-3 rounded-3xl shadow-[0_16px_48px_-20px_rgba(0,0,0,0.45)] font-semibold">
+              {toast}
             </div>
-            <div className="p-2 text-xs text-gray-600">Наведите камеру на QR или штрихкод. При успешном скане ввод заполнится автоматически.</div>
           </div>
         )}
-      </div>
 
-      {targetUid && (
-        <div className="bg-white rounded shadow p-4 space-y-4">
-          <div className="flex items-center gap-6">
-            <div className="text-sm">UID: <strong>{targetUid}</strong></div>
-            <div className="text-sm">Баланс: <strong>{loading ? '...' : balance}</strong></div>
+        {/* Error */}
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-3xl">
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+        )}
+
+        {/* Step 1: Корзина (доступна всегда) */}
+        <div className="bg-white rounded-3xl shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] p-6 mb-6">
+          <h2 className="text-lg font-bold text-slate-900 mb-4">Шаг 1: Сканируйте товары</h2>
+          
+          {/* Quick amounts */}
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => addQuickAmount(1000)}
+              className="flex-1 px-4 py-3 bg-slate-900 text-white rounded-2xl font-semibold shadow-[0_14px_36px_-14px_rgba(0,0,0,0.55)] hover:bg-slate-800"
+            >
+              1000₸
+            </button>
+            <button
+              onClick={() => addQuickAmount(2000)}
+              className="flex-1 px-4 py-3 bg-slate-900 text-white rounded-2xl font-semibold shadow-[0_14px_36px_-14px_rgba(0,0,0,0.55)] hover:bg-slate-800"
+            >
+              2000₸
+            </button>
+            <button
+              onClick={() => addQuickAmount(3000)}
+              className="flex-1 px-4 py-3 bg-slate-900 text-white rounded-2xl font-semibold shadow-[0_14px_36px_-14px_rgba(0,0,0,0.55)] hover:bg-slate-800"
+            >
+              3000₸
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-3">
-              <div className="text-sm font-medium">Меню / Корзина</div>
-              <div className="flex gap-2 items-end">
-                <div className="flex-1">
-                  <label className="block text-sm mb-1">Название</label>
-                  <input
-                    className="border rounded px-2 py-1 w-full"
-                    value={newItemName}
-                    onChange={(e) => setNewItemName(e.target.value)}
-                    placeholder="Напиток / позиция"
-                  />
-                </div>
-                <div className="w-36">
-                  <label className="block text-sm mb-1">Цена</label>
-                  <input
-                    type="number"
-                    min={0}
-                    className="border rounded px-2 py-1 w-full"
-                    value={newItemPrice}
-                    onChange={(e) => setNewItemPrice(e.target.value)}
-                    placeholder="0"
-                  />
-                </div>
-                <button
-                  className="px-3 py-2 rounded bg-slate-900 text-white hover:bg-black text-sm"
-                  onClick={() => {
-                    const price = Math.floor(Number(newItemPrice) || 0);
-                    if (newItemName && price > 0) {
-                      addItem(newItemName.trim(), price);
-                      setNewItemName('');
-                      setNewItemPrice('');
-                    }
-                  }}
-                  disabled={processing}
-                >
-                  Добавить
-                </button>
-              </div>
+          {/* Manual add */}
+          <div className="flex gap-2 mb-4">
+            <input
+              type="text"
+              placeholder="Название товара"
+              value={newItemName}
+              onChange={(e) => setNewItemName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addItem()}
+              className="flex-1 px-4 py-3 rounded-3xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+            />
+            <input
+              type="number"
+              placeholder="Цена"
+              value={newItemPrice}
+              onChange={(e) => setNewItemPrice(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addItem()}
+              className="w-32 px-4 py-3 rounded-3xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+            />
+            <button
+              onClick={addItem}
+              className="px-6 py-3 bg-slate-900 text-white rounded-2xl font-semibold hover:bg-slate-800"
+            >
+              Добавить
+            </button>
+          </div>
 
-              <div className="border rounded divide-y">
-                {items.length === 0 ? (
-                  <div className="p-3 text-sm text-gray-500">Корзина пуста</div>
-                ) : (
-                  items.map((it) => (
-                    <div key={it.id} className="p-3 flex items-center justify-between">
-                      <div>
-                        <div className="text-sm font-medium">{it.name}</div>
-                        <div className="text-xs text-gray-500">{it.price} × {it.qty} = {it.price * it.qty}</div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-sm" onClick={() => dec(it.id)} disabled={processing}>−</button>
-                        <span className="w-8 text-center text-sm">{it.qty}</span>
-                        <button className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-sm" onClick={() => inc(it.id)} disabled={processing}>+</button>
-                        <button className="px-2 py-1 rounded bg-rose-100 hover:bg-rose-200 text-rose-700 text-sm" onClick={() => removeItem(it.id)} disabled={processing}>Удалить</button>
-                      </div>
+          {/* Cart items */}
+          <div className="space-y-2 mb-4">
+            {items.length === 0 ? (
+              <div className="text-center py-8 text-slate-500">Корзина пуста</div>
+            ) : (
+              items.map((item) => (
+                <div key={item.id} className="flex items-center justify-between bg-slate-50 rounded-2xl px-4 py-3">
+                  <div className="flex items-center gap-3 flex-1">
+                    <span className="font-medium text-slate-900">{item.name}</span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => changeQty(item.id, -1)}
+                        className="w-6 h-6 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-700 flex items-center justify-center text-sm"
+                      >
+                        −
+                      </button>
+                      <span className="w-8 text-center text-sm font-medium">{item.qty}</span>
+                      <button
+                        onClick={() => changeQty(item.id, 1)}
+                        className="w-6 h-6 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-700 flex items-center justify-center text-sm"
+                      >
+                        +
+                      </button>
                     </div>
-                  ))
-                )}
-              </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-slate-900 font-bold">{item.price * item.qty}₸</span>
+                    <button
+                      onClick={() => removeItem(item.id)}
+                      className="text-red-600 hover:text-red-700 font-bold"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Быстрые суммы:</span>
-                {[1000, 2000, 3000].map(v => (
-                  <button key={v} className="px-3 py-1.5 rounded bg-slate-100 hover:bg-slate-200 text-sm" onClick={() => handleQuickSum(v)} disabled={processing}>{v}</button>
-                ))}
+          {items.length > 0 && (
+            <div className="pt-4 border-t border-slate-200 flex items-center justify-between">
+              <button
+                onClick={clearCart}
+                className="text-sm text-slate-600 hover:text-slate-900"
+              >
+                Очистить корзину
+              </button>
+              <div className="flex items-center gap-4">
+                <span className="text-lg font-bold text-slate-900">Итого:</span>
+                <span className="text-2xl font-extrabold text-slate-900">{totalSum}₸</span>
               </div>
             </div>
+          )}
+        </div>
 
-            <div className="space-y-3">
-              <div className="text-sm font-medium">Оплата</div>
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-600">Итого</div>
-                <div className="text-lg font-semibold">{total}</div>
+        {/* Step 2: Сканирование клиента (только когда есть товары) */}
+        {items.length > 0 && (
+          <div className="bg-white rounded-3xl shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] p-6 mb-6">
+            <h2 className="text-lg font-bold text-slate-900 mb-4">Шаг 2: Отсканируйте клиента</h2>
+            
+            <div className="flex gap-2 mb-3">
+              <button
+                className="px-4 py-2 rounded-2xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800"
+                onClick={() => setScanning(s => !s)}
+              >
+                {scanning ? 'Остановить сканер' : '📷 Сканировать камерой'}
+              </button>
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  className="accent-slate-900"
+                  checked={globalListen}
+                  onChange={(e) => setGlobalListen(e.target.checked)}
+                />
+                Слушать пистолет
+              </label>
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                className="flex-1 px-4 py-3 rounded-3xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+                placeholder="UID или QR клиента"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                ref={inputRef}
+                onKeyDown={(e) => e.key === 'Enter' && handleScanCustomer()}
+              />
+              <button
+                className="px-6 py-3 bg-blue-600 text-white rounded-2xl font-semibold hover:bg-blue-700"
+                onClick={() => handleScanCustomer()}
+                disabled={loading}
+              >
+                {loading ? '...' : 'Найти'}
+              </button>
+            </div>
+
+            {scanning && (
+              <div className="mt-4 border rounded-3xl overflow-hidden relative">
+                <video ref={videoRef} className="w-full h-[320px] object-cover bg-black" muted playsInline />
+                <div className="absolute inset-0 pointer-events-none">
+                  <div className="absolute inset-10 border-2 border-emerald-400/80 rounded-2xl" />
+                </div>
+                <div className="p-3 text-xs text-slate-600 bg-slate-50">
+                  Наведите камеру на QR-код клиента
+                </div>
               </div>
-              <div>
-                <label className="block text-sm mb-1">Списать бонусов</label>
+            )}
+
+            {targetUid && (
+              <div className="mt-4 p-4 bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl border border-emerald-200">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-slate-600">Имя:</span>
+                  <span className="font-bold text-slate-900">{customerName || 'Клиент'}</span>
+                </div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-slate-600">Телефон:</span>
+                  <span className="font-bold text-slate-900">{customerPhone || '—'}</span>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-emerald-200">
+                  <span className="text-sm text-slate-600">Баланс бонусов:</span>
+                  <span className="font-bold text-emerald-600">{balance}₸</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 3: Бонусы и оплата (только когда клиент отсканирован) */}
+        {targetUid && items.length > 0 && (
+          <div className="bg-white rounded-3xl shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] p-6">
+            <h2 className="text-lg font-bold text-slate-900 mb-4">Шаг 3: Бонусы и оплата</h2>
+            
+            {/* Redeem bonuses */}
+            <div className="mb-4 p-4 bg-amber-50 rounded-2xl border border-amber-200">
+              <label className="block text-sm font-medium text-slate-900 mb-2">
+                Списать бонусы (макс. {maxRedeem}₸ / 30%)
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="range"
+                  min={0}
+                  max={Math.min(balance, maxRedeem)}
+                  value={redeem}
+                  onChange={(e) => setRedeem(Number(e.target.value))}
+                  className="flex-1"
+                />
                 <input
                   type="number"
                   min={0}
-                  className="border rounded px-2 py-1 w-full"
+                  max={Math.min(balance, maxRedeem)}
                   value={redeem}
-                  onChange={(e) => setRedeem(clampRedeem(Number(e.target.value) || 0))}
-                  disabled={processing}
+                  onChange={(e) => setRedeem(Math.min(Number(e.target.value), Math.min(balance, maxRedeem)))}
+                  className="w-24 px-3 py-2 rounded-2xl border border-amber-300 bg-white text-right"
                 />
-                <div className="text-xs text-gray-500 mt-1">макс {redeemMax}</div>
               </div>
-              <div className="text-sm text-gray-600">Начисление ≈ {earnDisplay} (1% от суммы после списания)</div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  className="px-4 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 text-sm"
-                  onClick={() => void doConfirm()}
-                  disabled={processing || !targetUid || total <= 0}
-                >
-                  {processing ? 'Обработка…' : 'Подтвердить'}
-                </button>
-                <button
-                  className="px-4 py-2 rounded bg-slate-100 hover:bg-slate-200 text-sm"
-                  onClick={() => { setItems([]); setRedeem(0); }}
-                  disabled={processing}
-                >
-                  Очистить корзину
-                </button>
-              </div>
-
-              <div className="pt-2">
-                <div className="text-sm font-medium mb-2">Последние операции</div>
-                {ledger.length === 0 ? (
-                  <div className="text-sm text-gray-500">Нет операций</div>
-                ) : (
-                  <ul className="text-sm space-y-1">
-                    {ledger.map((e) => (
-                      <li key={e.id} className="flex items-center justify-between border-b last:border-b-0 py-1">
-                        <span>{e.type}</span>
-                        <span>{e.amount}</span>
-                        <span className="text-xs text-gray-500">{e.ts}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+              <div className="mt-2 text-xs text-slate-600">
+                Доступно: {balance}₸ | Можно использовать: {Math.min(balance, maxRedeem)}₸
               </div>
             </div>
-          </div>
-        </div>
-      )}
 
-      {error && (
-        <div className="text-sm text-red-600">{error}</div>
-      )}
+            {/* Summary */}
+            <div className="space-y-2 mb-6 p-4 bg-slate-50 rounded-2xl">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-600">Сумма покупки:</span>
+                <span className="font-semibold text-slate-900">{totalSum}₸</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-600">Списание бонусов:</span>
+                <span className="font-semibold text-red-600">−{redeem}₸</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-600">Начисление бонусов (1%):</span>
+                <span className="font-semibold text-green-600">+{accrueAmount}₸</span>
+              </div>
+              <div className="pt-2 border-t border-slate-200 flex justify-between">
+                <span className="font-bold text-slate-900">К оплате:</span>
+                <span className="text-2xl font-extrabold text-slate-900">{finalSum}₸</span>
+              </div>
+            </div>
+
+            {/* Confirm button */}
+            <button
+              onClick={doConfirm}
+              disabled={processing}
+              className="w-full px-6 py-4 bg-slate-900 text-white rounded-2xl font-bold text-lg shadow-[0_14px_36px_-14px_rgba(0,0,0,0.55)] hover:bg-slate-800 disabled:opacity-50"
+            >
+              {processing ? 'Обработка...' : `Подтвердить оплату ${finalSum}₸`}
+            </button>
+
+            {/* Recent transactions */}
+            {ledger.length > 0 && (
+              <div className="mt-6 pt-6 border-t border-slate-200">
+                <h3 className="text-sm font-bold text-slate-900 mb-3">Последние операции</h3>
+                <div className="space-y-2">
+                  {ledger.map((e) => (
+                    <div key={e.id} className="flex items-center justify-between text-sm p-2 bg-slate-50 rounded-xl">
+                      <span className="text-slate-600">{e.type}</span>
+                      <span className={`font-semibold ${e.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {e.amount > 0 ? '+' : ''}{e.amount}₸
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

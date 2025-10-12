@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { NavLink, useHistory } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { 
   HomeIcon, 
   ChartBarIcon, 
@@ -12,11 +12,12 @@ import {
   MegaphoneIcon,
   PhotoIcon,
   Bars3Icon,
-  XMarkIcon
+  XMarkIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline';
 import { UserRole, getUserRole, getCurrentUserId } from '@/utils/userRoles';
 import { UserContext } from '@/contexts/UserContext';
-import { pageVariants } from '@/ui/motion';
+
 
 interface NavigationItem {
   id: string;
@@ -114,7 +115,7 @@ const NAVIGATION_ITEMS: NavigationItem[] = [
  */
 export const ResponsiveAdminNavigation: React.FC<ResponsiveAdminNavigationProps> = ({
   currentRoute,
-  onRouteChange
+  onRouteChange: _onRouteChange
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -144,13 +145,13 @@ export const ResponsiveAdminNavigation: React.FC<ResponsiveAdminNavigationProps>
   const HamburgerButton = () => (
     <motion.button
       onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-      className="md:hidden fixed top-4 left-4 z-50 bg-admin-bg-secondary p-3 rounded-lg shadow-admin-md border border-admin-border"
+      className="md:hidden fixed top-4 left-4 z-50 bg-white p-3 rounded-lg shadow-lg border border-slate-200"
       whileTap={{ scale: 0.95 }}
     >
       {isMobileMenuOpen ? (
-        <XMarkIcon className="w-6 h-6 text-admin-text-primary" />
+        <XMarkIcon className="w-6 h-6 text-slate-900" />
       ) : (
-        <Bars3Icon className="w-6 h-6 text-admin-text-primary" />
+        <Bars3Icon className="w-6 h-6 text-slate-900" />
       )}
     </motion.button>
   );
@@ -163,10 +164,10 @@ export const ResponsiveAdminNavigation: React.FC<ResponsiveAdminNavigationProps>
     return (
       <NavLink
         to={`/admin/${item.route}`}
-        className={`flex items-center w-full p-3 rounded-lg transition-all duration-200 ${
+        className={`group flex items-center w-full px-4 py-3 rounded-lg transition-all duration-200 ${
           isActive 
-            ? 'bg-admin-primary/10 text-admin-primary border-r-4 border-admin-primary shadow-admin' 
-            : 'text-admin-text-secondary hover:bg-admin-bg-gray hover:text-admin-text-primary'
+            ? 'bg-slate-900 text-white shadow-md' 
+            : 'text-slate-700 hover:bg-slate-100'
         }`}
         onClick={() => {
           if (isMobile) {
@@ -174,16 +175,15 @@ export const ResponsiveAdminNavigation: React.FC<ResponsiveAdminNavigationProps>
           }
         }}
       >
-        <Icon className={`w-5 h-5 mr-3 ${isActive ? 'text-admin-primary' : 'text-admin-text-muted'}`} />
-        <span className={`font-medium ${isActive ? 'text-admin-primary' : 'text-admin-text-primary'}`}>
+        <Icon className={`w-5 h-5 mr-3 transition-transform group-hover:scale-110 ${
+          isActive ? 'text-white' : 'text-slate-500'
+        }`} />
+        <span className={`font-medium ${isActive ? 'text-white' : 'text-slate-700'}`}>
           {item.label}
         </span>
         
         {isActive && (
-          <motion.div
-            className="ml-auto w-2 h-2 bg-admin-primary rounded-full"
-            layoutId="activeIndicator"
-          />
+          <div className="ml-auto w-2 h-2 bg-white rounded-full" />
         )}
       </NavLink>
     );
@@ -191,33 +191,44 @@ export const ResponsiveAdminNavigation: React.FC<ResponsiveAdminNavigationProps>
 
   // Содержимое сайдбара
   const SidebarContent = () => (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col bg-white">
       {/* Шапка сайдбара */}
-      <div className="p-6 border-b border-admin-border bg-gradient-to-r from-admin-primary to-admin-secondary">
-        <h2 className="text-xl font-bold text-admin-text-white">Админ-панель</h2>
-        <p className="text-sm text-admin-text-white/80 mt-1">
-          {userRole === UserRole.ADMIN ? 'Администратор' : 'Бариста'} • ID: {currentUserId}
-        </p>
-        <div className={`inline-flex px-3 py-1 rounded-full text-xs font-medium mt-2 ${
+      <div className="p-6 border-b border-slate-200">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center">
+            <SparklesIcon className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">Админ-панель</h2>
+            <p className="text-xs text-slate-500">Sunfood Coffee</p>
+          </div>
+        </div>
+        
+        <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium ${
           userRole === UserRole.ADMIN 
-            ? 'bg-admin-warning/20 text-admin-warning border border-admin-warning/30' 
-            : 'bg-admin-info/20 text-admin-info border border-admin-info/30'
+            ? 'bg-slate-100 text-slate-900 border border-slate-200' 
+            : 'bg-slate-100 text-slate-700 border border-slate-200'
         }`}>
-          {userRole === UserRole.ADMIN ? 'Администратор' : 'Бариста'}
+          <div className="w-2 h-2 bg-slate-900 rounded-full"></div>
+          {userRole === UserRole.ADMIN ? '👑 Администратор' : '☕ Бариста'}
         </div>
       </div>
 
       {/* Навигационные элементы */}
-      <nav className="flex-1 p-4 space-y-2">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {availableItems.map((item) => (
           <NavigationItem key={item.id} item={item} />
         ))}
       </nav>
 
       {/* Футер сайдбара */}
-      <div className="p-4 border-t border-admin-border bg-admin-bg-gray">
-        <div className="text-xs text-admin-text-muted font-medium">
-          ☕ Sunfood Coffee Admin
+      <div className="p-4 border-t border-slate-200">
+        <div className="flex items-center justify-between text-xs text-slate-500">
+          <span className="flex items-center gap-1.5">
+            <span className="text-base">☕</span>
+            Sunfood Coffee
+          </span>
+          <span className="text-slate-400">v2.0</span>
         </div>
       </div>
     </div>
@@ -229,7 +240,7 @@ export const ResponsiveAdminNavigation: React.FC<ResponsiveAdminNavigationProps>
       <HamburgerButton />
 
       {/* Десктопный сайдбар */}
-      <div className="hidden md:flex h-screen w-64 bg-admin-bg-secondary border-r border-admin-border fixed left-0 top-0 z-40 shadow-admin-lg">
+      <div className="hidden md:flex h-screen w-64 bg-white fixed left-0 top-0 z-40 border-r border-slate-200 shadow-sm">
         <SidebarContent />
       </div>
 
@@ -243,7 +254,7 @@ export const ResponsiveAdminNavigation: React.FC<ResponsiveAdminNavigationProps>
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMobileMenuOpen(false)}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 md:hidden"
             />
             
             {/* Мобильный сайдбар */}
@@ -251,8 +262,8 @@ export const ResponsiveAdminNavigation: React.FC<ResponsiveAdminNavigationProps>
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed left-0 top-0 h-full w-80 bg-admin-bg-secondary z-50 shadow-admin-lg md:hidden"
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="fixed left-0 top-0 h-full w-80 max-w-[85vw] bg-white z-50 shadow-xl md:hidden"
             >
               <SidebarContent />
             </motion.div>
