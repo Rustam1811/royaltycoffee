@@ -3,7 +3,6 @@ import { drinkCategories } from './data/drinksData';
 import { foodCategories } from './data/foodData';
 import { PremiumMenu } from '../../features/menu/premium/PremiumMenu';
 import { useTranslation } from 'react-i18next';
-import { motion } from 'framer-motion';
 
 const humanize = (key: string) => key.split('.').pop()?.replace(/_/g,' ') || key;
 
@@ -71,30 +70,28 @@ const Menu: React.FC = () => {
   return (
     <div className="min-h-screen bg-[var(--color-bg-base)]">
       {/* Переключатель Напитки/Еда */}
-      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 py-3">
+      <div className="sticky top-0 z-30 bg-white/90 border-b border-slate-200 px-4 py-3" style={{ backdropFilter: 'blur(8px)' }}>
         <div className="flex gap-2 max-w-md mx-auto">
-          <motion.button
-            whileTap={{ scale: 0.97 }}
+          <button
             onClick={() => setActiveTab('drinks')}
-            className={`flex-1 px-6 py-3 rounded-full font-semibold text-sm transition-all ${
+            className={`flex-1 px-6 py-3 rounded-full font-semibold text-sm transition-all duration-150 active:scale-95 ${
               activeTab === 'drinks'
                 ? 'bg-slate-900 text-white shadow-lg'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
             ☕ Напитки
-          </motion.button>
-          <motion.button
-            whileTap={{ scale: 0.97 }}
+          </button>
+          <button
             onClick={() => setActiveTab('food')}
-            className={`flex-1 px-6 py-3 rounded-full font-semibold text-sm transition-all ${
+            className={`flex-1 px-6 py-3 rounded-full font-semibold text-sm transition-all duration-150 active:scale-95 ${
               activeTab === 'food'
                 ? 'bg-slate-900 text-white shadow-lg'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
             🍔 Еда
-          </motion.button>
+          </button>
         </div>
       </div>
 

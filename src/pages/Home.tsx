@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
 import { ShoppingBagIcon } from '@heroicons/react/24/solid';
 import { InstagramStoriesNew } from '../components/InstagramStoriesNew';
 import { PromotionBanner } from '../components/PromotionBanner';
@@ -8,7 +7,6 @@ import { useHistory } from 'react-router-dom';
 import { drinkCategories } from './menu/data/drinksData';
 import { useTranslation } from 'react-i18next';
 import { apiUrl } from '../config/api';
-import { listContainer, listItem } from '../ui/motion';
 
 interface OrderItem { name: string; quantity: number; price?: number }
 interface Order { amount?: number; items?: OrderItem[] }
@@ -52,8 +50,8 @@ const curatedListData = {
 };
 
 const ProfilePill = ({ name, avatar }: { name: string; avatar: string }) => (
-  <div className="flex items-center gap-2 bg-white/60 backdrop-blur-xl rounded-full p-1 pr-3 shadow-[0_8px_24px_-12px_rgba(0,0,0,0.25)]">
-    <img src={avatar} alt={name} className="w-8 h-8 rounded-full object-cover" />
+  <div className="flex items-center gap-2 bg-white/80 rounded-full p-1 pr-3 shadow-sm" style={{ backdropFilter: 'blur(8px)' }}>
+    <img src={avatar} alt={name} className="w-8 h-8 rounded-full object-cover" loading="lazy" />
     <span className="font-semibold text-slate-800 text-sm">Привет, {name}</span>
   </div>
 );
@@ -62,7 +60,6 @@ const HomePage: React.FC = () => {
   const history = useHistory();
   const { t } = useTranslation();
   const [user] = useState(getUserData());
-  const prefersReduced = useReducedMotion();
 
   const drinkImages: Record<string, string> = useMemo(() => ({
     Капучино: 'https://images.unsplash.com/photo-1557006034-834c6c0d49c2?auto=format&fit=crop&w=800&q=80',
@@ -160,7 +157,7 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen font-sans bg-gradient-to-b from-slate-100 via-slate-100 to-white">
-      <header className="sticky top-0 z-30 px-4 py-3 bg-white/65 backdrop-blur-md shadow-[0_8px_20px_-12px_rgba(0,0,0,0.25)]">
+      <header className="sticky top-0 z-30 px-4 py-3 bg-white/80 shadow-sm" style={{ backdropFilter: 'blur(8px)' }}>
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-extrabold tracking-tight text-slate-900">Coffee Addict</h1>
           <ProfilePill name={user.name} avatar={user.avatar} />
@@ -175,12 +172,12 @@ const HomePage: React.FC = () => {
 
         {/* Быстрый заказ — ЧИСТО БЕЛАЯ карточка */}
         <section className="px-4">
-          <div className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden">
+          <div className="rounded-3xl bg-white shadow-lg overflow-hidden" style={{ contain: 'layout style paint' }}>
             <div className="p-6">
               <div className="flex items-center gap-4">
-                <div className="relative w-16 h-16 rounded-full overflow-hidden shadow-[0_12px_32px_-16px_rgba(0,0,0,0.45)]">
+                <div className="relative w-16 h-16 rounded-full overflow-hidden shadow-md">
                   {user.avatar ? (
-                    <img src={user.avatar} className="w-full h-full object-cover" alt="" />
+                    <img src={user.avatar} className="w-full h-full object-cover" alt="" loading="lazy" />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center text-white text-xl font-bold">
                       {user.name?.charAt(0)?.toUpperCase() || 'U'}
@@ -193,14 +190,13 @@ const HomePage: React.FC = () => {
                 </div>
               </div>
 
-              <motion.button
-                whileTap={{ scale: 0.97 }}
+              <button
                 onClick={handleQuickOrder}
-                className="mt-4 w-full h-12 rounded-full bg-slate-900 text-white font-semibold flex items-center justify-center gap-2 shadow-[0_14px_36px_-14px_rgba(0,0,0,0.55)] active:shadow-none hover:bg-black transition-colors"
+                className="mt-4 w-full h-12 rounded-full bg-slate-900 text-white font-semibold flex items-center justify-center gap-2 shadow-lg active:scale-95 hover:bg-black transition-all duration-150"
               >
                 <ShoppingBagIcon className="w-5 h-5" />
                 Заказать в 1 клик
-              </motion.button>
+              </button>
             </div>
           </div>
         </section>
@@ -222,19 +218,14 @@ const HomePage: React.FC = () => {
               <h2 className="text-lg font-bold tracking-tight">{curatedListData.title}</h2>
               <button className="text-sm text-slate-500">Смотреть все</button>
             </div>
-            <motion.div
-              variants={listContainer(0.25)}
-              initial="hidden"
-              animate="show"
-              className="grid grid-cols-3 gap-3"
-            >
+            <div className="grid grid-cols-3 gap-3">
               {curatedListData.items.map((it) => (
-                <motion.div key={it.id} variants={listItem(!!prefersReduced)} className="rounded-xl overflow-hidden bg-white shadow-card">
-                  <img src={it.image} alt="" className="w-full h-24 object-cover" />
+                <div key={it.id} className="rounded-xl overflow-hidden bg-white shadow-card" style={{ contain: 'layout style paint' }}>
+                  <img src={it.image} alt="" className="w-full h-24 object-cover" loading="lazy" />
                   <div className="p-2 text-[12px] font-medium line-clamp-2">{it.name}</div>
-                </motion.div>
+                </div>
               ))}
-            </motion.div>
+            </div>
           </div>
         </section>
       </main>

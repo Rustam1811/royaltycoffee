@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
 
 export interface PremiumDrinkBadge { type:string; label:string; color?:string; }
 export interface PremiumDrinkItem {
@@ -18,16 +17,9 @@ export const DrinkCardPremiumImpl: React.FC<Props> = ({ item, onOpen }) => {
   const [loaded, setLoaded] = useState(false);
 
   return (
-    <motion.button
+    <button
       onClick={() => onOpen(item.id)}
       data-fly-id={item.id}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{
-        delay: 0,
-        duration: 0.2
-      }}
-      whileTap={{ scale: 0.98 }}
       className="
         group relative flex flex-col
         w-full h-[320px] p-0
@@ -35,11 +27,14 @@ export const DrinkCardPremiumImpl: React.FC<Props> = ({ item, onOpen }) => {
         rounded-[28px]
         shadow-[0_1px_3px_rgba(0,0,0,0.05)]
         hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)]
+        active:scale-[0.98]
         border-0
-        transition-all duration-300 ease-out
+        transition-all duration-150 ease-out
         focus:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2
         overflow-hidden
+        will-change-transform
       "
+      style={{ contain: 'layout style paint' }}
     >
       {/* Simple badge */}
       {item.badges && item.badges.length > 0 && (
@@ -64,14 +59,15 @@ export const DrinkCardPremiumImpl: React.FC<Props> = ({ item, onOpen }) => {
             alt={item.name}
             loading="lazy"
             decoding="async"
+            fetchPriority="low"
             width={320}
             height={400}
             onLoad={() => setLoaded(true)}
-            style={{ aspectRatio: '3/4' }}
+            style={{ aspectRatio: '3/4', willChange: 'auto' }}
             className={`
               w-full h-full object-cover
               drop-shadow-sm
-              transition-opacity duration-300
+              transition-opacity duration-200
               ${loaded ? 'opacity-100' : 'opacity-0'}
             `}
           />
@@ -111,7 +107,7 @@ export const DrinkCardPremiumImpl: React.FC<Props> = ({ item, onOpen }) => {
           </div>
         </div>
       </div>
-    </motion.button>
+    </button>
   );
 };
 
