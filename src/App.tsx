@@ -1,23 +1,26 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter, Switch, Route, Redirect, NavLink, useRouteMatch, useLocation } from "react-router-dom";
 import { motion, useReducedMotion } from 'framer-motion';
 import { HomeIcon, Squares2X2Icon, ShoppingBagIcon, CreditCardIcon, UserCircleIcon } from '@heroicons/react/24/solid';
 
-import Home from './pages/Home';
-import Profile from './pages/Profile';
-import Menu from './pages/menu/Menu';
-import Order from './pages/Order';
-import Booking from './pages/Booking';
-import Card from './pages/Card';
-import Login from './pages/Login';
+// Lazy load страницы для быстрой загрузки
+const Home = lazy(() => import('./pages/Home'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Menu = lazy(() => import('./pages/menu/Menu'));
+const Order = lazy(() => import('./pages/Order'));
+const Booking = lazy(() => import('./pages/Booking'));
+const Card = lazy(() => import('./pages/Card'));
+const Login = lazy(() => import('./pages/Login'));
 
 import { CartProvider } from './contexts/CartContext';
 import { AuthProvider, useAuth } from './auth/AuthContext';
-import { initializeFCM } from './services/messaging';
-import { createPWAUpdater } from './pwa/pwa-updater';
-
+import { HomeSkeleton } from './components/Skeleton';
 import "./index.css";
 import { pageVariants } from './ui/motion';
+
+// Lazy загрузка FCM только когда нужно
+const initializeFCM = () => import('./services/messaging').then(m => m.initializeFCM());
+const createPWAUpdater = () => import('./pwa/pwa-updater').then(m => m.createPWAUpdater);
 
 const navItems = [
   { to: "/home", icon: HomeIcon, label: "Главная" },
@@ -74,8 +77,11 @@ const PrivateRoute: React.FC<{ component: React.ComponentType<Record<string, unk
     <Route
       {...rest}
       render={(props) =>
-        loading ? null : user ? (
-          <motion.div
+        loading ? (
+          <HomeSkeleton />
+        ) : user ? (
+          <Suspense fallback={<HomeSkeleton />}>
+            <motion.div
               key={location.pathname}
               variants={pageVariants(!!prefersReduced)}
               initial="initial"
@@ -85,6 +91,7 @@ const PrivateRoute: React.FC<{ component: React.ComponentType<Record<string, unk
             >
               <C {...props} />
             </motion.div>
+          </Suspense>
         ) : (
           <Redirect to={{ pathname: '/login', state: { redirect: location.pathname } }} />
         )
@@ -99,15 +106,15 @@ const AppContent: React.FC = () => {
   const { user } = useAuth();
   
   useEffect(() => {
-    const pwaUpdater = createPWAUpdater({
-      autoReload: true
+    // Lazy init PWA updater
+    createPWAUpdater().then((factory) => {
+      const pwaUpdater = factory({ autoReload: true });
+      pwaUpdater.init();
+      
+      return () => {
+        pwaUpdater.destroy();
+      };
     });
-    
-    pwaUpdater.init();
-    
-    return () => {
-      pwaUpdater.destroy();
-    };
   }, []);
 
   useEffect(() => {
@@ -119,9 +126,10 @@ const AppContent: React.FC = () => {
           initializeFCM().then(() => {
             localStorage.setItem('notifications-asked', 'true');
           });
-        }, 2000);
-      } else {
-        initializeFCM();
+        }, 3000); // Увеличиваем задержку до 3 секунд
+      } else if (hasAskedForNotifications) {
+        // Загружаем FCM в фоне, только если пользователь уже согласился
+        initializeFCM().catch(console.error);
       }
     }
   }, [user]);
@@ -129,30 +137,32 @@ const AppContent: React.FC = () => {
   return (
     <>
       <main className="pb-24 overflow-hidden min-h-screen">
-        <Switch location={location} key={location.pathname}>
-          {/* /admin теперь отдельное приложение */}
-          <Route exact path="/login" render={() => (
-            <motion.div
-              key={location.pathname}
-              variants={pageVariants(!!prefersReduced)}
-              initial="initial"
-              animate="enter"
-              exit="exit"
-              className="w-full"
-            >
-              <Login />
-            </motion.div>
-          )} />
+        <Suspense fallback={<HomeSkeleton />}>
+          <Switch location={location} key={location.pathname}>
+            {/* /admin теперь отдельное приложение */}
+            <Route exact path="/login" render={() => (
+              <motion.div
+                key={location.pathname}
+                variants={pageVariants(!!prefersReduced)}
+                initial="initial"
+                animate="enter"
+                exit="exit"
+                className="w-full"
+              >
+                <Login />
+              </motion.div>
+            )} />
 
-          <PrivateRoute exact path="/home" component={Home} />
-          <PrivateRoute exact path="/menu" component={Menu} />
-          <PrivateRoute exact path="/profile" component={Profile} />
-          <PrivateRoute exact path="/card" component={Card} />
-          <PrivateRoute exact path="/booking" component={Booking} />
-          <PrivateRoute exact path="/order" component={Order} />
-          {/* /admin теперь отдельное приложение */}
-          <Route exact path="/"><Redirect to="/home" /></Route>
-        </Switch>
+            <PrivateRoute exact path="/home" component={Home} />
+            <PrivateRoute exact path="/menu" component={Menu} />
+            <PrivateRoute exact path="/profile" component={Profile} />
+            <PrivateRoute exact path="/card" component={Card} />
+            <PrivateRoute exact path="/booking" component={Booking} />
+            <PrivateRoute exact path="/order" component={Order} />
+            {/* /admin теперь отдельное приложение */}
+            <Route exact path="/"><Redirect to="/home" /></Route>
+          </Switch>
+        </Suspense>
       </main>
       <BottomNavBar />
     </>

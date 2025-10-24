@@ -13,10 +13,12 @@ import {
   PhotoIcon,
   Bars3Icon,
   XMarkIcon,
-  SparklesIcon
+  SparklesIcon,
+  TruckIcon,
+  MapPinIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/outline';
-import { UserRole, getUserRole, getCurrentUserId } from '@/utils/userRoles';
-import { UserContext } from '@/contexts/UserContext';
+import { UserContext, type Role } from '@/contexts/UserContext';
 
 
 interface NavigationItem {
@@ -24,7 +26,7 @@ interface NavigationItem {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   route: string;
-  roles: UserRole[];
+  roles: Role[];
 }
 
 interface ResponsiveAdminNavigationProps {
@@ -41,70 +43,98 @@ const NAVIGATION_ITEMS: NavigationItem[] = [
     label: 'Главная',
     icon: HomeIcon,
     route: 'dashboard',
-    roles: [UserRole.ADMIN, UserRole.BARISTA]
+    roles: ['admin', 'barista']
+  },
+  {
+    id: 'courier-dashboard',
+    label: 'Мои доставки',
+    icon: TruckIcon,
+    route: 'courier-dashboard',
+    roles: ['courier']
+  },
+  {
+    id: 'courier-documents',
+    label: 'Мои документы',
+    icon: DocumentTextIcon,
+    route: 'courier-documents',
+    roles: ['courier']
   },
   {
     id: 'orders',
     label: 'Заказы',
     icon: ClipboardDocumentListIcon,
     route: 'orders',
-    roles: [UserRole.ADMIN, UserRole.BARISTA]
+    roles: ['admin', 'barista', 'courier']
   },
   {
     id: 'pos',
     label: 'POS',
     icon: ClipboardDocumentListIcon,
     route: 'pos',
-    roles: [UserRole.ADMIN, UserRole.BARISTA]
-  },
-  {
-    id: 'analytics',
-    label: 'Аналитика',
-    icon: ChartBarIcon,
-    route: 'analytics',
-    roles: [UserRole.ADMIN]
+    roles: ['admin', 'barista']
   },
   {
     id: 'menu',
     label: 'Меню',
     icon: CogIcon,
     route: 'menu',
-    roles: [UserRole.ADMIN]
+    roles: ['admin', 'barista']
+  },
+  {
+    id: 'analytics',
+    label: 'Аналитика',
+    icon: ChartBarIcon,
+    route: 'analytics',
+    roles: ['admin']
   },
   {
     id: 'bonuses',
     label: 'Бонусы',
     icon: GiftIcon,
     route: 'bonuses',
-    roles: [UserRole.ADMIN]
+    roles: ['admin']
   },
   {
     id: 'achievements',
     label: 'Достижения',
     icon: TrophyIcon,
     route: 'achievements',
-    roles: [UserRole.ADMIN]
+    roles: ['admin']
   },
   {
     id: 'promotions',
     label: 'Акции',
     icon: MegaphoneIcon,
     route: 'promotions',
-    roles: [UserRole.ADMIN]
+    roles: ['admin']
   },
   {
     id: 'stories',
     label: 'Истории',
     icon: PhotoIcon,
     route: 'stories',
-    roles: [UserRole.ADMIN]
+    roles: ['admin']
   },
   {
     id: 'users',
     label: 'Пользователи',
     icon: UserGroupIcon,
     route: 'users',
-    roles: [UserRole.ADMIN]
+    roles: ['admin']
+  },
+  {
+    id: 'delivery',
+    label: 'Доставка',
+    icon: TruckIcon,
+    route: 'delivery',
+    roles: ['admin']
+  },
+  {
+    id: 'couriers',
+    label: 'Курьеры',
+    icon: MapPinIcon,
+    route: 'couriers',
+    roles: ['admin']
   }
 ];
 
@@ -114,15 +144,13 @@ const NAVIGATION_ITEMS: NavigationItem[] = [
  * - Скрыта на мобильных, открывается по клику на иконку
  */
 export const ResponsiveAdminNavigation: React.FC<ResponsiveAdminNavigationProps> = ({
-  currentRoute,
-  onRouteChange: _onRouteChange
+  currentRoute
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   
   const { user } = useContext(UserContext);
-  const currentUserId = user?.uid || getCurrentUserId();
-  const userRole = user?.role === 'admin' ? UserRole.ADMIN : user?.role === 'barista' ? UserRole.BARISTA : getUserRole(currentUserId);
+  const userRole: Role = user?.role || 'user';
 
   // Проверяем размер экрана
   useEffect(() => {
@@ -205,12 +233,12 @@ export const ResponsiveAdminNavigation: React.FC<ResponsiveAdminNavigationProps>
         </div>
         
         <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium ${
-          userRole === UserRole.ADMIN 
+          userRole === 'admin' 
             ? 'bg-slate-100 text-slate-900 border border-slate-200' 
             : 'bg-slate-100 text-slate-700 border border-slate-200'
         }`}>
           <div className="w-2 h-2 bg-slate-900 rounded-full"></div>
-          {userRole === UserRole.ADMIN ? '👑 Администратор' : '☕ Бариста'}
+          {userRole === 'admin' ? '👑 Администратор' : userRole === 'courier' ? '🚚 Курьер' : '☕ Бариста'}
         </div>
       </div>
 

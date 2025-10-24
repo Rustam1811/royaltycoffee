@@ -127,17 +127,31 @@ body { -webkit-tap-highlight-color: transparent; }
 
 /* Премиум-кольцо для сторис: чётко, без анимаций и без серых кромок */
 .ring2{
-  position:relative;
-  display:inline-block;
-  width:var(--size,76px);
-  height:var(--size,76px);
-  border-radius:9999px;
-  background:transparent;
-  border:0; outline:0;
-  filter:
-    drop-shadow(0 12px 28px rgba(0,0,0,.16))
-    drop-shadow(0 6px 14px rgba(0,0,0,.10));
+   position:relative;
+   display:inline-block;
+   width:var(--size,76px);
+   height:var(--size,76px);
+   border-radius:9999px;
+   background:transparent;
+   border:0; outline:0;
+filter:
+drop-shadow(0 12px 28px rgba(0,0,0,.16))
+drop-shadow(0 6px 14px rgba(0,0,0,.10));
+/* убрали drop-shadow — он и рисовал сплошную тёмную полосу */
 }
+.ring2-inner{
+   position:absolute;
+   inset:calc(var(--thickness,4px));
+   border-radius:9999px;
+ background:rgba(255,255,255,.85);
+ -webkit-backdrop-filter:blur(8px);
+          backdrop-filter:blur(8px);
+ background: transparent; /* без «молочного» слоя */
+ /* без backdrop-filter, чтобы не мутнить фон под лентой */
+   overflow:hidden;
+   border:0; outline:0;
+}
+
 .ring2::before{
   content:"";
   position:absolute;
@@ -154,16 +168,7 @@ body { -webkit-tap-highlight-color: transparent; }
 .ring2.close-friends::before{
   background:linear-gradient(45deg,#22c55e 0%,#16a34a 50%,#15803d 100%);
 }
-.ring2-inner{
-  position:absolute;
-  inset:calc(var(--thickness,4px));
-  border-radius:9999px;
-  background:rgba(255,255,255,.85);
-  -webkit-backdrop-filter:blur(8px);
-          backdrop-filter:blur(8px);
-  overflow:hidden;
-  border:0; outline:0;
-}
+
 
 /* Скрыть полосы прокрутки в ленте */
 .no-scrollbar::-webkit-scrollbar{ display:none; }

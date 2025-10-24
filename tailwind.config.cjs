@@ -37,6 +37,15 @@ module.exports = {
         'pos-0': '0% 50%',
         'pos-100': '100% 50%',
       },
+      keyframes: {
+        shimmer: {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
+        },
+      },
+      animation: {
+        shimmer: 'shimmer 2s linear infinite',
+      },
     },
   },
   plugins: [],

@@ -1,16 +1,38 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ClockIcon, CheckCircleIcon, BellAlertIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { ClockIcon, CheckCircleIcon, BellAlertIcon, CheckIcon, TruckIcon } from '@heroicons/react/24/outline';
 
 type OrderStatus = 'pending' | 'accepted' | 'ready' | 'completed';
 
 interface OrderStatusBadgeProps {
   status: OrderStatus;
   showText?: boolean;
+  deliveryType?: 'pickup' | 'delivery';
 }
 
-const OrderStatusBadge: React.FC<OrderStatusBadgeProps> = ({ status, showText = true }) => {
+const OrderStatusBadge: React.FC<OrderStatusBadgeProps> = ({ status, showText = true, deliveryType }) => {
   const getStatusConfig = (status: OrderStatus) => {
+    // Для доставки показываем упрощенный статус
+    if (deliveryType === 'delivery') {
+      // Все статусы кроме "Выдан" показываем как "В доставке"
+      if (status !== 'completed') {
+        return {
+          icon: TruckIcon,
+          text: 'В доставке',
+          color: 'bg-blue-500/20 text-blue-500 border-blue-500/30',
+          iconColor: 'text-blue-500'
+        };
+      }
+      // Выдан = Доставлен
+      return {
+        icon: CheckIcon,
+        text: 'Доставлен',
+        color: 'bg-green-500/20 text-green-500 border-green-500/30',
+        iconColor: 'text-green-500'
+      };
+    }
+
+    // Для самовывоза - как было раньше
     switch (status) {
       case 'pending':
         return {

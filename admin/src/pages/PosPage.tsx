@@ -402,7 +402,7 @@ export default function PosPage() {
         )}
 
         {/* Step 1: Корзина (доступна всегда) */}
-        <div className="bg-white rounded-3xl shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] p-6 mb-6">
+        <div className="bg-white rounded-3xl shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] p-4 mb-4">
           <h2 className="text-lg font-bold text-slate-900 mb-4">Шаг 1: Сканируйте товары</h2>
           
           {/* Quick amounts */}
@@ -510,7 +510,7 @@ export default function PosPage() {
 
         {/* Step 2: Сканирование клиента (только когда есть товары) */}
         {items.length > 0 && (
-          <div className="bg-white rounded-3xl shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] p-6 mb-6">
+          <div className="bg-white rounded-3xl shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] p-4 mb-4">
             <h2 className="text-lg font-bold text-slate-900 mb-4">Шаг 2: Отсканируйте клиента</h2>
             
             <div className="flex gap-2 mb-3">
@@ -582,7 +582,7 @@ export default function PosPage() {
 
         {/* Step 3: Бонусы и оплата (только когда клиент отсканирован) */}
         {targetUid && items.length > 0 && (
-          <div className="bg-white rounded-3xl shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] p-6">
+          <div className="bg-white rounded-3xl shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] p-4">
             <h2 className="text-lg font-bold text-slate-900 mb-4">Шаг 3: Бонусы и оплата</h2>
             
             {/* Redeem bonuses */}

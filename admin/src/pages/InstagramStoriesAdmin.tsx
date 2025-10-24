@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   PlusIcon,
@@ -11,6 +11,8 @@ import {
   HeartIcon,
   ShareIcon,
   PlayIcon,
+  VideoCameraIcon,
+  ArrowUpTrayIcon,
 } from "@heroicons/react/24/outline";
 // import { ApiService } from "@/services/apiConfig";
 import StoriesService, { Story as ServiceStory } from "@/services/stories";
@@ -37,8 +39,24 @@ const GRADIENTS: Record<string, string> = {
   purple: "linear-gradient(135deg, #a855f7, #ec4899)",
 };
 
+const MAX_IMAGE_SIZE_MB = 10;
+const MAX_VIDEO_SIZE_MB = 100;
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "image/avif"];
+const ALLOWED_VIDEO_TYPES = [
+  "video/mp4",
+  "video/quicktime",
+  "video/webm",
+  "video/x-m4v",
+  "video/mpeg",
+  "video/3gpp",
+  "video/3gpp2",
+];
+const ALLOWED_IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif", ".avif"];
+const ALLOWED_VIDEO_EXTENSIONS = [".mp4", ".mov", ".m4v", ".webm", ".mpeg", ".mpg", ".3gp", ".3g2"];
+
 interface StoryFormData {
   title: string;
+  contentType: "image" | "video";
   mediaUrl?: string;
   duration: number;
   link?: string;
@@ -58,14 +76,34 @@ const InstagramStoriesAdmin: React.FC = () => {
 
   const [formData, setFormData] = useState<StoryFormData>({
     title: "",
+    contentType: "image",
     duration: 6,
   });
 
-  const { upload } = useStoryUpload();
+  const { upload, state: uploadState } = useStoryUpload();
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [localPreview, setLocalPreview] = useState<string | null>(null);
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const previewObjectUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     loadStories();
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (previewObjectUrlRef.current) {
+        URL.revokeObjectURL(previewObjectUrlRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (formData.mediaUrl) {
+      setLocalPreview(formData.mediaUrl);
+    }
+  }, [formData.mediaUrl]);
 
   const loadStories = async () => {
     try {
@@ -116,7 +154,7 @@ const InstagramStoriesAdmin: React.FC = () => {
 
     const payload: Partial<ServiceStory> = {
       title: formData.title,
-      contentType: "image",
+      contentType: formData.contentType,
       mediaUrl: formData.mediaUrl,
       duration: Math.min(15, Math.max(1, Number(formData.duration || 6))),
       link: formData.link ?? undefined,
@@ -135,7 +173,17 @@ const InstagramStoriesAdmin: React.FC = () => {
   };
 
   const resetForm = () => {
-    setFormData({ title: "", duration: 6 });
+    if (previewObjectUrlRef.current) {
+      URL.revokeObjectURL(previewObjectUrlRef.current);
+      previewObjectUrlRef.current = null;
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    setLocalPreview(null);
+    setSelectedFileName(null);
+    setUploadError(null);
+    setFormData({ title: "", contentType: "image", duration: 6 });
     setShowForm(false);
     setEditingStory(null);
   };
@@ -147,6 +195,145 @@ const InstagramStoriesAdmin: React.FC = () => {
       await loadStories();
     } catch {
       alert("Удаление не удалось");
+    }
+  };
+
+  const clearPreviewObjectUrl = () => {
+    if (previewObjectUrlRef.current) {
+      URL.revokeObjectURL(previewObjectUrlRef.current);
+      previewObjectUrlRef.current = null;
+    }
+  };
+
+  const handleSelectContentType = (type: "image" | "video") => {
+    if (type === formData.contentType) return;
+    clearPreviewObjectUrl();
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    setUploadError(null);
+    setSelectedFileName(null);
+    setLocalPreview(null);
+    setFormData((prev) => ({
+      ...prev,
+      contentType: type,
+      mediaUrl: undefined,
+    }));
+  };
+
+  const validateFile = (file: File, isVideo: boolean) => {
+    const limit = (isVideo ? MAX_VIDEO_SIZE_MB : MAX_IMAGE_SIZE_MB) * 1024 * 1024;
+    if (file.size > limit) {
+      setUploadError(
+        isVideo
+          ? `Видео должно быть не больше ${MAX_VIDEO_SIZE_MB}MB`
+          : `Изображение должно быть не больше ${MAX_IMAGE_SIZE_MB}MB`
+      );
+      return false;
+    }
+
+    const allowedTypes = isVideo ? ALLOWED_VIDEO_TYPES : ALLOWED_IMAGE_TYPES;
+    const allowedExt = isVideo ? ALLOWED_VIDEO_EXTENSIONS : ALLOWED_IMAGE_EXTENSIONS;
+    const name = file.name.toLowerCase();
+    const isTypeAllowed = allowedTypes.includes(file.type);
+    const isExtAllowed = allowedExt.some((ext) => name.endsWith(ext));
+
+    if (!isTypeAllowed && !isExtAllowed) {
+      setUploadError(
+        isVideo
+          ? "Поддерживаются форматы MP4, MOV, WEBM, M4V, MPEG до 100MB"
+          : "Поддерживаются изображения JPG, PNG, WEBP, HEIC, AVIF до 10MB"
+      );
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleFileUpload = async (file: File) => {
+    const isVideo = formData.contentType === "video";
+    if (!validateFile(file, isVideo)) {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
+
+    setUploadError(null);
+    setSelectedFileName(file.name);
+    const previousMediaUrl = formData.mediaUrl;
+    setFormData((prev) => ({ ...prev, mediaUrl: undefined }));
+
+    clearPreviewObjectUrl();
+    const objectUrl = URL.createObjectURL(file);
+    previewObjectUrlRef.current = objectUrl;
+    setLocalPreview(objectUrl);
+
+    try {
+      const result = await upload(file, isVideo ? "video" : "image");
+      setFormData((prev) => ({
+        ...prev,
+        mediaUrl: result.url,
+        contentType: isVideo ? "video" : "image",
+      }));
+      setLocalPreview(result.url);
+      setUploadError(null);
+    } catch (error) {
+      console.error(error);
+      setUploadError(
+        error instanceof Error ? error.message : "Не удалось загрузить файл, попробуйте ещё раз"
+      );
+      if (previousMediaUrl) {
+        setFormData((prev) => ({ ...prev, mediaUrl: previousMediaUrl }));
+        setLocalPreview(previousMediaUrl);
+      } else {
+        setLocalPreview(null);
+      }
+      setSelectedFileName(null);
+    } finally {
+      clearPreviewObjectUrl();
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleFileInputChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    await handleFileUpload(file);
+  };
+
+  const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    if (uploadState.uploading) return;
+    const file = event.dataTransfer.files?.[0];
+    if (file) {
+      await handleFileUpload(file);
+    }
+  };
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+  };
+
+  const openFileDialog = () => {
+    if (uploadState.uploading) return;
+    fileInputRef.current?.click();
+  };
+
+  const isVideoSelected = formData.contentType === "video";
+  const acceptAttribute = isVideoSelected ? ALLOWED_VIDEO_TYPES.join(",") : "image/*";
+  const uploadHint = isVideoSelected
+    ? "MP4, MOV, WEBM, M4V, MPEG до 100MB"
+    : "JPG, PNG, WEBP, HEIC, AVIF до 10MB";
+  const uploadProgress = Math.round(uploadState.progress || 0);
+
+  const handleUploadAreaKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (uploadState.uploading) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openFileDialog();
     }
   };
 
@@ -380,13 +567,21 @@ const InstagramStoriesAdmin: React.FC = () => {
                     </motion.button>
                     <motion.button
                       onClick={() => {
+                        clearPreviewObjectUrl();
                         setEditingStory(story);
                         setFormData({
                           title: story.title,
+                          contentType: story.contentType === "video" ? "video" : "image",
                           mediaUrl: story.mediaUrl,
                           duration: story.duration,
                           link: story.link ?? undefined,
                         });
+                        setLocalPreview(story.mediaUrl ?? null);
+                        setSelectedFileName(null);
+                        setUploadError(null);
+                        if (fileInputRef.current) {
+                          fileInputRef.current.value = "";
+                        }
                         setShowForm(true);
                       }}
                       className="p-3 rounded-full text-white hover:bg-white/25 backdrop-blur-sm transition"
@@ -469,22 +664,139 @@ const InstagramStoriesAdmin: React.FC = () => {
                   />
                 </div>
 
-                <div className="text-center py-8">
-                  <p className="text-lg font-medium mb-4" style={{ color: COLORS.text }}>
-                    Создайте свою историю в StoryStudio
-                  </p>
-                  <p className="text-sm mb-6" style={{ color: COLORS.sub }}>
-                    Редактор позволяет создавать красивые истории с текстом, изображениями и эффектами
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setStudioOpen(true)}
-                    className="px-6 py-3 rounded-xl text-white shadow hover:shadow-md transition"
-                    style={{ background: COLORS.primary }}
-                  >
-                    Открыть StoryStudio
-                  </button>
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: COLORS.text }}>
+                    Формат контента
+                  </label>
+                  <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectContentType("image")}
+                      className={[
+                        "flex-1 min-w-[140px] px-4 py-3 rounded-xl border transition font-semibold flex items-center justify-center gap-2",
+                        !isVideoSelected
+                          ? "border-[var(--color-accent-orange)] bg-[color-mix(in_oklab,var(--color-accent-orange)_12%,white)] text-[var(--color-accent-orange)]"
+                          : "border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-orange)] hover:text-[var(--color-accent-orange)]"
+                      ].join(" ")}
+                    >
+                      <PhotoIcon className="w-5 h-5" />
+                      Фото
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectContentType("video")}
+                      className={[
+                        "flex-1 min-w-[140px] px-4 py-3 rounded-xl border transition font-semibold flex items-center justify-center gap-2",
+                        isVideoSelected
+                          ? "border-[var(--color-accent-orange)] bg-[color-mix(in_oklab,var(--color-accent-orange)_12%,white)] text-[var(--color-accent-orange)]"
+                          : "border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-orange)] hover:text-[var(--color-accent-orange)]"
+                      ].join(" ")}
+                    >
+                      <VideoCameraIcon className="w-5 h-5" />
+                      Видео
+                    </button>
+                  </div>
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: COLORS.text }}>
+                    Медиафайл
+                  </label>
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={openFileDialog}
+                    onKeyDown={handleUploadAreaKeyDown}
+                    onDrop={handleDrop}
+                    onDragOver={handleDragOver}
+                    className={[
+                      "relative flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-5 sm:p-6 text-center transition",
+                      localPreview
+                        ? "border-transparent bg-[var(--color-bg-hover)]/45"
+                        : "border-[var(--color-border)] hover:border-[var(--color-accent-orange)] hover:bg-[var(--color-bg-hover)]/40",
+                      uploadState.uploading ? "cursor-progress opacity-80" : "cursor-pointer"
+                    ].join(" ")}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept={acceptAttribute}
+                      onChange={handleFileInputChange}
+                      className="hidden"
+                    />
+                    {localPreview ? (
+                      <div className="w-full max-w-[260px] aspect-[9/16] rounded-2xl overflow-hidden bg-black/5">
+                        {isVideoSelected ? (
+                          <video
+                            src={localPreview}
+                            className="h-full w-full object-cover"
+                            controls
+                            playsInline
+                            muted
+                            preload="metadata"
+                          />
+                        ) : (
+                          <img
+                            src={localPreview}
+                            alt="Story preview"
+                            className="h-full w-full object-cover"
+                          />
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 text-sm text-[var(--color-text-secondary)]">
+                        <ArrowUpTrayIcon className="w-8 h-8 text-[var(--color-accent-orange)]" />
+                        <span className="font-medium">Перетащите или выберите файл</span>
+                        <span className="text-xs">{uploadHint}</span>
+                      </div>
+                    )}
+
+                    {uploadState.uploading && (
+                      <div className="absolute inset-0 rounded-2xl bg-white/85 backdrop-blur-sm flex flex-col items-center justify-center gap-2">
+                        <div className="w-10 h-10 rounded-full border-4 border-[var(--color-accent-orange)] border-t-transparent animate-spin" />
+                        <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                          Загружаем… {uploadProgress}%
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  {selectedFileName && !uploadState.uploading && (
+                    <p className="mt-2 text-sm text-[var(--color-text-secondary)] truncate" title={selectedFileName}>
+                      {selectedFileName}
+                    </p>
+                  )}
+                  {uploadError && (
+                    <p className="mt-2 text-sm text-red-600">{uploadError}</p>
+                  )}
+                </div>
+
+                {formData.contentType === "image" ? (
+                  <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-hover)]/35 p-6 text-center">
+                    <p className="text-lg font-medium mb-3" style={{ color: COLORS.text }}>
+                      Создайте сторис в StoryStudio
+                    </p>
+                    <p className="text-sm mb-5" style={{ color: COLORS.sub }}>
+                      Соберите визуал в редакторе: фон, текст и графику. После экспорта мы автоматически загрузим PNG.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setStudioOpen(true)}
+                      className="px-6 py-3 rounded-xl text-white shadow hover:shadow-md transition disabled:opacity-60"
+                      style={{ background: COLORS.primary }}
+                      disabled={uploadState.uploading}
+                    >
+                      Открыть StoryStudio
+                    </button>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-hover)]/35 p-5 flex items-start gap-3 text-left">
+                    <VideoCameraIcon className="w-6 h-6 text-[var(--color-accent-orange)] mt-1" />
+                    <div className="space-y-2 text-sm" style={{ color: COLORS.sub }}>
+                      <p className="font-semibold text-[var(--color-text-primary)]">Загружайте вертикальные видео до 100MB.</p>
+                      <p>Поддерживаем MP4, MOV, WEBM, M4V, MPEG. Видео воспроизводится в сторис со звуком.</p>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: COLORS.text }}>
@@ -562,7 +874,10 @@ const InstagramStoriesAdmin: React.FC = () => {
                     // Загружаем через useStoryUpload → получаем реальный CDN URL
                     const file = new File([blob], `story-${Date.now()}.png`, { type: "image/png" });
                     const res = await upload(file, "image");
-                    setFormData((fd) => ({ ...fd, mediaUrl: res.url }));
+                    setFormData((fd) => ({ ...fd, mediaUrl: res.url, contentType: "image" }));
+                    setLocalPreview(res.url);
+                    setSelectedFileName(null);
+                    setUploadError(null);
                     setStudioOpen(false);
                     alert("История создана! Теперь укажите название и опубликуйте.");
                   } catch (e) {
@@ -618,6 +933,7 @@ const InstagramStoriesAdmin: React.FC = () => {
 };
 
 export default InstagramStoriesAdmin;
+
 
 
 

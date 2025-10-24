@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { MobileAdminNavigation, useMobileAdminNavigation } from '@/components/MobileAdminNavigation';
-import { UserRole, getUserRole, getCurrentUserId, getRoleDisplayName } from '@/utils/userRoles';
+import { UserContext, type Role } from '@/contexts/UserContext';
 import { motion, AnimatePresence, anticipate } from 'framer-motion';
 
 // Импорт страниц
@@ -18,9 +18,8 @@ import StoryManagement from '@/pages/StoryManagement';
  */
 const MobileAdminRoutes: React.FC = () => {
   const { currentRoute, setCurrentRoute } = useMobileAdminNavigation('orders');
-  const currentUserId = getCurrentUserId();
-  const userRole = getUserRole(currentUserId);
-  const roleDisplayName = getRoleDisplayName(userRole);
+  const { user } = useContext(UserContext);
+  const userRole: Role = user?.role || 'user';
 
   /**
    * Рендер текущей страницы
@@ -32,19 +31,19 @@ const MobileAdminRoutes: React.FC = () => {
       case 'orders':
         return <OrderManagement />;
       case 'analytics':
-        return userRole === UserRole.ADMIN ? <Analytics /> : <div>Нет доступа</div>;
+        return userRole === 'admin' ? <Analytics /> : <div>Нет доступа</div>;
       case 'menu':
-        return userRole === UserRole.ADMIN ? <MenuPageNew /> : <div>Нет доступа</div>;
+        return userRole === 'admin' ? <MenuPageNew /> : <div>Нет доступа</div>;
       case 'bonuses':
-        return userRole === UserRole.ADMIN ? <BonusManagement /> : <div>Нет доступа</div>;
+        return userRole === 'admin' ? <BonusManagement /> : <div>Нет доступа</div>;
       case 'achievements':
-        return userRole === UserRole.ADMIN ? <AchievementManagement /> : <div>Нет доступа</div>;
+        return userRole === 'admin' ? <AchievementManagement /> : <div>Нет доступа</div>;
       case 'promotions':
-        return userRole === UserRole.ADMIN ? <PromotionManagement /> : <div>Нет доступа</div>;
+        return userRole === 'admin' ? <PromotionManagement /> : <div>Нет доступа</div>;
       case 'stories':
-        return userRole === UserRole.ADMIN ? <StoryManagement /> : <div>Нет доступа</div>;
+        return userRole === 'admin' ? <StoryManagement /> : <div>Нет доступа</div>;
       case 'users':
-        return userRole === UserRole.ADMIN ? <div>Управление пользователями (в разработке)</div> : <div>Нет доступа</div>;
+        return userRole === 'admin' ? <div>Управление пользователями (в разработке)</div> : <div>Нет доступа</div>;
       default:
         return <OrderManagement />;
     }
@@ -73,15 +72,17 @@ const MobileAdminRoutes: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl font-bold text-gray-900">Админ-панель</h1>
-              <p className="text-sm text-gray-500">{roleDisplayName} • ID: {currentUserId}</p>
+              <p className="text-sm text-gray-500">
+                {userRole === 'admin' ? 'Администратор' : userRole === 'courier' ? 'Курьер' : 'Бариста'} • {user?.email || 'Неизвестно'}
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                userRole === UserRole.ADMIN 
+                userRole === 'admin' 
                   ? 'bg-purple-100 text-purple-800' 
                   : 'bg-blue-100 text-blue-800'
               }`}>
-                {roleDisplayName}
+                {userRole === 'admin' ? 'Администратор' : userRole === 'courier' ? 'Курьер' : 'Бариста'}
               </div>
             </div>
           </div>

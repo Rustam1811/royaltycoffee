@@ -192,7 +192,7 @@ const AchievementManagement: React.FC = () => {
 
     return (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-gradient-to-b from-slate-100 via-slate-100 to-white min-h-screen pb-20">
-            <div className="max-w-7xl mx-auto p-6">
+            <div className="max-w-7xl mx-auto p-3 sm:p-4">
                 {/* Header */}
                 <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="sticky top-0 z-10 -mx-6 mb-6 px-6 py-4 bg-transparent shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] rounded-3xl">
                     <div className="flex items-center justify-between">
@@ -210,7 +210,7 @@ const AchievementManagement: React.FC = () => {
                 {/* Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {achievements.map((achievement) => (
-                        <motion.div key={achievement.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} whileHover={{ y: -2 }} className="bg-white rounded-3xl shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] p-6 border border-slate-200">
+                        <motion.div key={achievement.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} whileHover={{ y: -2 }} className="bg-white rounded-3xl shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] p-4 border border-slate-200">
                             <div className="flex items-start justify-between mb-4">
                                 <div className="flex items-center gap-3 min-w-0">
                                     <span className="text-3xl">{achievement.icon}</span>
@@ -255,8 +255,8 @@ const AchievementManagement: React.FC = () => {
                 {/* Modal */}
                 {showModal && (
                     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                        <motion.div initial={{ opacity: 0, scale: 0.96, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-white rounded-3xl p-6 w-full max-w-md shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] border border-slate-200">
-                            <h2 className="text-2xl font-bold mb-6 text-slate-900">{editingAchievement ? 'Редактировать достижение' : 'Новое достижение'}</h2>
+                        <motion.div initial={{ opacity: 0, scale: 0.96, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-white rounded-3xl p-4 sm:p-6 w-full max-w-md shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] border border-slate-200">
+                            <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-slate-900">{editingAchievement ? 'Редактировать достижение' : 'Новое достижение'}</h2>
                             <form onSubmit={handleSubmit} className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium mb-2 text-slate-600">Название</label>

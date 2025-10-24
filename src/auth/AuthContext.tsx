@@ -96,7 +96,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (appUser) {
             appUser.role = claimRole;
             
-              // Проверяем наличие телефона в Firestore
+            // Сразу устанавливаем пользователя для быстрой загрузки UI
+            setUser(appUser);
+            localStorage.setItem('user', JSON.stringify(appUser));
+            setLoading(false); // Разблокируем UI раньше
+            
+            // Загружаем дополнительные данные асинхронно (не блокируем UI)
+            (async () => {
               try {
                 const userDoc = await getDoc(doc(db, 'users', u.uid));
                 if (userDoc.exists()) {
@@ -105,28 +111,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   appUser.name = userData.name || appUser.name;
                   appUser.avatar = userData.avatar || appUser.avatar;
                   
-                  // Начисляем отложенные бонусы при авторизации
+                  // Обновляем состояние с полными данными
+                  setUser({ ...appUser });
+                  localStorage.setItem('user', JSON.stringify(appUser));
+                  
+                  // Начисляем отложенные бонусы в фоне
                   if (appUser.phone) {
-                    try {
-                      await fetch('/api/bonus/claim-pending', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ userId: u.uid, phone: appUser.phone })
-                      });
-                    } catch (bonusError) {
-                      // Не прерываем авторизацию если начисление бонусов не удалось
-                    }
+                    fetch('/api/bonus/claim-pending', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ userId: u.uid, phone: appUser.phone })
+                    }).catch(() => {/* ignore */});
                   }
                 }
                 
-                // НЕ показываем модал автоматически
-                // Модал будет показан только при попытке оформить заказ без телефона
                 setNeedsPhone(!appUser.phone && appUser.role === 'user');
               } catch (firestoreError) {
                 console.warn('Error fetching user data from Firestore:', firestoreError);
                 setNeedsPhone(appUser.role === 'user');
-              }            setUser(appUser);
-            localStorage.setItem('user', JSON.stringify(appUser));
+              }
+            })();
           }
           
         } catch (error) {
@@ -134,12 +138,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const appUser = fbUserToAppUser(u);
           setUser(appUser);
           if (appUser) localStorage.setItem('user', JSON.stringify(appUser));
+          setLoading(false);
         }
       } else {
         setUser(null);
         localStorage.removeItem('user');
+        setLoading(false);
       }
-      setLoading(false);
     });
     return () => unsub();
   }, []);

@@ -3,6 +3,7 @@ import { ShoppingBagIcon } from '@heroicons/react/24/solid';
 import { InstagramStoriesNew } from '../components/InstagramStoriesNew';
 import { PromotionBanner } from '../components/PromotionBanner';
 import { AchievementList } from '../components/AchievementList';
+import { HomeSkeleton } from '../components/Skeleton';
 import { useHistory } from 'react-router-dom';
 import { drinkCategories } from './menu/data/drinksData';
 import { useTranslation } from 'react-i18next';
@@ -60,6 +61,7 @@ const HomePage: React.FC = () => {
   const history = useHistory();
   const { t } = useTranslation();
   const [user] = useState(getUserData());
+  const [isLoading, setIsLoading] = useState(true);
 
   const drinkImages: Record<string, string> = useMemo(() => ({
     Капучино: 'https://images.unsplash.com/photo-1557006034-834c6c0d49c2?auto=format&fit=crop&w=800&q=80',
@@ -94,6 +96,22 @@ const HomePage: React.FC = () => {
     (async () => {
       try {
         const userId = getUserId();
+        
+        // Проверяем кэш
+        const cacheKey = `favorite-drink-${userId}`;
+        const cached = sessionStorage.getItem(cacheKey);
+        
+        if (cached) {
+          try {
+            const cachedData = JSON.parse(cached);
+            setFavoriteItem(cachedData);
+            setIsLoading(false);
+            return; // Используем кэш
+          } catch {
+            // Если кэш поврежден, продолжаем загрузку
+          }
+        }
+        
         const response = await fetch(apiUrl('orders', { action: 'get', userId }));
         if (response.ok) {
           const orders: Order[] = await response.json();
@@ -123,12 +141,14 @@ const HomePage: React.FC = () => {
                 t(p.name) === favName || p.name === favName
               );
               if (item) {
-                setFavoriteItem({
+                const newFavorite = {
                   id: item.id,
                   name: favName,
                   price: itemCounts[favName].price, // берём цену из заказа!
                   image: item.image.startsWith('/') ? `${window.location.origin}${item.image}` : item.image
-                });
+                };
+                setFavoriteItem(newFavorite);
+                sessionStorage.setItem(cacheKey, JSON.stringify(newFavorite));
                 found = true;
                 break;
               }
@@ -136,17 +156,21 @@ const HomePage: React.FC = () => {
             
             // Если не нашли в меню - используем данные из заказа
             if (!found) {
-              setFavoriteItem({
+              const newFavorite = {
                 id: Date.now(),
                 name: favName,
                 price: itemCounts[favName].price,
                 image: getDrinkImage(favName)
-              });
+              };
+              setFavoriteItem(newFavorite);
+              sessionStorage.setItem(cacheKey, JSON.stringify(newFavorite));
             }
           }
         }
       } catch (err) {
         console.error('Error loading favorite drink:', err);
+      } finally {
+        setIsLoading(false);
       }
     })();
   }, [t, getDrinkImage]);
@@ -155,9 +179,13 @@ const HomePage: React.FC = () => {
     history.push('/order', { quickOrder: true, selectedItem: { id: favoriteItem.id, name: favoriteItem.name, image: favoriteItem.image, price: favoriteItem.price || 1500 } });
   };
 
+  if (isLoading) {
+    return <HomeSkeleton />;
+  }
+
   return (
-    <div className="min-h-screen font-sans bg-gradient-to-b from-slate-100 via-slate-100 to-white">
-      <header className="sticky top-0 z-30 px-4 py-3 bg-white/80 shadow-sm" style={{ backdropFilter: 'blur(8px)' }}>
+    <div className="min-h-screen font-sans bg-inherit">
+      <header className="sticky top-0 z-30 px-4 py-3 ">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-extrabold tracking-tight text-slate-900">Coffee Addict</h1>
           <ProfilePill name={user.name} avatar={user.avatar} />
@@ -165,7 +193,6 @@ const HomePage: React.FC = () => {
       </header>
 
       <main className="space-y-8 pb-28">
-        {/* Stories — теперь без серого блюра внутри колец и крупнее */}
         <section className="px-4">
           <InstagramStoriesNew />
         </section>

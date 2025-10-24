@@ -97,7 +97,7 @@ const Dashboard: React.FC = () => {
                 key={stat.label}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden p-6"
+                className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden p-4"
               >
                 <p className="text-xs text-slate-600 uppercase tracking-wide font-medium mb-2">
                   {stat.label}
@@ -119,7 +119,7 @@ const Dashboard: React.FC = () => {
           <h2 className="text-lg font-bold tracking-tight text-slate-900 mb-4">
             Последние заказы
           </h2>
-          <div className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden p-6">
+          <div className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden p-4">
             <div className="space-y-3">
               <motion.div 
                 whileHover={{ scale: 1.01 }}
@@ -155,7 +155,7 @@ const Dashboard: React.FC = () => {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => history.push(shortcut.route)}
-                className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden p-6 cursor-pointer"
+                className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden p-4 cursor-pointer"
               >
                 <div className="flex items-center mb-4">
                   <div className="p-3 bg-slate-100 rounded-2xl">

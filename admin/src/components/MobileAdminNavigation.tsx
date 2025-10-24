@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { motion } from 'framer-motion';
 import { 
   HomeIcon, 
@@ -11,14 +11,14 @@ import {
   MegaphoneIcon,
   PhotoIcon
 } from '@heroicons/react/24/outline';
-import { UserRole, getUserRole, getCurrentUserId } from '@/utils/userRoles';
+import { UserContext, type Role } from '@/contexts/UserContext';
 
 interface NavigationItem {
   id: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   route: string;
-  roles: UserRole[];
+  roles: Role[];
 }
 
 interface MobileAdminNavigationProps {
@@ -35,63 +35,63 @@ const NAVIGATION_ITEMS: NavigationItem[] = [
     label: 'Главная',
     icon: HomeIcon,
     route: 'dashboard',
-    roles: [UserRole.ADMIN, UserRole.BARISTA]
+    roles: ['admin', 'barista']
   },
   {
     id: 'orders',
     label: 'Заказы',
     icon: ClipboardDocumentListIcon,
     route: 'orders',
-    roles: [UserRole.ADMIN, UserRole.BARISTA]
+    roles: ['admin', 'barista']
   },
   {
     id: 'analytics',
     label: 'Аналитика',
     icon: ChartBarIcon,
     route: 'analytics',
-    roles: [UserRole.ADMIN]
+    roles: ['admin']
   },
   {
     id: 'menu',
     label: 'Меню',
     icon: CogIcon,
     route: 'menu',
-    roles: [UserRole.ADMIN]
+    roles: ['admin']
   },
   {
     id: 'bonuses',
     label: 'Бонусы',
     icon: GiftIcon,
     route: 'bonuses',
-    roles: [UserRole.ADMIN]
+    roles: ['admin']
   },
   {
     id: 'achievements',
     label: 'Достижения',
     icon: TrophyIcon,
     route: 'achievements',
-    roles: [UserRole.ADMIN]
+    roles: ['admin']
   },
   {
     id: 'promotions',
     label: 'Акции',
     icon: MegaphoneIcon,
     route: 'promotions',
-    roles: [UserRole.ADMIN]
+    roles: ['admin']
   },
   {
     id: 'stories',
     label: 'Истории',
     icon: PhotoIcon,
     route: 'stories',
-    roles: [UserRole.ADMIN]
+    roles: ['admin']
   },
   {
     id: 'users',
     label: 'Пользователи',
     icon: UserGroupIcon,
     route: 'users',
-    roles: [UserRole.ADMIN]
+    roles: ['admin']
   }
 ];
 
@@ -102,8 +102,8 @@ export const MobileAdminNavigation: React.FC<MobileAdminNavigationProps> = ({
   currentRoute,
   onRouteChange
 }) => {
-  const currentUserId = getCurrentUserId();
-  const userRole = getUserRole(currentUserId);
+  const { user } = useContext(UserContext);
+  const userRole: Role = user?.role || 'user';
 
   // Фильтруем пункты навигации по роли пользователя
   const availableItems = NAVIGATION_ITEMS.filter(item => 

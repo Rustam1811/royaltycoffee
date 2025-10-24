@@ -314,7 +314,7 @@ const BonusManagement: React.FC = () => {
                 {/* Общие настройки */}
                 {activeTab === 'general' && (
                     <div className="space-y-6">
-                        <div className="bg-white rounded-3xl p-6 shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)]">
+                        <div className="bg-white rounded-3xl p-4 shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)]">
                             <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-slate-900">
                                 <CalculatorIcon className="w-5 h-5" />
                                 Формула начисления бонусов
@@ -379,7 +379,7 @@ const BonusManagement: React.FC = () => {
                         </div>
 
                         {/* Калькулятор бонусов */}
-                        <div className="bg-white rounded-3xl p-6 shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] border border-slate-200">
+                        <div className="bg-white rounded-3xl p-4 shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] border border-slate-200">
                             <h3 className="text-lg font-bold mb-4 text-slate-900">Калькулятор бонусов</h3>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
@@ -487,7 +487,7 @@ const BonusManagement: React.FC = () => {
                 {activeTab === 'levels' && (
                     <div className="space-y-4">
                         {settings.levels.map((level, index) => (
-                            <div key={index} className="bg-white rounded-3xl p-6 shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] border border-slate-200">
+                            <div key={index} className="bg-white rounded-3xl p-4 shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] border border-slate-200">
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
                                     <div>
                                         <label className="block text-sm font-medium mb-2 text-slate-600">Название уровня</label>

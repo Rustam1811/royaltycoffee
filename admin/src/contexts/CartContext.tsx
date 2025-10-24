@@ -1,7 +1,7 @@
 import React, { createContext, useReducer, useContext, ReactNode } from 'react';
 
 export interface CartItem {
-    id: number;
+    id: string;
     name: string;
     price: number;
     quantity: number;
@@ -14,16 +14,15 @@ export interface CartItem {
 
 type Action =
     | { type: 'ADD_ITEM'; payload: CartItem }
-    | { type: 'REMOVE_ITEM'; payload: { id: number } }
+    | { type: 'REMOVE_ITEM'; payload: { id: string } }
     | { type: 'CLEAR_CART' }
-    | { type: 'INCREASE_QUANTITY'; payload: number }
-    | { type: 'DECREASE_QUANTITY'; payload: number };
+    | { type: 'INCREASE_QUANTITY'; payload: string }
+    | { type: 'DECREASE_QUANTITY'; payload: string };
 
 function reducer(state: CartItem[], action: Action): CartItem[] {
     switch (action.type) {
         case 'ADD_ITEM': {
-            // Простая заглушка - просто показываем алерт для админки
-            console.log('Добавлен товар в админке:', action.payload);
+
             const existing = state.find(i => i.id === action.payload.id);
             if (existing) {
                 return state.map(i =>

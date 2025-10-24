@@ -9,15 +9,21 @@ import {
   ArrowPathIcon,
   GiftIcon,
   CurrencyDollarIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
 } from "@heroicons/react/24/solid";
 import { SparklesIcon } from "@heroicons/react/24/outline";
 import { useCart, CartItem } from "../contexts/CartContext";
 import QRCode from "../components/QRCode";
 import OrderStatusBadge from "../components/OrderStatusBadge";
+import DeliveryAddressForm from "../components/DeliveryAddressForm";
 import { apiUrl } from "../config/api";
 import { safeApiRequestWithRetry } from "../utils/api";
 import { useAuth } from "../auth/AuthContext";
 import { generateClientRequestId } from "../utils/uuid";
+import { useDelivery } from "../hooks/useDelivery";
+import { formatDeliveryTime } from "../services/deliveryService";
+import type { DeliveryInfo } from "../types/delivery";
 
 interface PromoCode { code: string; description?: string; expiresAt?: string | Date; isUsed?: boolean; type?: 'fixed' | 'percentage'; discount?: number; }
 interface OrderItemLite { name: string; quantity: number; price: number; sizeKey?: string; milkKey?: string; syrupKey?: string; }
@@ -74,7 +80,7 @@ const CartItemCard = ({
   onUpdateQuantity,
 }: {
   item: CartItem;
-  onUpdateQuantity: (id: number, delta: number) => void;
+  onUpdateQuantity: (id: string, delta: number) => void;
 }) => (
   <motion.div
     layout
@@ -157,14 +163,27 @@ const Order: React.FC = () => {
   const [qrOpen, setQrOpen] = useState(false);
   const [qrPayload, setQrPayload] = useState<string | null>(null);
   const [lastPlaced, setLastPlaced] = useState<{ id: string; amount: number } | null>(null);
-  const [deliveryType, setDeliveryType] = useState<'pickup' | 'delivery'>('pickup');
+  const [showOrderHistory, setShowOrderHistory] = useState(false);
+  
+  // Calculate order amount
+  const subtotal = items.reduce((sum, it) => sum + it.price * it.quantity, 0);
+  
+  // Delivery hook with comprehensive state management
+  const delivery = useDelivery(subtotal, {
+    initialType: 'pickup',
+    autoGeocode: true,
+  });
+  
+  // Total amount including delivery fee
+  const deliveryFee = delivery.type === 'delivery' && delivery.fee ? delivery.fee.total : 0;
+  const amount = subtotal + deliveryFee;
 
   // быстрый заказ из Home
   useEffect(() => {
     const state = history.location.state as { quickOrder?: boolean; selectedItem?: { name: string; price: number; image?: string } } | undefined;
     if (state?.quickOrder && state?.selectedItem) {
       const quickItem = {
-        id: Date.now(),
+        id: String(Date.now()),
         name: state.selectedItem.name,
         price: state.selectedItem.price,
         image: state.selectedItem.image,
@@ -174,8 +193,6 @@ const Order: React.FC = () => {
       history.replace("/order", {});
     }
   }, [history, dispatch]);
-
-  const amount = items.reduce((sum, x) => sum + x.price * x.quantity, 0);
   // Бонусы начисляются сервером: 1% от суммы заказа (без учёта использованных бонусов)
   const bonusEarned = Math.floor(amount * 0.01);
 
@@ -305,7 +322,7 @@ const Order: React.FC = () => {
 
   // изменения количества
   const handleUpdateQuantity = useCallback(
-    (id: number, delta: number) => {
+    (id: string, delta: number) => {
       const type = delta > 0 ? "INCREASE_QUANTITY" : "DECREASE_QUANTITY";
       dispatch({ type, payload: id });
     },
@@ -325,17 +342,37 @@ const Order: React.FC = () => {
       return;
     }
     
+    // Проверка готовности доставки
+    if (delivery.type === 'delivery' && !delivery.isReady) {
+      setToastMessage('Пожалуйста, заполните адрес доставки');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      return;
+    }
+    
     setLoading(true);
     try {
       // Генерируем clientRequestId для идемпотентности
       const clientRequestId = generateClientRequestId();
+      
+      // Prepare delivery info
+      const deliveryInfo: DeliveryInfo = {
+        type: delivery.type,
+        ...(delivery.type === 'delivery' && {
+          address: delivery.address,
+          timeSlot: delivery.timeSlot || undefined,
+          fee: delivery.fee || undefined,
+          phone: user?.phone,
+        }),
+      };
       
       const orderData = {
         userId,
         clientRequestId,
         customerName: user?.name || 'Клиент',
         customerPhone: user?.phone,
-        deliveryType, // 'pickup' или 'delivery'
+        deliveryType: delivery.type, // 'pickup' или 'delivery'
+        deliveryInfo, // Full delivery details
         items: items.map((item) => ({
           id: item.id,
           name: item.name,
@@ -531,9 +568,21 @@ const Order: React.FC = () => {
                 {/* ИТОГО */}
                 <div className="elev-card rounded-2xl p-6 space-y-4">
                   <div className="flex justify-between items-center text-slate-600">
-                    <span>Сумма</span>
-                    <span className="font-semibold text-slate-900">{amount} ₸</span>
+                    <span>Сумма товаров</span>
+                    <span className="font-semibold text-slate-900">{subtotal} ₸</span>
                   </div>
+                  {delivery.type === 'delivery' && delivery.fee && (
+                    <div className="flex justify-between items-center text-slate-600">
+                      <span>Доставка</span>
+                      <span className="font-semibold text-slate-900">
+                        {delivery.fee.total === 0 ? (
+                          <span className="text-emerald-600">Бесплатно</span>
+                        ) : (
+                          `${delivery.fee.total} ₸`
+                        )}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center text-slate-600">
                     <span>Бонусы к начислению</span>
                     <span className="font-semibold text-emerald-600 flex items-center gap-1">
@@ -564,10 +613,10 @@ const Order: React.FC = () => {
                   <div className="text-sm font-bold text-slate-700 mb-3">Способ получения:</div>
                   <div className="grid grid-cols-2 gap-3">
                     <button
-                      onClick={() => setDeliveryType('pickup')}
+                      onClick={() => delivery.setType('pickup')}
                       disabled={loading}
                       className={`relative px-4 py-4 rounded-xl font-semibold text-sm transition-all ${
-                        deliveryType === 'pickup'
+                        delivery.type === 'pickup'
                           ? 'bg-slate-900 text-white shadow-[0_8px_20px_-8px_rgba(0,0,0,0.35)]'
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                       }`}
@@ -576,10 +625,10 @@ const Order: React.FC = () => {
                       <div>Самовывоз</div>
                     </button>
                     <button
-                      onClick={() => setDeliveryType('delivery')}
+                      onClick={() => delivery.setType('delivery')}
                       disabled={loading}
                       className={`relative px-4 py-4 rounded-xl font-semibold text-sm transition-all ${
-                        deliveryType === 'delivery'
+                        delivery.type === 'delivery'
                           ? 'bg-slate-900 text-white shadow-[0_8px_20px_-8px_rgba(0,0,0,0.35)]'
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                       }`}
@@ -590,9 +639,68 @@ const Order: React.FC = () => {
                   </div>
                 </div>
 
+                {/* АДРЕС ДОСТАВКИ (показывать только если выбрана доставка) */}
+                <AnimatePresence mode="wait">
+                  {delivery.type === 'delivery' && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="elev-card rounded-2xl p-4 overflow-hidden"
+                    >
+                      <div className="text-sm font-bold text-slate-700 mb-4">Адрес доставки:</div>
+                      <DeliveryAddressForm
+                        address={delivery.address}
+                        onChange={delivery.setAddress}
+                        validation={delivery.validation}
+                        disabled={loading}
+                        isProcessing={delivery.isProcessing}
+                      />
+                      
+                      {/* Delivery Fee Info */}
+                      {delivery.fee && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="mt-4 p-3 rounded-xl bg-slate-50 border border-slate-200"
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="text-sm text-slate-700">
+                              <span className="font-semibold">Стоимость доставки</span>
+                              <div className="text-xs text-slate-500 mt-1">
+                                {delivery.fee.zone.name} • {formatDeliveryTime(delivery.fee.estimatedTime)}
+                              </div>
+                            </div>
+                            <span className="text-lg font-bold text-slate-900">
+                              {delivery.fee.total === 0 ? (
+                                <span className="text-emerald-600">Бесплатно</span>
+                              ) : (
+                                `${delivery.fee.total} ₸`
+                              )}
+                            </span>
+                          </div>
+                          {delivery.fee.total > 0 && (
+                            <div className="text-xs text-slate-500 space-y-1">
+                              {delivery.fee.baseFee > 0 && (
+                                <div>Базовый тариф: {delivery.fee.baseFee} ₸</div>
+                              )}
+                              {delivery.fee.distanceSurcharge > 0 && (
+                                <div>За расстояние: +{delivery.fee.distanceSurcharge} ₸</div>
+                              )}
+                              {delivery.fee.timeSurcharge > 0 && (
+                                <div>Ночной тариф: +{delivery.fee.timeSurcharge} ₸</div>
+                              )}
+                            </div>
+                          )}
+                        </motion.div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 <motion.button
                   onClick={handleOrder}
-                  disabled={loading}
+                  disabled={loading || (delivery.type === 'delivery' && !delivery.isReady)}
                   whileTap={{ scale: 0.97 }}
                   className="w-full bg-slate-900 hover:bg-black text-white font-bold text-lg py-4 rounded-xl shadow-[0_14px_36px_-14px_rgba(0,0,0,0.55)] active:shadow-none transition-colors flex items-center justify-center gap-3 disabled:opacity-70"
                 >
@@ -607,84 +715,106 @@ const Order: React.FC = () => {
           </AnimatePresence>
         </section>
 
-        {/* ИСТОРИЯ ЗАКАЗОВ (ниже) */}
+        {/* ИСТОРИЯ ЗАКАЗОВ (скрыта под кнопкой) */}
         <section className="pb-2">
-          <h2 className="text-lg font-extrabold tracking-tight mb-3">
-            Мои заказы
-          </h2>
-          {orders.length === 0 ? (
-            <div className="text-slate-500">Нет заказов</div>
-          ) : (
-            <ul className="space-y-3">
-              {orders.map((order: ListedOrder) => (
-                <li key={order.id} className="elev-card rounded-2xl p-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-extrabold text-slate-900">
-                      Заказ #{order.orderNumberDisplay || String(order.id).slice(-6)}
-                    </span>
-                    <OrderStatusBadge
-                      status={
-                        order.status as "pending" | "accepted" | "ready" | "completed"
-                      }
-                    />
-                  </div>
-                  <div className="text-sm text-slate-700 mb-1">
-                    Сумма:{" "}
-                    <span className="font-semibold text-slate-900">
-                      {order.amount} ₸
-                    </span>
-                  </div>
-                  <div className="text-xs text-slate-600 mb-2 flex items-center gap-1">
-                    {order.deliveryType === 'delivery' ? (
-                      <>🚗 Доставка</>
-                    ) : (
-                      <>🏪 Самовывоз</>
-                    )}
-                  </div>
-                  {!!order.items?.length && (
-                    <div className="mt-2 bg-slate-50 rounded-xl p-2">
-                      <div className="text-xs font-semibold text-slate-500 mb-1">Состав заказа:</div>
-                      <ul className="space-y-1">
-                        {order.items.map((it, idx) => (
-                          <li key={idx} className="flex justify-between gap-2 text-xs">
-                            <div className="min-w-0">
-                              <div className="text-slate-900 whitespace-normal break-words">
-                                {it.name} × {it.quantity}
-                              </div>
-                              {(it.sizeKey || it.milkKey || it.syrupKey) && (
-                                <div className="text-[10px] text-slate-600 whitespace-normal break-words">
-                                  {[labelSize(it.sizeKey) && `Размер: ${labelSize(it.sizeKey)}`, labelMilk(it.milkKey) && `Молоко: ${labelMilk(it.milkKey)}`, labelSyrup(it.syrupKey) && `Сироп: ${labelSyrup(it.syrupKey)}`]
-                                    .filter(Boolean)
-                                    .join(' • ')}
-                                </div>
-                              )}
-                            </div>
-                            <div className="text-slate-900 font-semibold whitespace-nowrap">{it.price * it.quantity} ₸</div>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  <div className="text-xs text-slate-500 mt-2">
-                    {order.date
-                      ? new Date(order.date).toLocaleString()
-                      : "Время неизвестно"}
-                  </div>
+          <button
+            onClick={() => setShowOrderHistory(!showOrderHistory)}
+            className="w-full flex items-center justify-between text-lg font-extrabold tracking-tight mb-3 text-slate-900 hover:text-slate-700 transition-colors"
+          >
+            <span>Мои заказы {orders.length > 0 && `(${orders.length})`}</span>
+            {showOrderHistory ? (
+              <ChevronUpIcon className="w-5 h-5" />
+            ) : (
+              <ChevronDownIcon className="w-5 h-5" />
+            )}
+          </button>
+          
+          <AnimatePresence>
+            {showOrderHistory && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="overflow-hidden"
+              >
+                {orders.length === 0 ? (
+                  <div className="text-slate-500">Нет заказов</div>
+                ) : (
+                  <ul className="space-y-3">
+                    {orders.map((order: ListedOrder) => (
+                      <li key={order.id} className="elev-card rounded-2xl p-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="font-extrabold text-slate-900">
+                            Заказ #{order.orderNumberDisplay || String(order.id).slice(-6)}
+                          </span>
+                          <OrderStatusBadge
+                            status={
+                              order.status as "pending" | "accepted" | "ready" | "completed"
+                            }
+                            deliveryType={order.deliveryType}
+                          />
+                        </div>
+                        <div className="text-sm text-slate-700 mb-1">
+                          Сумма:{" "}
+                          <span className="font-semibold text-slate-900">
+                            {order.amount} ₸
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-600 mb-2 flex items-center gap-1">
+                          {order.deliveryType === 'delivery' ? (
+                            <>🚗 Доставка</>
+                          ) : (
+                            <>🏪 Самовывоз</>
+                          )}
+                        </div>
+                        {!!order.items?.length && (
+                          <div className="mt-2 bg-slate-50 rounded-xl p-2">
+                            <div className="text-xs font-semibold text-slate-500 mb-1">Состав заказа:</div>
+                            <ul className="space-y-1">
+                              {order.items.map((it, idx) => (
+                                <li key={idx} className="flex justify-between gap-2 text-xs">
+                                  <div className="min-w-0">
+                                    <div className="text-slate-900 whitespace-normal break-words">
+                                      {it.name} × {it.quantity}
+                                    </div>
+                                    {(it.sizeKey || it.milkKey || it.syrupKey) && (
+                                      <div className="text-[10px] text-slate-600 whitespace-normal break-words">
+                                        {[labelSize(it.sizeKey) && `Размер: ${labelSize(it.sizeKey)}`, labelMilk(it.milkKey) && `Молоко: ${labelMilk(it.milkKey)}`, labelSyrup(it.syrupKey) && `Сироп: ${labelSyrup(it.syrupKey)}`]
+                                          .filter(Boolean)
+                                          .join(' • ')}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="text-slate-900 font-semibold whitespace-nowrap">{it.price * it.quantity} ₸</div>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        <div className="text-xs text-slate-500 mt-2">
+                          {order.date
+                            ? new Date(order.date).toLocaleString()
+                            : "Время неизвестно"}
+                        </div>
 
-                  {order.status === "ready" && (
-                    <div className="mt-3 p-4 rounded-xl bg-amber-50 border border-amber-200">
-                      <div className="text-amber-700 text-sm font-bold mb-3 text-center">
-                        🔥 Заказ готов! Покажите QR-код на кассе:
-                      </div>
-                      <div className="flex justify-center">
-                        <QRCode value={`ORDER:${order.id}`} size={120} />
-                      </div>
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
+                        {order.status === "ready" && (
+                          <div className="mt-3 p-4 rounded-xl bg-amber-50 border border-amber-200">
+                            <div className="text-amber-700 text-sm font-bold mb-3 text-center">
+                              🔥 Заказ готов! Покажите QR-код на кассе:
+                            </div>
+                            <div className="flex justify-center">
+                              <QRCode value={`ORDER:${order.id}`} size={120} />
+                            </div>
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </section>
       </main>
 

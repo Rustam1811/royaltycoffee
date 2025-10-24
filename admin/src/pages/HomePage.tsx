@@ -235,7 +235,7 @@ const ItemCard: React.FC<ItemCardProps> = ({ item, type, onEdit, onDelete }) => 
 
 const StoryPackCard: React.FC<{ item: StoryPack; onEdit: () => void; onDelete: () => void }> = ({ item, onEdit, onDelete }) => (
   <>
-    <div className="p-6">
+    <div className="p-4">
       <div className="flex items-center gap-3 mb-4">
         <img 
           src={item.avatar} 
@@ -314,7 +314,7 @@ const PromotionCard: React.FC<{ item: Promotion; onEdit: () => void; onDelete: (
       </div>
     </div>
 
-    <div className="p-6">
+    <div className="p-4">
       <h3 className="font-bold text-white text-lg mb-2">{item.title}</h3>
       <p className="text-gray-300 mb-4 text-sm">{item.description}</p>
       <div className="text-xs text-gray-400 mb-4 space-y-1">
@@ -358,7 +358,7 @@ const CuratedItemCard: React.FC<{ item: CuratedItem; onEdit: () => void; onDelet
       )}
     </div>
 
-    <div className="p-6">
+    <div className="p-4">
       <h3 className="font-bold text-white text-lg mb-2">{item.name}</h3>
       <p className="text-gray-300 mb-4 text-sm">{item.description}</p>
       <div className="flex items-center justify-between mb-4">
@@ -392,7 +392,7 @@ const CuratedItemCard: React.FC<{ item: CuratedItem; onEdit: () => void; onDelet
 const LoadingSkeleton: React.FC = () => (
   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
     {[...Array(6)].map((_, i) => (
-      <div key={i} className="bg-white/10 rounded-2xl p-6 animate-pulse">
+      <div key={i} className="bg-white/10 rounded-2xl p-4 animate-pulse">
         <div className="h-48 bg-white/20 rounded-lg mb-4"></div>
         <div className="h-4 bg-white/20 rounded mb-2"></div>
         <div className="h-3 bg-white/20 rounded mb-4 w-2/3"></div>

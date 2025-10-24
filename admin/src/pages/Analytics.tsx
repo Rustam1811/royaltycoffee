@@ -122,7 +122,7 @@ const Analytics: React.FC = () => {
 
         {error && (
           <motion.div 
-            className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden p-6 mb-6 border-l-4 border-red-500"
+            className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden p-4 mb-4 border-l-4 border-red-500"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
@@ -138,7 +138,7 @@ const Analytics: React.FC = () => {
             className="space-y-6"
           >
             {/* Информация о периоде */}
-            <div className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden p-6">
+            <div className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-slate-100 rounded-2xl">
                   <ClockIcon className="h-5 w-5 text-slate-700" />
@@ -159,7 +159,7 @@ const Analytics: React.FC = () => {
             {/* Карточки со статистикой в стиле клиентского приложения */}
             <div className="grid grid-cols-2 gap-4">
               <motion.div 
-                className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden p-6"
+                className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden p-4"
                 whileTap={{ scale: 0.98 }}
               >
                 <div className="flex items-center gap-3">
@@ -176,7 +176,7 @@ const Analytics: React.FC = () => {
               </motion.div>
 
               <motion.div 
-                className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden p-6"
+                className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden p-4"
                 whileTap={{ scale: 0.98 }}
               >
                 <div className="flex items-center gap-3">
@@ -193,7 +193,7 @@ const Analytics: React.FC = () => {
               </motion.div>
 
               <motion.div 
-                className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden p-6"
+                className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden p-4"
                 whileTap={{ scale: 0.98 }}
               >
                 <div className="flex items-center gap-3">
@@ -208,7 +208,7 @@ const Analytics: React.FC = () => {
               </motion.div>
 
               <motion.div 
-                className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden p-6"
+                className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden p-4"
                 whileTap={{ scale: 0.98 }}
               >
                 <div className="flex items-center gap-3">
@@ -227,7 +227,7 @@ const Analytics: React.FC = () => {
 
             {/* Топ товаров в стиле клиентского приложения */}
             <motion.div 
-              className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden p-6"
+              className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden p-4"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
@@ -267,7 +267,7 @@ const Analytics: React.FC = () => {
 
             {/* Активность по часам в стиле клиентского приложения */}
             <motion.div 
-              className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden p-6"
+              className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden p-4"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
@@ -289,7 +289,7 @@ const Analytics: React.FC = () => {
             {/* Графики в стиле клиентского приложения */}
             {aggregated.chartData && aggregated.chartData.length > 0 && (
               <motion.div 
-                className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden p-6"
+                className="rounded-3xl bg-white shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] overflow-hidden p-4"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}

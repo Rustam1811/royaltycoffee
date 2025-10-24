@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, memo } from 'react';
 import { drinkCategories } from './data/drinksData';
 import { foodCategories } from './data/foodData';
 import { PremiumMenu } from '../../features/menu/premium/PremiumMenu';
@@ -105,4 +105,4 @@ const Menu: React.FC = () => {
   );
 };
 
-export default Menu;
+export default memo(Menu);

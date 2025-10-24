@@ -206,7 +206,7 @@ const StoryManagement: React.FC = () => {
         </div>
       </motion.div>
 
-      <div className="max-w-7xl mx-auto p-6">
+      <div className="max-w-7xl mx-auto p-3 sm:p-4">
         {loading && (
           <div className="flex justify-center items-center py-12">
             <div className="w-8 h-8 border-2 border-[var(--color-accent-orange)] border-t-transparent rounded-full animate-spin"></div>

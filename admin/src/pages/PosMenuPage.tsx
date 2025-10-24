@@ -1,491 +1,718 @@
-import React, { useState } from 'react';
-import { useCart, CartItem } from '../../../src/contexts/CartContext';
-import { drinkCategories, Product } from '../../../src/pages/menu/data/drinksData';
-import { ShoppingCartIcon, QrCodeIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import { useCart } from '../../../src/contexts/CartContext';
+import { drinkCategories } from '../../../src/pages/menu/data/drinksData';
+import { foodCategories } from '../../../src/pages/menu/data/foodData';
+import { ShoppingCartIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
+import { PremiumMenu } from '../../../src/features/menu/premium/PremiumMenu';
+import { useTranslation } from 'react-i18next';
 
-/**
- * POS-меню для баристы
- * Логика:
- * 1. Клик по напитку → сразу добавляется в корзину (размер M по умолчанию)
- * 2. Корзина справа (на десктопе) или внизу (на мобилке)
- * 3. В корзине можно отсканировать QR/баркод клиента для бонусов
- * 4. Оформить заказ → отправка в Orders
- */
+const humanize = (key: string) => key.split('.').pop()?.replace(/_/g,' ') || key;
+const CURRENCY = '₸';
+
+// Normalize phone number: 8xxx or +7xxx -> +7xxx
+const normalizePhone = (phone: string): string => {
+  const cleaned = phone.replace(/\D/g, ''); // Remove all non-digits
+  if (cleaned.startsWith('8') && cleaned.length === 11) {
+    return '+7' + cleaned.substring(1);
+  }
+  if (cleaned.startsWith('7') && cleaned.length === 11) {
+    return '+' + cleaned;
+  }
+  return phone;
+};
+
+const getMilkLabel = (key: string | undefined) => {
+  const labels: Record<string, string> = {
+    regular: '🥛 Обычное',
+    oat: '🌾 Овсяное',
+    almond: '🌰 Миндальное',
+    coconut: '🥥 Кокосовое',
+    lactosefree: '🥛 Безлактозное',
+  };
+  return labels[key || ''] || key || '';
+};
 
 export default function PosMenuPage() {
   const { items: cartItems, dispatch } = useCart();
-  const [activeCategory, setActiveCategory] = useState(drinkCategories[0]?.id || 1);
-  const [showScanner, setShowScanner] = useState(false);
-  const [scannedUser, setScannedUser] = useState<string | null>(null);
-  const [phoneInput, setPhoneInput] = useState('');
+  const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState<'drinks' | 'food'>('drinks');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [orderNumber, setOrderNumber] = useState<number | null>(null);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
-
-  // Плоский список всех напитков
-  const allDrinks = drinkCategories.flatMap(cat => 
-    cat.products.map(drink => ({ ...drink, categoryId: cat.id, categoryTitle: cat.title }))
-  );
-
-  // Фильтр по категории
-  const visibleDrinks = allDrinks.filter(d => d.categoryId === activeCategory);
-
-  // Словарь переводов категорий
-  const categoryTranslations: Record<string, string> = {
-    'menu.categories.black_coffee': 'Черный кофе',
-    'menu.categories.seasonal': 'Сезонное',
-    'menu.categories.milk_coffee': 'Кофе с молоком',
-    'menu.categories.alternative_drinks': 'Альтернативные напитки',
-  };
-
-  // Словарь переводов напитков
-  const drinkTranslations: Record<string, string> = {
-    'espresso': 'Эспрессо',
-    'americano': 'Американо',
-    'batch_brew': 'Бэтч брю',
-    'batch brew': 'Бэтч брю',
-    'lungo_aeropress': 'Лунго Аэропресс',
-    'lungo aeropress': 'Лунго Аэропресс',
-    'barista_set': 'Бариста сет',
-    'barista set': 'Бариста сет',
-    'cappuccino': 'Капучино',
-    'latte': 'Латте',
-    'flat_white': 'Флэт уайт',
-    'flat white': 'Флэт уайт',
-    'raf': 'Раф',
-    'matcha': 'Матча',
-    'cocoa': 'Какао',
-  };
-
-  // Получить перевод категории
-  const getCategoryName = (key: string) => {
-    return categoryTranslations[key] || key;
-  };
-
-  // Получить читаемое название напитка (убираем ключи переводов)
-  const getDrinkDisplayName = (name: string) => {
-    // Если это ключ перевода (например, menu.espresso.name)
-    if (name.includes('.')) {
-      const parts = name.split('.');
-      const drinkKey = parts[parts.length - 2]; // берем предпоследнюю часть
-      
-      // Проверяем в словаре переводов
-      const lowerKey = drinkKey.toLowerCase();
-      if (drinkTranslations[lowerKey]) {
-        return drinkTranslations[lowerKey];
+  
+  // Customer linking
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [customerName, setCustomerName] = useState('');
+  const [showCustomerInput, setShowCustomerInput] = useState(false);
+  const [scanningQR, setScanningQR] = useState(false);
+  const [customerLinked, setCustomerLinked] = useState(false);
+  const [customerBonus, setCustomerBonus] = useState(0);
+  const [loadingBonus, setLoadingBonus] = useState(false);
+  const [useBonuses, setUseBonuses] = useState(false);
+  const [bonusError, setBonusError] = useState<string | null>(null);
+  
+  // Fetch customer bonus when phone is entered (live search)
+  useEffect(() => {
+    const fetchBonus = async () => {
+      // Требуем минимум 10 цифр для поиска
+      if (!customerPhone || customerPhone.replace(/\D/g, '').length < 10) {
+        setCustomerBonus(0);
+        setCustomerName('');
+        setBonusError(null);
+        return;
       }
       
-      // Если нет в словаре, делаем первую букву заглавной
-      return drinkKey
-        .split('_')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
-    }
-    return name;
-  };
-
-  // Добавить напиток в корзину (размер M по умолчанию)
-  const addDrinkToCart = (drink: typeof allDrinks[0]) => {
-    const cartItem: CartItem = {
-      id: drink.id,
-      name: getDrinkDisplayName(drink.name), // Используем читаемое название
-      price: drink.price,
-      quantity: 1,
-      image: drink.image,
-      sizeKey: 'm', // размер M по умолчанию
+      setLoadingBonus(true);
+      setBonusError(null);
+      
+      try {
+        const normalized = normalizePhone(customerPhone);
+        console.log('🔍 POS - Поиск клиента:');
+        console.log('   Введено:', customerPhone);
+        console.log('   Нормализовано:', normalized);
+        
+        const url = `/api/users?action=getByPhone&phone=${encodeURIComponent(normalized)}`;
+        console.log('   URL:', url);
+        
+        const response = await fetch(url);
+        console.log('   Статус ответа:', response.status);
+        
+        const data = await response.json();
+        console.log('   Данные:', data);
+        
+        // Проверяем успешность и наличие пользователя
+        if (response.ok && data.ok && data.user) {
+          console.log('   ✅ Пользователь найден:', data.user.displayName || data.user.name);
+          
+          // Fetch bonus balance
+          const bonusResponse = await fetch(`/api/bonus?userId=${data.user.id}`);
+          
+          if (bonusResponse.ok) {
+            const bonusData = await bonusResponse.json();
+            // После исправления ok() сервер возвращает { ok: true, balance: xxx, ... }
+            if (bonusData.ok && bonusData.balance !== undefined) {
+              setCustomerBonus(bonusData.balance);
+              setCustomerName(data.user.displayName || data.user.name || '');
+              setBonusError(null);
+              console.log('   💰 Бонусы загружены:', bonusData.balance);
+            } else {
+              // Пользователь найден, но не удалось загрузить бонусы
+              setCustomerName(data.user.displayName || data.user.name || '');
+              setCustomerBonus(0);
+              setBonusError('Не удалось загрузить бонусы');
+              console.log('   ⚠️ Не удалось загрузить бонусы');
+            }
+          } else {
+            // Пользователь найден, но запрос бонусов вернул ошибку
+            setCustomerName(data.user.displayName || data.user.name || '');
+            setCustomerBonus(0);
+            setBonusError('Не удалось загрузить бонусы');
+            console.log('   ⚠️ Не удалось загрузить бонусы');
+          }
+        } else {
+          // Пользователь не найден
+          console.log('   ❌ Клиент не найден');
+          setBonusError('Клиент не найден');
+          setCustomerBonus(0);
+          setCustomerName('');
+        }
+      } catch (error) {
+        console.error('❌ Ошибка загрузки:', error);
+        setBonusError('Ошибка загрузки данных');
+        setCustomerBonus(0);
+        setCustomerName('');
+      } finally {
+        setLoadingBonus(false);
+      }
     };
     
-    dispatch({ type: 'ADD_ITEM', payload: cartItem });
-  };
+    // Debounce: ждём 500мс после последнего изменения
+    const timeoutId = setTimeout(fetchBonus, 500);
+    return () => clearTimeout(timeoutId);
+  }, [customerPhone]);
+  
+  const drinksItems = useMemo(() => 
+    drinkCategories.flatMap(cat =>
+      cat.products.map(p => {
+        const rawName = t(p.name);
+        const name = rawName === p.name ? humanize(p.name) : rawName;
+        return { 
+          id: p.id, 
+          name, 
+          price: p.price, 
+          image: p.image, 
+          energy: p.energy, 
+          protein: p.protein, 
+          fat: p.fat, 
+          carbs: p.carbs, 
+          badges: p.badges?.map(b => ({ type: b, label: b })) || [], 
+          categoryId: cat.id 
+        };
+      })
+    ),
+    [t]
+  );
+  
+  const drinksCategories = useMemo(() => 
+    drinkCategories.map(c => { 
+      const raw = t(c.title); 
+      const label = raw === c.title ? humanize(c.title) : raw; 
+      return { key: String(c.id), label }; 
+    }),
+    [t]
+  );
 
-  // Удалить из корзины
-  const removeFromCart = (itemId: number) => {
-    dispatch({ type: 'REMOVE_ITEM', payload: { id: itemId } });
-  };
+  const foodItems = useMemo(() => 
+    foodCategories.flatMap(cat =>
+      cat.products.map(p => ({
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        image: p.image,
+        energy: p.energy,
+        protein: p.protein,
+        fat: p.fat,
+        carbs: p.carbs,
+        badges: p.badges?.map(b => ({ type: b, label: b })) || [],
+        categoryId: cat.id
+      }))
+    ),
+    []
+  );
 
-  // Изменить количество
-  const updateQuantity = (itemId: number, delta: number) => {
-    const item = cartItems.find(i => i.id === itemId);
-    if (!item) return;
-    
-    if (delta > 0) {
-      dispatch({ type: 'INCREASE_QUANTITY', payload: itemId });
-    } else {
-      dispatch({ type: 'DECREASE_QUANTITY', payload: itemId });
-    }
-  };
+  const foodCategoriesFormatted = useMemo(() =>
+    foodCategories.map(c => ({
+      key: String(c.id),
+      label: c.title
+    })),
+    []
+  );
 
-  // Итого
-  const total = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const handleRemoveFromCart = useCallback(
+    (id: string) => {
+      dispatch({ type: 'REMOVE_ITEM', payload: { id } });
+    },
+    [dispatch]
+  );
 
-  // Свайп для переключения категорий
-  const minSwipeDistance = 50;
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-
-  const onTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-
-  const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) {
-      return;
-    }
-    
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
-    
-    if (isLeftSwipe || isRightSwipe) {
-      const currentIndex = drinkCategories.findIndex(cat => cat.id === activeCategory);
-      
-      if (isLeftSwipe && currentIndex < drinkCategories.length - 1) {
-        setActiveCategory(drinkCategories[currentIndex + 1].id);
-      } else if (isRightSwipe && currentIndex > 0) {
-        setActiveCategory(drinkCategories[currentIndex - 1].id);
+  const handleQuantityChange = useCallback(
+    (id: string, delta: number) => {
+      if (delta > 0) {
+        dispatch({ type: 'INCREASE_QUANTITY', payload: id });
+      } else {
+        dispatch({ type: 'DECREASE_QUANTITY', payload: id });
       }
-    }
-  };
+    },
+    [dispatch]
+  );
 
-  // Оформить заказ
-  const handleCheckout = async () => {
+  const total = useMemo(() => cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0), [cartItems]);
+
+  const handleCheckout = useCallback(async () => {
     if (cartItems.length === 0) return;
-
+    
+    const normalizedPhone = customerPhone ? normalizePhone(customerPhone) : null;
+    const bonusToUse = useBonuses ? customerBonus : 0;
+    const finalTotal = Math.max(0, total - bonusToUse);
+    
     try {
       const response = await fetch('/api/orders?action=create', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: cartItems.map(item => ({
+          items: cartItems.map((item) => ({
             id: item.id,
             name: item.name,
             price: item.price,
             quantity: item.quantity,
             image: item.image,
             sizeKey: item.sizeKey,
+            milkKey: item.milkKey,
+            syrupKey: item.syrupKey,
           })),
-          total,
-          userPhone: scannedUser,
-          useBonuses: !!scannedUser,
+          total: finalTotal,
+          userPhone: normalizedPhone,
+          customerName: customerName || null,
+          bonusUsed: bonusToUse,
         }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Network error' }));
-        throw new Error(errorData.error || `HTTP ${response.status}`);
+        const payload = await response.json().catch(() => ({ error: 'Network error' }));
+        throw new Error(payload.error || `HTTP ${response.status}`);
       }
 
       const result = await response.json();
-
       if (result.ok) {
         setOrderNumber(result.orderNumber);
         setShowSuccessModal(true);
         dispatch({ type: 'CLEAR_CART' });
-        setScannedUser(null);
+        // Очищаем данные клиента после успешного заказа
+        setCustomerPhone('');
+        setCustomerName('');
+        setCustomerLinked(false);
+        setShowCustomerInput(false);
+        setCustomerBonus(0);
+        setUseBonuses(false);
       } else {
-        throw new Error(result.error || 'Ошибка создания заказа');
+        throw new Error(result.error || 'Не удалось оформить заказ');
       }
     } catch (error) {
-      alert('Ошибка создания заказа: ' + (error instanceof Error ? error.message : 'Неизвестная ошибка'));
+      const message = error instanceof Error ? error.message : 'Неизвестная ошибка';
+      alert(`Ошибка оформления заказа: ${message}`);
     }
-  };
-
+  }, [cartItems, dispatch, total, customerPhone, customerName, customerBonus, useBonuses]);
+  
   return (
     <div className="flex h-screen overflow-hidden bg-gradient-to-b from-slate-100 via-slate-100 to-white">
-      {/* Левая часть - Меню */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Хедер с категориями */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
-          <h1 className="text-2xl font-bold mb-4">Меню POS</h1>
-          <div className="flex gap-2 overflow-x-auto no-scrollbar">
-            {drinkCategories.map(cat => (
-              <button
-                key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
-                  activeCategory === cat.id
-                    ? 'bg-black text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {getCategoryName(cat.title)}
-              </button>
-            ))}
+      {/* Main menu area */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Header with tabs */}
+        <div className="border-b border-slate-200 bg-white/95 backdrop-blur">
+          <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-10">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-semibold text-slate-900">Меню POS</h1>
+                <p className="text-sm text-slate-500">Интерфейс как в клиентском приложении</p>
+              </div>
+              <div className="inline-flex rounded-full bg-slate-100/80 p-1 text-sm font-medium shadow-inner">
+                <button
+                  onClick={() => setActiveTab('drinks')}
+                  className={`rounded-full px-5 py-2 transition ${
+                    activeTab === 'drinks' ? 'bg-white text-slate-900 shadow' : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  🥤 Напитки
+                </button>
+                <button
+                  onClick={() => setActiveTab('food')}
+                  className={`rounded-full px-5 py-2 transition ${
+                    activeTab === 'food' ? 'bg-white text-slate-900 shadow' : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  🍽️ Еда
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Сетка напитков */}
-        <div 
-          className="flex-1 overflow-y-auto p-6"
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-        >
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {visibleDrinks.map(drink => (
-              <motion.button
-                key={drink.id}
-                onClick={() => addDrinkToCart(drink)}
-                whileTap={{ scale: 0.95 }}
-                className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-all text-left"
-              >
-                <div className="aspect-square mb-3 rounded-lg overflow-hidden bg-gray-50">
-                  <img
-                    src={drink.image}
-                    alt={drink.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <h3 className="font-semibold text-sm mb-1 line-clamp-2">{getDrinkDisplayName(drink.name)}</h3>
-                <p className="text-lg font-bold">{drink.price} ₸</p>
-              </motion.button>
-            ))}
-          </div>
+        {/* PremiumMenu with mobile-sized centered modal */}
+        <div className="flex-1 overflow-y-auto">
+          {activeTab === 'drinks' ? (
+            <PremiumMenu items={drinksItems} categories={drinksCategories} type="drinks" />
+          ) : (
+            <PremiumMenu items={foodItems} categories={foodCategoriesFormatted} type="food" />
+          )}
         </div>
       </div>
 
-      {/* Правая часть - Корзина */}
-      <div className="w-96 bg-white border-l border-gray-200 flex flex-col">
-        {/* Хедер корзины */}
-        <div className="px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <ShoppingCartIcon className="w-6 h-6" />
+      {/* Cart sidebar */}
+      <div className="hidden w-[320px] flex-col border-l border-slate-200 bg-white lg:flex">
+        <div className="border-b border-slate-200 px-4 py-4">
+          <div className="flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+              <ShoppingCartIcon className="h-5 w-5" />
               Корзина
             </h2>
-            <span className="text-sm text-gray-500">{cartItems.length} товаров</span>
+            <span className="text-xs text-slate-500">{cartItems.length} шт</span>
           </div>
-
-          {/* Кнопка сканирования QR */}
-          {!scannedUser ? (
-            <button
-              onClick={() => setShowScanner(true)}
-              className="w-full px-4 py-3 bg-blue-50 text-blue-700 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-100 transition-colors"
-            >
-              <QrCodeIcon className="w-5 h-5" />
-              <span className="font-medium">Добавить номер клиента</span>
-            </button>
-          ) : (
-            <div className="px-4 py-3 bg-green-50 text-green-700 rounded-lg flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <QrCodeIcon className="w-5 h-5" />
-                <span className="font-medium text-sm">📱 {scannedUser}</span>
-              </div>
-              <button
-                onClick={() => setScannedUser(null)}
-                className="text-green-700 hover:text-green-900"
-              >
-                <XMarkIcon className="w-5 h-5" />
-              </button>
-            </div>
-          )}
         </div>
 
-        {/* Список товаров в корзине */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="flex-1 overflow-y-auto px-3 py-4">
           {cartItems.length === 0 ? (
-            <div className="text-center text-gray-400 mt-20">
-              <ShoppingCartIcon className="w-16 h-16 mx-auto mb-4 opacity-20" />
-              <p>Корзина пуста</p>
-              <p className="text-sm mt-2">Выберите напитки из меню</p>
+            <div className="flex h-full w-full items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white/60 text-xs text-slate-500">
+              Пусто
             </div>
           ) : (
             <div className="space-y-3">
-              <AnimatePresence>
-                {cartItems.map(item => (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    className="bg-gray-50 rounded-lg p-3"
-                  >
-                    <div className="flex gap-3">
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-16 h-16 object-cover rounded-lg"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-sm line-clamp-2">{item.name}</h3>
-                        <p className="text-gray-600 text-sm">{item.price} ₸</p>
-                        
-                        {/* Счетчик количества */}
-                        <div className="flex items-center gap-2 mt-2">
-                          <button
-                            onClick={() => updateQuantity(item.id, -1)}
-                            className="w-7 h-7 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-100"
-                          >
-                            -
-                          </button>
-                          <span className="w-8 text-center font-semibold">{item.quantity}</span>
-                          <button
-                            onClick={() => updateQuantity(item.id, 1)}
-                            className="w-7 h-7 rounded-full bg-white border border-gray-300 flex items-center justify-center hover:bg-gray-100"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                      
-                      <button
-                        onClick={() => removeFromCart(item.id)}
-                        className="text-gray-400 hover:text-red-500"
-                      >
-                        <XMarkIcon className="w-5 h-5" />
-                      </button>
+              {cartItems.map((item) => (
+                <div key={item.id} className="flex items-start gap-2">
+                  {item.image ? (
+                    <img src={item.image} alt={item.name} className="h-10 w-10 flex-shrink-0 rounded-lg object-cover" />
+                  ) : (
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400">
+                      <span className="text-xl">☕</span>
                     </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-slate-900 text-sm leading-tight">{item.name}</div>
+                    <div className="mt-1 text-xs text-slate-600 space-y-0.5">
+                      {item.sizeKey && <div>Размер: {item.sizeKey.toUpperCase()}</div>}
+                      {item.milkKey && item.milkKey !== 'regular' && <div>{getMilkLabel(item.milkKey)}</div>}
+                      {item.syrupKey && item.syrupKey !== '' && (
+                        <div className="text-xs">
+                          Сиропы: {item.syrupKey.split('+').map(s => humanize(s)).join(', ')}
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleQuantityChange(item.id, -1)}
+                        className="rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 text-sm w-6 h-6 flex items-center justify-center font-medium"
+                      >
+                        −
+                      </button>
+                      <span className="w-5 text-center text-sm font-semibold text-slate-900">{item.quantity}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleQuantityChange(item.id, 1)}
+                        className="rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 text-sm w-6 h-6 flex items-center justify-center font-medium"
+                      >
+                        +
+                      </button>
+                      <div className="ml-auto text-sm font-bold text-slate-900">
+                        {item.price * item.quantity} ₸
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveFromCart(item.id)}
+                      className="mt-1.5 text-xs text-red-600 hover:underline font-medium"
+                    >
+                      Удалить
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
 
-        {/* Итого и оформление */}
-        {cartItems.length > 0 && (
-          <div className="border-t border-gray-200 px-6 py-4">
-            <div className="flex justify-between items-center mb-4">
-              <span className="text-lg font-semibold">Итого:</span>
-              <span className="text-2xl font-bold">{total} ₸</span>
+        <div className="border-t border-slate-200 px-4 py-3">
+          {/* Customer linking section */}
+          {!customerLinked ? (
+            <div className="mb-3 space-y-2">
+              {!showCustomerInput ? (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomerInput(true)}
+                    className="flex-1 rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
+                  >
+                    📱 Добавить клиента
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScanningQR(true)}
+                    className="rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
+                    title="Сканировать QR-код"
+                  >
+                    📷
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="relative">
+                    <input
+                      type="tel"
+                      placeholder="+7 (___) ___-__-__"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none pr-16"
+                    />
+                    {loadingBonus && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Live bonus display */}
+                  {customerPhone.length >= 10 && !loadingBonus && (
+                    <div className="rounded-lg border-2 px-3 py-2" style={{
+                      borderColor: bonusError ? '#fee2e2' : customerBonus > 0 ? '#d4edda' : '#e2e8f0',
+                      backgroundColor: bonusError ? '#fef2f2' : customerBonus > 0 ? '#f0fdf4' : '#f8fafc'
+                    }}>
+                      {bonusError ? (
+                        <div className="text-xs text-red-600">
+                          ⚠️ {bonusError}
+                        </div>
+                      ) : customerBonus > 0 ? (
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium text-green-900">
+                              ✓ Клиент найден{customerName && `: ${customerName}`}
+                            </span>
+                            <span className="text-xs font-bold text-green-700">
+                              🎁 {customerBonus} ₸
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-xs text-slate-600">
+                          ℹ️ Новый клиент - бонусов нет
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  <input
+                    type="text"
+                    placeholder="Имя клиента (опционально)"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (customerPhone.trim()) {
+                          setCustomerLinked(true);
+                        }
+                      }}
+                      disabled={!customerPhone.trim()}
+                      className="flex-1 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      ✓ Привязать
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCustomerInput(false);
+                        setCustomerPhone('');
+                        setCustomerName('');
+                      }}
+                      className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
+                    >
+                      Отмена
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-            
-            <button
-              onClick={handleCheckout}
-              className="w-full py-4 bg-black text-white rounded-lg font-semibold hover:bg-gray-800 transition-colors"
-            >
-              Оформить заказ
-            </button>
-            
-            {scannedUser && (
-              <p className="text-xs text-gray-500 text-center mt-2">
-                Бонусы будут списаны автоматически
-              </p>
-            )}
+          ) : (
+            <div className="mb-3 space-y-2">
+              <div className="flex items-center justify-between rounded-lg bg-green-50 px-3 py-2.5 border border-green-200">
+                <div className="flex-1">
+                  <div className="text-sm font-semibold text-green-900">
+                    ✓ {customerName || customerPhone}
+                  </div>
+                  <div className="text-xs text-green-700">
+                    {customerName && customerPhone ? customerPhone : 'Клиент привязан'}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomerLinked(false);
+                    setCustomerPhone('');
+                    setCustomerName('');
+                    setCustomerBonus(0);
+                    setUseBonuses(false);
+                  }}
+                  className="ml-2 text-xs font-medium text-green-700 hover:text-green-900 transition"
+                >
+                  Отвязать
+                </button>
+              </div>
+              
+              {loadingBonus ? (
+                <div className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600 border border-slate-100 text-center">
+                  Загрузка бонусов...
+                </div>
+              ) : customerBonus > 0 ? (
+                <div className="space-y-2">
+                  <div className="rounded-lg bg-amber-50 px-3 py-2.5 border border-amber-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="text-xs font-medium text-amber-900">
+                          🎁 Доступно бонусов: {customerBonus} ₸
+                        </div>
+                        <div className="text-xs text-amber-700 mt-0.5">
+                          Можно использовать все или ничего
+                        </div>
+                      </div>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={useBonuses}
+                          onChange={(e) => setUseBonuses(e.target.checked)}
+                          className="w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                        />
+                        <span className="text-xs font-semibold text-amber-900">
+                          Использовать
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                  {useBonuses && (
+                    <div className="rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-700 border border-blue-100">
+                      💰 Будет списано: {customerBonus} ₸ | К оплате: {Math.max(0, total - customerBonus)} ₸
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-700 border border-blue-100">
+                  🎁 После принятия заказа клиенту начислятся бонусы (1% от суммы)
+                </div>
+              )}
+            </div>
+          )}
+          
+          <div className="flex items-center justify-between text-base font-semibold text-slate-900 mb-3">
+            <span>Итого:</span>
+            <div className="text-right">
+              {useBonuses && customerBonus > 0 ? (
+                <>
+                  <div className="text-xs text-slate-500 line-through font-normal">{total} {CURRENCY}</div>
+                  <div className="text-green-600">{Math.max(0, total - customerBonus)} {CURRENCY}</div>
+                </>
+              ) : (
+                <span>{total} {CURRENCY}</span>
+              )}
+            </div>
           </div>
-        )}
+          <button
+            type="button"
+            onClick={handleCheckout}
+            disabled={cartItems.length === 0}
+            className="w-full rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Оформить заказ
+          </button>
+        </div>
       </div>
 
-      {/* Модалка ввода номера телефона */}
+      {/* Success modal */}
       <AnimatePresence>
-        {showScanner && (
+        {showSuccessModal && orderNumber && (
           <>
             <motion.div
+              className="fixed inset-0 z-[999] bg-black/50"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => {
-                setShowScanner(false);
-                setPhoneInput('');
-              }}
-              className="fixed inset-0 bg-black/50 z-50"
+              onClick={() => setShowSuccessModal(false)}
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="fixed inset-0 m-auto w-[420px] h-fit bg-white rounded-2xl shadow-2xl z-50 flex flex-col items-center p-8"
+              className="fixed left-1/2 top-1/2 z-[1000] w-[min(400px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 rounded-3xl bg-white p-8 text-center shadow-2xl ring-1 ring-slate-900/5"
+              role="dialog"
+              aria-modal="true"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
             >
-              <QrCodeIcon className="w-20 h-20 text-blue-500 mb-4" />
-              <h3 className="text-2xl font-bold mb-2">Поиск клиента</h3>
-              <p className="text-gray-500 text-center mb-6">
-                Отсканируйте QR или введите номер телефона
-              </p>
-              
-              {/* Ввод номера телефона */}
-              <input
-                type="tel"
-                value={phoneInput}
-                onChange={(e) => setPhoneInput(e.target.value)}
-                placeholder="+7 (___) ___-__-__"
-                className="w-full px-4 py-4 border-2 border-gray-300 rounded-lg mb-6 text-center text-xl focus:border-blue-500 focus:outline-none"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && phoneInput.trim()) {
-                    setScannedUser(phoneInput.trim());
-                    setShowScanner(false);
-                    setPhoneInput('');
-                  }
-                }}
-              />
-              
-              <div className="flex gap-3 w-full">
-                <button
-                  onClick={() => {
-                    setShowScanner(false);
-                    setPhoneInput('');
-                  }}
-                  className="flex-1 px-6 py-4 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors text-base font-medium"
-                >
-                  Отмена
-                </button>
-                <button
-                  onClick={() => {
-                    if (phoneInput.trim()) {
-                      setScannedUser(phoneInput.trim());
-                      setShowScanner(false);
-                      setPhoneInput('');
-                    }
-                  }}
-                  disabled={!phoneInput.trim()}
-                  className="flex-1 px-6 py-4 bg-blue-600 text-white rounded-lg font-semibold text-base hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-                >
-                  Готово
-                </button>
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-2xl text-green-600">
+                ✓
               </div>
+              <h3 className="text-xl font-bold text-slate-900">Заказ оформлен!</h3>
+              <p className="mt-2 text-sm text-slate-500">
+                Номер заказа <span className="font-semibold text-slate-900">#{orderNumber}</span>
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowSuccessModal(false)}
+                className="mt-6 w-full rounded-xl bg-slate-900 px-4 py-3 font-semibold text-white transition hover:bg-slate-800"
+              >
+                Готово
+              </button>
             </motion.div>
           </>
         )}
       </AnimatePresence>
 
-      {/* Модалка успешного создания заказа */}
+      {/* QR Scanner Modal */}
       <AnimatePresence>
-        {showSuccessModal && orderNumber && (
+        {scanningQR && (
           <>
             <motion.div
+              className="fixed inset-0 z-[999] bg-black/50"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setShowSuccessModal(false)}
-              className="fixed inset-0 bg-black/50 z-50"
+              onClick={() => setScanningQR(false)}
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="fixed left-1/2 top-1/2 z-[1000] w-[min(400px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-900/5"
+              role="dialog"
+              aria-modal="true"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 bg-white rounded-2xl shadow-2xl z-50 flex flex-col items-center p-6"
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
             >
-              {/* Иконка успеха */}
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-3">
-                <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
+              <h3 className="text-lg font-bold text-slate-900 mb-4">Сканировать QR-код клиента</h3>
+              <div className="mb-4 aspect-square rounded-2xl bg-slate-100 flex items-center justify-center border-2 border-dashed border-slate-300">
+                <div className="text-center">
+                  <div className="text-6xl mb-2">📷</div>
+                  <p className="text-sm text-slate-600">Направьте камеру на QR-код</p>
+                  <p className="text-xs text-slate-500 mt-1">из приложения клиента</p>
+                </div>
               </div>
-              
-              <h3 className="text-xl font-bold mb-3">Заказ создан!</h3>
-              
-              {/* Номер заказа */}
-              <div className="bg-slate-100 rounded-xl px-6 py-4 mb-4 text-center">
-                <p className="text-xs text-gray-600 mb-1">Номер заказа</p>
-                <p className="text-4xl font-bold text-black">#{orderNumber}</p>
+              <div className="space-y-2">
+                <p className="text-xs text-slate-500 text-center">
+                  Или введите номер телефона вручную:
+                </p>
+                <div className="relative">
+                  <input
+                    type="tel"
+                    placeholder="+7 (___) ___-__-__"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none pr-16"
+                  />
+                  {loadingBonus && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Live bonus display in QR modal */}
+                {customerPhone.length >= 10 && !loadingBonus && (
+                  <div className="rounded-lg border-2 px-3 py-2" style={{
+                    borderColor: bonusError ? '#fee2e2' : customerBonus > 0 ? '#d4edda' : '#e2e8f0',
+                    backgroundColor: bonusError ? '#fef2f2' : customerBonus > 0 ? '#f0fdf4' : '#f8fafc'
+                  }}>
+                    {bonusError ? (
+                      <div className="text-xs text-red-600">
+                        ⚠️ {bonusError}
+                      </div>
+                    ) : customerBonus > 0 ? (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-green-900">
+                          ✓ Клиент найден{customerName && `: ${customerName}`}
+                        </span>
+                        <span className="text-xs font-bold text-green-700">
+                          🎁 {customerBonus} ₸
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-slate-600">
+                        ℹ️ Новый клиент - бонусов нет
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (customerPhone.trim()) {
+                        setCustomerLinked(true);
+                        setScanningQR(false);
+                      }
+                    }}
+                    disabled={!customerPhone.trim()}
+                    className="flex-1 rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    Продолжить
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScanningQR(false);
+                      setCustomerPhone('');
+                    }}
+                    className="rounded-lg bg-slate-100 px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
+                  >
+                    Отмена
+                  </button>
+                </div>
               </div>
-              
-              <p className="text-gray-500 text-center text-sm mb-4">
-                Заказ передан на кухню
-              </p>
-              
-              <button
-                onClick={() => setShowSuccessModal(false)}
-                className="w-full px-6 py-3 bg-black text-white rounded-lg font-semibold hover:bg-gray-800 transition-colors"
-              >
-                Готово
-              </button>
             </motion.div>
           </>
         )}

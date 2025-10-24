@@ -205,7 +205,7 @@ const PromotionManagement: React.FC = () => {
       animate={{ opacity: 1 }}
       className="bg-gradient-to-b from-slate-100 via-slate-100 to-white min-h-screen pb-20"
     >
-      <div className="max-w-7xl mx-auto p-6">
+      <div className="max-w-7xl mx-auto p-3 sm:p-4">
         {/* Header */}
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
@@ -254,7 +254,7 @@ const PromotionManagement: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white rounded-3xl shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] p-6 mb-8"
+          className="bg-white rounded-3xl shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] p-4 sm:p-6 mb-6 sm:mb-8"
         >
           <div className="flex flex-col md:flex-row gap-4 items-stretch">
             <div className="flex-1 bg-slate-100 rounded-3xl px-4">
@@ -319,7 +319,7 @@ const PromotionManagement: React.FC = () => {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: i * 0.1 }}
-                  className="bg-white rounded-3xl shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] p-6"
+                  className="bg-white rounded-3xl shadow-[0_16px_48px_-20px_rgba(0,0,0,0.35)] p-4"
                 >
                   <div className="h-40 bg-slate-100 rounded-3xl mb-4 animate-pulse" />
                   <div className="h-4 bg-slate-100 rounded mb-2 animate-pulse" />
@@ -398,7 +398,7 @@ const PromotionManagement: React.FC = () => {
                     )}
 
                     {/* Body */}
-                    <div className="p-6">
+                    <div className="p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           <h3 className="text-lg font-bold text-slate-900 font-sans mb-2 line-clamp-2">{p.title}</h3>
@@ -509,7 +509,7 @@ const PromotionManagement: React.FC = () => {
                   </h2>
                 </div>
 
-                <form onSubmit={onSubmit} className="p-6 overflow-y-auto grow">
+                <form onSubmit={onSubmit} className="p-4 overflow-y-auto grow">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* form left (2 cols) */}
                     <div className="md:col-span-2 space-y-4">

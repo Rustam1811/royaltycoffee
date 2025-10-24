@@ -1,14 +1,12 @@
 import React, { useContext } from 'react';
 import { Switch, Route, Redirect, useLocation } from 'react-router-dom';
-import { UserRole, getUserRole, getCurrentUserId } from '@/utils/userRoles';
-import { UserContext } from '@/contexts/UserContext';
+import { UserContext, type Role } from '@/contexts/UserContext';
 
 
 // Импорт компонентов страниц
 import Dashboard from '@/pages/Dashboard';
 import OrderManagement from '@/pages/OrderManagement';
 import Analytics from '@/pages/Analytics';
-import AdminMenuView from '@/pages/AdminMenuView';
 import PosMenuPage from '@/pages/PosMenuPage';
 import BonusManagement from '@/pages/BonusManagement';
 import AchievementManagement from '@/pages/AchievementManagement';
@@ -16,6 +14,10 @@ import PromotionManagement from '@/pages/PromotionManagement';
 import InstagramStoriesAdminPageNew from '@/pages/InstagramStoriesAdminPageNew';
 import PosPage from '@/pages/PosPage';
 import UsersPage from '@/pages/UsersPage';
+import DeliveryManagement from '@/pages/DeliveryManagement';
+import CourierManagement from '@/pages/CourierManagement';
+import CourierDashboard from '@/pages/CourierDashboard';
+import CourierDocumentsPage from '@/pages/CourierDocumentsPage';
 
 // Новая респонсивная навигация
 import ResponsiveAdminNavigation from '@/components/ResponsiveAdminNavigation';
@@ -29,8 +31,27 @@ const ResponsiveAdminRoutes: React.FC = () => {
   console.log('🔀 Current location:', location.pathname);
   const { user } = useContext(UserContext);
   console.log('🔀 User in routes:', user);
-  const currentUserId = user?.uid || getCurrentUserId();
-  const userRole = user?.role === 'admin' ? UserRole.ADMIN : user?.role === 'barista' ? UserRole.BARISTA : getUserRole(currentUserId);
+  const userRole: Role = user?.role || 'user';
+
+  // Helper functions
+  const getRoleLabel = (role: Role): string => {
+    switch(role) {
+      case 'admin': return 'Администратор';
+      case 'barista': return 'Бариста';
+      case 'courier': return 'Курьер';
+      case 'owner': return 'Владелец';
+      default: return 'Пользователь';
+    }
+  };
+
+  const getRoleBadgeClass = (role: Role): string => {
+    switch(role) {
+      case 'admin': return 'bg-amber-100 text-amber-700 border border-amber-200';
+      case 'barista': return 'bg-blue-100 text-blue-700 border border-blue-200';
+      case 'courier': return 'bg-green-100 text-green-700 border border-green-200';
+      default: return 'bg-gray-100 text-gray-700 border border-gray-200';
+    }
+  };
 
   // Определяем текущий маршрут из URL (учитываем base: '/admin/')
   const getCurrentRoute = () => {
@@ -61,27 +82,33 @@ const ResponsiveAdminRoutes: React.FC = () => {
               <div>
                 <h1 className="text-xl font-bold text-slate-900">☕ Админ-панель</h1>
                 <p className="text-sm text-slate-600">
-                  {userRole === UserRole.ADMIN ? 'Администратор' : 'Бариста'} • ID: {currentUserId}
+                  {getRoleLabel(userRole)} • {user?.email || 'Неизвестно'}
                 </p>
               </div>
-              <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                userRole === UserRole.ADMIN 
-                  ? 'bg-amber-100 text-amber-700 border border-amber-200' 
-                  : 'bg-blue-100 text-blue-700 border border-blue-200'
-              }`}>
-                {userRole === UserRole.ADMIN ? 'Администратор' : 'Бариста'}
+              <div className={`px-3 py-1 rounded-full text-xs font-medium ${getRoleBadgeClass(userRole)}`}>
+                {getRoleLabel(userRole)}
               </div>
             </div>
           </div>
         </header>
 
         {/* Контентная область */}
-        <main className="flex-1 bg-slate-100 p-6 overflow-auto md:ml-64">
+        <main className="flex-1 bg-slate-100 p-6 overflow-auto">
           <div className="w-full max-w-7xl mx-auto">
             <Switch>
               <Route exact path="/admin/dashboard">
                 <div className="bg-white rounded-lg shadow p-6">
                   <Dashboard />
+                </div>
+              </Route>
+              <Route exact path="/admin/courier-dashboard">
+                <div className="bg-white rounded-lg shadow p-6">
+                  {userRole === 'courier' ? <CourierDashboard /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
+                </div>
+              </Route>
+              <Route exact path="/admin/courier-documents">
+                <div className="bg-white rounded-lg shadow p-6">
+                  {userRole === 'courier' ? <CourierDocumentsPage /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
                 </div>
               </Route>
               <Route exact path="/admin/orders">
@@ -91,7 +118,7 @@ const ResponsiveAdminRoutes: React.FC = () => {
               </Route>
               <Route exact path="/admin/analytics">
                 <div className="bg-white rounded-lg shadow p-6">
-                  {userRole === UserRole.ADMIN ? <Analytics /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
+                  {userRole === 'admin' ? <Analytics /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
                 </div>
               </Route>
               <Route exact path="/admin/menu">
@@ -100,22 +127,22 @@ const ResponsiveAdminRoutes: React.FC = () => {
               </Route>
               <Route exact path="/admin/bonuses">
                 <div className="bg-white rounded-lg shadow p-6">
-                  {userRole === UserRole.ADMIN ? <BonusManagement /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
+                  {userRole === 'admin' ? <BonusManagement /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
                 </div>
               </Route>
               <Route exact path="/admin/achievements">
                 <div className="bg-white rounded-lg shadow p-6">
-                  {userRole === UserRole.ADMIN ? <AchievementManagement /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
+                  {userRole === 'admin' ? <AchievementManagement /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
                 </div>
               </Route>
               <Route exact path="/admin/promotions">
                 <div className="bg-white rounded-lg shadow p-6">
-                  {userRole === UserRole.ADMIN ? <PromotionManagement /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
+                  {userRole === 'admin' ? <PromotionManagement /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
                 </div>
               </Route>
               <Route exact path="/admin/stories">
                 <div className="bg-white rounded-lg shadow p-6">
-                  {userRole === UserRole.ADMIN ? <InstagramStoriesAdminPageNew /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
+                  {userRole === 'admin' ? <InstagramStoriesAdminPageNew /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
                 </div>
               </Route>
               <Route exact path="/admin/pos">
@@ -125,11 +152,25 @@ const ResponsiveAdminRoutes: React.FC = () => {
               </Route>
               <Route exact path="/admin/users">
                 <div className="bg-white rounded-lg shadow p-6">
-                  {userRole === UserRole.ADMIN ? <UsersPage /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
+                  {userRole === 'admin' ? <UsersPage /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
                 </div>
               </Route>
-              <Redirect from="/admin" exact to="/admin/dashboard" />
-              <Redirect from="/" exact to="/admin/dashboard" />
+              <Route exact path="/admin/delivery">
+                <div className="bg-white rounded-lg shadow p-6">
+                  {userRole === 'admin' ? <DeliveryManagement /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
+                </div>
+              </Route>
+              <Route exact path="/admin/couriers">
+                <div className="bg-white rounded-lg shadow p-6">
+                  {userRole === 'admin' ? <CourierManagement /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
+                </div>
+              </Route>
+              <Redirect from="/admin" exact to={
+                userRole === 'courier' ? "/admin/courier-dashboard" : "/admin/dashboard"
+              } />
+              <Redirect from="/" exact to={
+                userRole === 'courier' ? "/admin/courier-dashboard" : "/admin/dashboard"
+              } />
             </Switch>
           </div>
         </main>

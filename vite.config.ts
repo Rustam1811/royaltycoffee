@@ -123,6 +123,38 @@ export default defineConfig(() => {
     build: {
       outDir: "dist",
       emptyOutDir: true,
-    }
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            // Разделяем vendor код
+            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+            'firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
+            'ui-vendor': ['framer-motion', '@heroicons/react'],
+            'i18n': ['i18next', 'react-i18next'],
+          },
+        },
+      },
+      // Оптимизация chunk size
+      chunkSizeWarningLimit: 1000,
+      // Минимизация CSS
+      cssCodeSplit: true,
+      // Source maps только для production debugging
+      sourcemap: false,
+      // Минификация
+      minify: 'esbuild',
+      target: 'es2015',
+    },
+    // Оптимизация dev сервера
+    optimizeDeps: {
+      include: [
+        'react',
+        'react-dom',
+        'react-router-dom',
+        'framer-motion',
+        'i18next',
+        'react-i18next',
+      ],
+      exclude: ['@firebase/auth', '@firebase/firestore'],
+    },
   };
 });

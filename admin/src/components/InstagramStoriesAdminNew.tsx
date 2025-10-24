@@ -1,19 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Trash2, Eye, Heart, Calendar, Upload } from 'lucide-react';
+import { Plus, Trash2, Eye, Heart, Calendar, Upload, Play } from 'lucide-react';
 import { StoriesService, Story } from '@/services/stories';
 import { useStoryUpload } from '@/hooks/useStoryUpload';
 
 interface StoryFormData {
-  type: 'image' | 'text' | 'gradient';
+  type: 'image' | 'video' | 'text' | 'gradient';
   title: string;
   author: string;
   duration: number;
   text?: string;
   gradient?: string;
-  file?: File;
-  files?: File[]; // для множественной загрузки
-  audience?: 'everyone' | 'close-friends'; // Для кого видна сторис
+  file?: File | null;
+  files?: File[]; // ÃÂ´ÃÂ»Ã‘Â ÃÂ¼ÃÂ½ÃÂ¾ÃÂ¶ÃÂµÃ‘ÂÃ‘â€šÃÂ²ÃÂµÃÂ½ÃÂ½ÃÂ¾ÃÂ¹ ÃÂ·ÃÂ°ÃÂ³Ã‘â‚¬Ã‘Æ’ÃÂ·ÃÂºÃÂ¸
+  audience?: 'everyone' | 'close-friends'; // Ãâ€ÃÂ»Ã‘Â ÃÂºÃÂ¾ÃÂ³ÃÂ¾ ÃÂ²ÃÂ¸ÃÂ´ÃÂ½ÃÂ° Ã‘ÂÃ‘â€šÃÂ¾Ã‘â‚¬ÃÂ¸Ã‘Â
 }
 
 const gradientOptions = {
@@ -23,6 +23,13 @@ const gradientOptions = {
   purple: { name: 'Purple Dream', style: 'linear-gradient(135deg, #a855f7, #ec4899)' }
 };
 
+const MAX_IMAGE_SIZE_MB = 10;
+const MAX_VIDEO_SIZE_MB = 100;
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/avif'];
+const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-m4v', 'video/mpeg', 'video/3gpp', 'video/3gpp2'];
+const ALLOWED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.avif'];
+const ALLOWED_VIDEO_EXTENSIONS = ['.mp4', '.mov', '.m4v', '.webm', '.mpeg', '.mpg', '.3gp', '.3g2'];
+
 export const InstagramStoriesAdminNew: React.FC = () => {
   const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,11 +38,14 @@ export const InstagramStoriesAdminNew: React.FC = () => {
     title: '',
     author: '',
     duration: 5,
-    files: [], // инициализируем массив файлов
-    audience: 'everyone' // По умолчанию всем
+    files: [], // ÃÂ¸ÃÂ½ÃÂ¸Ã‘â€ ÃÂ¸ÃÂ°ÃÂ»ÃÂ¸ÃÂ·ÃÂ¸Ã‘â‚¬Ã‘Æ’ÃÂµÃÂ¼ ÃÂ¼ÃÂ°Ã‘ÂÃ‘ÂÃÂ¸ÃÂ² Ã‘â€žÃÂ°ÃÂ¹ÃÂ»ÃÂ¾ÃÂ²
+    file: null,
+    audience: 'everyone' // ÃÅ¸ÃÂ¾ Ã‘Æ’ÃÂ¼ÃÂ¾ÃÂ»Ã‘â€¡ÃÂ°ÃÂ½ÃÂ¸Ã‘Å½ ÃÂ²Ã‘ÂÃÂµÃÂ¼
   });
   const [isCreating, setIsCreating] = useState(false);
-  const [previewImages, setPreviewImages] = useState<string[]>([]); // для множественного превью
+  const [previewImages, setPreviewImages] = useState<string[]>([]); // ÃÂ´ÃÂ»Ã‘Â ÃÂ¼ÃÂ½ÃÂ¾ÃÂ¶ÃÂµÃ‘ÂÃ‘â€šÃÂ²ÃÂµÃÂ½ÃÂ½ÃÂ¾ÃÂ³ÃÂ¾ ÃÂ¿Ã‘â‚¬ÃÂµÃÂ²Ã‘Å’Ã‘Å½
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
+  const videoPreviewUrlRef = useRef<string | null>(null);
 
   const { upload, state: uploadState } = useStoryUpload();
 
@@ -55,45 +65,139 @@ export const InstagramStoriesAdminNew: React.FC = () => {
     loadStories();
   }, [loadStories]);
 
-  const handleInputChange = (field: keyof StoryFormData, value: string | number | File) => {
+  useEffect(() => {
+    return () => {
+      if (videoPreviewUrlRef.current) {
+        URL.revokeObjectURL(videoPreviewUrlRef.current);
+      }
+    };
+  }, []);
+
+  const handleInputChange = (field: keyof StoryFormData, value: string | number | File | null) => {
+    if (field === 'type') {
+      const nextType = value as StoryFormData['type'];
+      setFormData(prev => ({
+        ...prev,
+        type: nextType,
+        files: [],
+        file: null,
+        text: nextType === 'text' ? (prev.text ?? '') : undefined,
+        gradient: nextType === 'text' || nextType === 'gradient' ? (prev.gradient || 'sunset') : undefined
+      }));
+      setPreviewImages([]);
+      if (videoPreviewUrlRef.current) {
+        URL.revokeObjectURL(videoPreviewUrlRef.current);
+        videoPreviewUrlRef.current = null;
+      }
+      setVideoPreview(null);
+      return;
+    }
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (files.length > 0) {
-      if (e.target.multiple) {
-        // Множественная загрузка
-        setFormData(prev => ({ ...prev, files }));
-        
-        // Создаем превью для всех файлов
-        const previews: string[] = [];
-        let loadedCount = 0;
-        
-        files.forEach((file, index) => {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            previews[index] = e.target?.result as string;
-            loadedCount++;
-            
-            if (loadedCount === files.length) {
-              setPreviewImages([...previews]);
-            }
-          };
-          reader.readAsDataURL(file);
-        });
-      } else {
-        // Одиночная загрузка
-        const file = files[0];
-        setFormData(prev => ({ ...prev, file }));
-        
+
+    if (formData.type === 'video') {
+      const file = files[0];
+      if (!file) {
+        e.target.value = '';
+        return;
+      }
+
+      const lowerName = file.name.toLowerCase();
+      const isTypeAllowed =
+        ALLOWED_VIDEO_TYPES.includes(file.type) ||
+        ALLOWED_VIDEO_EXTENSIONS.some((ext) => lowerName.endsWith(ext));
+
+      if (!isTypeAllowed) {
+        alert('Please choose a video in MP4, MOV, WEBM, M4V or MPEG format.');
+        e.target.value = '';
+        return;
+      }
+
+      if (file.size > MAX_VIDEO_SIZE_MB * 1024 * 1024) {
+        alert(`Video must be ${MAX_VIDEO_SIZE_MB}MB or smaller.`);
+        e.target.value = '';
+        return;
+      }
+
+      if (videoPreviewUrlRef.current) {
+        URL.revokeObjectURL(videoPreviewUrlRef.current);
+        videoPreviewUrlRef.current = null;
+      }
+
+      const objectUrl = URL.createObjectURL(file);
+      videoPreviewUrlRef.current = objectUrl;
+      setVideoPreview(objectUrl);
+      setPreviewImages([]);
+      setFormData((prev) => ({ ...prev, file, files: [] }));
+      e.target.value = '';
+      return;
+    }
+
+    if (!files.length) {
+      e.target.value = '';
+      return;
+    }
+
+    if (videoPreviewUrlRef.current) {
+      URL.revokeObjectURL(videoPreviewUrlRef.current);
+      videoPreviewUrlRef.current = null;
+    }
+    setVideoPreview(null);
+
+    const validFiles = files.filter((file) => {
+      const lowerName = file.name.toLowerCase();
+      const isTypeAllowed =
+        ALLOWED_IMAGE_TYPES.includes(file.type) ||
+        ALLOWED_IMAGE_EXTENSIONS.some((ext) => lowerName.endsWith(ext));
+      const isSizeAllowed = file.size <= MAX_IMAGE_SIZE_MB * 1024 * 1024;
+
+      if (!isTypeAllowed) {
+        console.warn('Skipping unsupported image file:', file.name);
+      }
+      if (!isSizeAllowed) {
+        console.warn('Skipping oversized image file:', file.name);
+      }
+      return isTypeAllowed && isSizeAllowed;
+    });
+
+    if (!validFiles.length) {
+      alert('Please choose images up to 10MB in JPG, PNG, WEBP, HEIC or AVIF formats.');
+      e.target.value = '';
+      return;
+    }
+
+    if (e.target.multiple && validFiles.length > 1) {
+      setFormData((prev) => ({ ...prev, files: validFiles, file: null }));
+
+      const previews: string[] = [];
+      let loadedCount = 0;
+
+      validFiles.forEach((file, index) => {
         const reader = new FileReader();
-        reader.onload = (e) => {
-          setPreviewImages([e.target?.result as string]);
+        reader.onload = (event) => {
+          previews[index] = event.target?.result as string;
+          loadedCount++;
+
+          if (loadedCount === validFiles.length) {
+            setPreviewImages([...previews]);
+          }
         };
         reader.readAsDataURL(file);
-      }
+      });
+    } else {
+      const file = validFiles[0];
+      setFormData((prev) => ({ ...prev, file, files: [] }));
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setPreviewImages([event.target?.result as string]);
+      };
+      reader.readAsDataURL(file);
     }
+
+    e.target.value = '';
   };
 
   const clearForm = () => {
@@ -103,9 +207,15 @@ export const InstagramStoriesAdminNew: React.FC = () => {
       author: '',
       duration: 5,
       files: [],
+      file: null,
       audience: 'everyone'
     });
     setPreviewImages([]);
+    if (videoPreviewUrlRef.current) {
+      URL.revokeObjectURL(videoPreviewUrlRef.current);
+      videoPreviewUrlRef.current = null;
+    }
+    setVideoPreview(null);
   };
 
   const createStory = async () => {
@@ -118,7 +228,7 @@ export const InstagramStoriesAdminNew: React.FC = () => {
       }
 
       if (formData.type === 'image') {
-        // Проверяем есть ли файлы для загрузки
+        // ÃÅ¸Ã‘â‚¬ÃÂ¾ÃÂ²ÃÂµÃ‘â‚¬Ã‘ÂÃÂµÃÂ¼ ÃÂµÃ‘ÂÃ‘â€šÃ‘Å’ ÃÂ»ÃÂ¸ Ã‘â€žÃÂ°ÃÂ¹ÃÂ»Ã‘â€¹ ÃÂ´ÃÂ»Ã‘Â ÃÂ·ÃÂ°ÃÂ³Ã‘â‚¬Ã‘Æ’ÃÂ·ÃÂºÃÂ¸
         const filesToUpload = formData.files && formData.files.length > 0 ? formData.files : 
                             formData.file ? [formData.file] : [];
         
@@ -127,7 +237,7 @@ export const InstagramStoriesAdminNew: React.FC = () => {
           return;
         }
 
-        // Загружаем все файлы и создаем сторис для каждого
+        // Ãâ€”ÃÂ°ÃÂ³Ã‘â‚¬Ã‘Æ’ÃÂ¶ÃÂ°ÃÂµÃÂ¼ ÃÂ²Ã‘ÂÃÂµ Ã‘â€žÃÂ°ÃÂ¹ÃÂ»Ã‘â€¹ ÃÂ¸ Ã‘ÂÃÂ¾ÃÂ·ÃÂ´ÃÂ°ÃÂµÃÂ¼ Ã‘ÂÃ‘â€šÃÂ¾Ã‘â‚¬ÃÂ¸Ã‘Â ÃÂ´ÃÂ»Ã‘Â ÃÂºÃÂ°ÃÂ¶ÃÂ´ÃÂ¾ÃÂ³ÃÂ¾
         for (let i = 0; i < filesToUpload.length; i++) {
           const file = filesToUpload[i];
           const uploadResult = await upload(file, 'image');
@@ -151,8 +261,46 @@ export const InstagramStoriesAdminNew: React.FC = () => {
         }
         
         alert(`${filesToUpload.length} ${filesToUpload.length === 1 ? 'story' : 'stories'} created successfully!`);
+      } else if (formData.type === 'video') {
+        const file = formData.file;
+        if (!file) {
+          alert('Please select a video file');
+          return;
+        }
+
+        const lowerName = file.name.toLowerCase();
+        const isTypeAllowed =
+          ALLOWED_VIDEO_TYPES.includes(file.type) ||
+          ALLOWED_VIDEO_EXTENSIONS.some((ext) => lowerName.endsWith(ext));
+
+        if (!isTypeAllowed) {
+          alert('Video must be in MP4, MOV, WEBM, M4V or MPEG format.');
+          return;
+        }
+
+        if (file.size > MAX_VIDEO_SIZE_MB * 1024 * 1024) {
+          alert(`Video must be ${MAX_VIDEO_SIZE_MB}MB or smaller.`);
+          return;
+        }
+
+        const uploadResult = await upload(file, 'video');
+
+        const newStory: Omit<Story, 'id' | 'createdAt' | 'updatedAt'> = {
+          title: formData.title,
+          author: formData.author,
+          duration: formData.duration,
+          contentType: 'video',
+          mediaUrl: uploadResult.url,
+          likes: 0,
+          views: 0,
+          reactions: [],
+          audience: formData.audience || 'everyone'
+        };
+
+        await StoriesService.create(newStory);
+        alert('Video story created successfully!');
       } else {
-        // Для текстовых и градиентных сторис создаем одну историю
+        // Ãâ€ÃÂ»Ã‘Â Ã‘â€šÃÂµÃÂºÃ‘ÂÃ‘â€šÃÂ¾ÃÂ²Ã‘â€¹Ã‘â€¦ ÃÂ¸ ÃÂ³Ã‘â‚¬ÃÂ°ÃÂ´ÃÂ¸ÃÂµÃÂ½Ã‘â€šÃÂ½Ã‘â€¹Ã‘â€¦ Ã‘ÂÃ‘â€šÃÂ¾Ã‘â‚¬ÃÂ¸Ã‘Â Ã‘ÂÃÂ¾ÃÂ·ÃÂ´ÃÂ°ÃÂµÃÂ¼ ÃÂ¾ÃÂ´ÃÂ½Ã‘Æ’ ÃÂ¸Ã‘ÂÃ‘â€šÃÂ¾Ã‘â‚¬ÃÂ¸Ã‘Å½
         let contentType: Story['contentType'];
         
         if (formData.type === 'text') {
@@ -233,6 +381,30 @@ export const InstagramStoriesAdminNew: React.FC = () => {
           )}
         </div>
       );
+    }
+
+    if (formData.type === 'video') {
+      if (videoPreview) {
+        return (
+          <div className="w-full h-full rounded-2xl overflow-hidden bg-black flex items-center justify-center">
+            <video
+              src={videoPreview}
+              className="w-full h-full object-cover"
+              controls
+              playsInline
+              muted
+              preload="metadata"
+            />
+          </div>
+        );
+      }
+
+      return (
+        <div className="w-full h-full bg-gray-200 rounded-2xl flex flex-col items-center justify-center text-gray-500 gap-2">
+          <span>Video preview will appear here</span>
+          <span className="text-xs">MP4, MOV, WEBM, M4V, MPEG up to {MAX_VIDEO_SIZE_MB}MB</span>
+        </div>
+      );
     } else if (formData.type === 'text' && formData.text) {
       return (
         <div 
@@ -266,6 +438,19 @@ export const InstagramStoriesAdminNew: React.FC = () => {
             className="w-full h-40 rounded-lg bg-cover bg-center"
             style={{ backgroundImage: `url(${story.mediaUrl})` }}
           />
+        );
+      } else if ((story.contentType === 'video' || story.contentType?.startsWith('video/')) && story.mediaUrl) {
+        return (
+          <div className="relative w-full h-40 rounded-lg overflow-hidden bg-black">
+            <video
+              src={story.mediaUrl}
+              className="w-full h-full object-cover"
+              controls
+              playsInline
+              muted
+              preload="metadata"
+            />
+          </div>
         );
       } else if (story.contentType === 'text/plain' && story.text) {
         return (
@@ -363,6 +548,7 @@ export const InstagramStoriesAdminNew: React.FC = () => {
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 >
                   <option value="image">Image Story</option>
+                  <option value="video">Video Story</option>
                   <option value="text">Text Story</option>
                   <option value="gradient">Gradient Story</option>
                 </select>
@@ -396,9 +582,38 @@ export const InstagramStoriesAdminNew: React.FC = () => {
                   <input
                     type="file"
                     accept="image/*"
+                    multiple
                     onChange={handleFileChange}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   />
+                  <p className="mt-1 text-xs text-gray-500">
+                    JPG, PNG, WEBP, HEIC, AVIF up to {MAX_IMAGE_SIZE_MB}MB
+                  </p>
+                  {uploadState.uploading && (
+                    <div className="mt-2 text-sm text-blue-600">
+                      Uploading... {uploadState.progress}%
+                    </div>
+                  )}
+                  {uploadState.error && (
+                    <div className="mt-2 text-sm text-red-600">
+                      Error: {uploadState.error}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {formData.type === 'video' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Upload Video</label>
+                  <input
+                    type="file"
+                    accept={`video/*,${ALLOWED_VIDEO_TYPES.join(',')}`}
+                    onChange={handleFileChange}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    MP4, MOV, WEBM, M4V, MPEG up to {MAX_VIDEO_SIZE_MB}MB
+                  </p>
                   {uploadState.uploading && (
                     <div className="mt-2 text-sm text-blue-600">
                       Uploading... {uploadState.progress}%
@@ -454,7 +669,7 @@ export const InstagramStoriesAdminNew: React.FC = () => {
                 />
               </div>
 
-              {/* 🌟 Instagram-style Audience Selector */}
+              {/* Ã°Å¸Å’Å¸ Instagram-style Audience Selector */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">
                   Who can see this story?
@@ -574,3 +789,5 @@ export const InstagramStoriesAdminNew: React.FC = () => {
 };
 
 export default InstagramStoriesAdminNew;
+
+

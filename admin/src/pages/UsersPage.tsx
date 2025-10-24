@@ -41,48 +41,104 @@ const UsersPage: React.FC = () => {
   const [userOrders, setUserOrders] = useState<UserOrder[] | null>(null);
   const [userAchievements, setUserAchievements] = useState<UserAchievement[] | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  
+  // Оптимизация: пагинация и поиск
+  const [hasMore, setHasMore] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [totalUsers, setTotalUsers] = useState(0);
+  const USERS_PER_PAGE = 20;
 
-  const fetchUsers = async () => {
-    setLoading(true);
+  /**
+   * Оптимизированная загрузка пользователей с пагинацией
+   * Загружает только нужную страницу, а не всех пользователей сразу
+   */
+  const fetchUsers = async (pageNum: number = 1, append: boolean = false) => {
+    if (!append) setLoading(true);
     setError(null);
+    
     try {
-      console.log('🔄 Загружаем пользователей...');
-      const data = await api.get<{ users: ListedUser[] }>('/users?action=list');
-      console.log('📊 RAW response:', data);
-      console.log('📊 Type of response:', typeof data);
-      console.log('📊 Is array?', Array.isArray(data));
-      console.log('👥 data.users:', data.users);
-      console.log('👥 Type of data.users:', typeof data.users);
-      console.log('👥 Is users array?', Array.isArray(data.users));
-      console.log('📈 Количество пользователей:', data.users?.length || 0);
+      console.log(`🔄 Загружаем страницу ${pageNum} пользователей...`);
+      const startTime = performance.now();
+      
+      // Запрос с пагинацией и лимитом
+      const data = await api.get<{ 
+        users: ListedUser[]; 
+        total?: number;
+        hasMore?: boolean;
+      }>(`/users?action=list&page=${pageNum}&limit=${USERS_PER_PAGE}`);
+      
+      const endTime = performance.now();
+      console.log(`✅ Загрузка завершена за ${(endTime - startTime).toFixed(0)}мс`);
       
       if (!data || !data.users) {
         console.error('⚠️ Нет массива users в ответе!');
-        setError('Нет данных пользователей в ответе API');
-        setUsers([]);
-      } else {
-        console.log('✅ Устанавливаем', data.users.length, 'пользователей');
-        setUsers(data.users);
+        setError('Нет данных пользователей');
+        if (!append) setUsers([]);
+        return;
       }
+      
+      // Нормализуем данные: поддерживаем bonusPoints (старый API) и bonusBalance (новый API)
+      const mappedUsers = data.users.map(u => {
+        const bonusBalance = u.bonusBalance ?? (u as unknown as { bonusPoints?: number }).bonusPoints ?? 0;
+        console.log(`👤 ${u.name}: бонусов ${bonusBalance}`);
+        return {
+          ...u,
+          bonusBalance
+        };
+      });
+      
+      console.log(`📊 Получено ${mappedUsers.length} пользователей`);
+      
+      if (append) {
+        setUsers(prev => [...prev, ...mappedUsers]);
+      } else {
+        setUsers(mappedUsers);
+      }
+      
+      setTotalUsers(data.total || mappedUsers.length);
+      setHasMore(data.hasMore ?? mappedUsers.length === USERS_PER_PAGE);
+      
     } catch (e) {
       const err = e as Error;
       console.error('❌ Ошибка загрузки пользователей:', err);
-      console.error('❌ Error stack:', err.stack);
-      console.error('❌ Error details:', (err as Error & { details?: unknown }).details);
       setError(err.message || 'Ошибка загрузки');
-      setUsers([]);
+      if (!append) setUsers([]);
     } finally {
-      setLoading(false);
+      if (!append) setLoading(false);
     }
   };
 
-  useEffect(() => { fetchUsers(); }, []);
+  useEffect(() => { 
+    fetchUsers(1, false); 
+  }, []);
+
+  /**
+   * Загрузка следующей страницы пользователей
+   */
+  const loadMore = () => {
+    if (!hasMore || loading) return;
+    const nextPage = Math.floor(users.length / USERS_PER_PAGE) + 1;
+    fetchUsers(nextPage, true);
+  };
 
   const refresh = async () => {
     setRefreshing(true);
-    await fetchUsers();
+    await fetchUsers(1, false);
     setTimeout(() => setRefreshing(false), 400);
   };
+
+  /**
+   * Фильтрация пользователей по поисковому запросу
+   */
+  const filteredUsers = users.filter(u => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      u.name?.toLowerCase().includes(query) ||
+      u.email?.toLowerCase().includes(query) ||
+      u.phone?.includes(query)
+    );
+  });
 
   async function openUser(u: ListedUser) {
     setActiveUser(u);
@@ -141,43 +197,67 @@ const UsersPage: React.FC = () => {
   function closeDrawer() { setActiveUser(null); }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-100 to-white pb-20">
-      <div className="max-w-6xl mx-auto p-6">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen bg-slate-50 pb-20">
+      <div className="max-w-6xl mx-auto p-4 sm:p-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-3xl bg-gradient-to-br from-slate-900 to-slate-700 flex items-center justify-center shadow-lg">
+            <div className="w-12 h-12 rounded-xl bg-slate-900 flex items-center justify-center">
               <UserGroupIcon className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900 font-sans">Пользователи</h1>
-              <p className="text-sm text-slate-600">Статусы и активность гостей</p>
+              <h1 className="text-2xl font-semibold text-slate-900">Пользователи</h1>
+              <p className="text-sm text-slate-500">
+                {totalUsers > 0 ? `Всего: ${totalUsers}` : 'Статусы и активность'}
+              </p>
             </div>
           </div>
           <button
             onClick={refresh}
             disabled={refreshing || loading}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white font-semibold shadow hover:bg-black transition disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white font-medium hover:bg-slate-800 transition disabled:opacity-50"
           >
             <ArrowPathIcon className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
             Обновить
           </button>
         </div>
 
+        {/* Поиск */}
+        <div className="mb-6">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Поиск по имени, email или телефону..."
+            className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10 outline-none transition"
+          />
+          {searchQuery && (
+            <p className="text-sm text-slate-500 mt-2">
+              Найдено: {filteredUsers.length} из {users.length}
+            </p>
+          )}
+        </div>
+
         {error && (
-          <div className="mb-4 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+          <div className="mb-4 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
             {error}
           </div>
         )}
 
         {/* Content */}
-        {loading ? (
-          <div className="py-20 text-center text-slate-600">Загрузка...</div>
-        ) : users.length === 0 ? (
-          <div className="py-20 text-center text-slate-600">Нет данных</div>
+        {loading && users.length === 0 ? (
+          <div className="py-20 text-center">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-slate-200 border-t-slate-900"></div>
+            <p className="mt-4 text-slate-600">Загрузка пользователей...</p>
+          </div>
+        ) : filteredUsers.length === 0 ? (
+          <div className="py-20 text-center text-slate-500">
+            {searchQuery ? 'Ничего не найдено' : 'Нет данных'}
+          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {users.map(u => (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredUsers.map(u => (
               <motion.div
                 key={u.id}
                 onClick={() => openUser(u)}
@@ -262,6 +342,20 @@ const UsersPage: React.FC = () => {
               </motion.div>
             ))}
           </div>
+
+            {/* Кнопка "Загрузить ещё" */}
+            {!searchQuery && hasMore && (
+              <div className="mt-6 text-center">
+                <button
+                  onClick={loadMore}
+                  disabled={loading}
+                  className="px-6 py-3 bg-white border-2 border-slate-200 hover:border-slate-900 rounded-lg font-medium text-slate-900 transition disabled:opacity-50"
+                >
+                  {loading ? 'Загрузка...' : 'Загрузить ещё'}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 

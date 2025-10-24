@@ -166,7 +166,7 @@ export const PremiumMenu: React.FC<Props> = ({ items, categories, type = 'drinks
     dispatch({
       type:'ADD_ITEM',
       payload:{
-        id:Number(openItem.id),
+        id:String(openItem.id),
         name:openItem.name,
         price: total,
         quantity: qty,
@@ -337,7 +337,7 @@ export const PremiumMenu: React.FC<Props> = ({ items, categories, type = 'drinks
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-3 gap-2.5">
             {visibleItems.map((it) => (
               <div key={it.id}>
                 <DrinkCardPremium item={it} onOpen={openWith} />
@@ -351,16 +351,17 @@ export const PremiumMenu: React.FC<Props> = ({ items, categories, type = 'drinks
         {/* Sheet */}
         <BottomSheetPremium
           open={!!openId}
-          onClose={()=>{rememberSelection(); setOpenId(null); setPanel(null);}}
-          variant={dark?'dark':'light'}
-          className="shadow-[0_-8px_32px_-6px_rgba(0,0,0,0.15)]"
-          maxHeight="85vh"
+          onClose={() => { rememberSelection(); setOpenId(null); setPanel(null); }}
+          variant="center"
+          tone="light"
         >
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto overscroll-contain">
           <AnimatePresence mode="wait">
             {openItem && (
-              <motion.div key={openItem.id} initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:.18}} className="pb-64">
+              <motion.div key={openItem.id} initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:.18}}>
                 {/* Close button */}
-                <div className="sticky top-0 z-10 flex justify-end px-5 py-2">
+                <div className="sticky top-0 z-10 flex justify-end px-5 py-2 bg-white/80 backdrop-blur-sm rounded-t-3xl">
                   <button
                     onClick={()=>{rememberSelection(); setOpenId(null); setPanel(null);}}
                     className="w-9 h-9 rounded-full bg-black/10 hover:bg-black/20 active:scale-95 flex items-center justify-center transition-all backdrop-blur-sm"
@@ -372,7 +373,7 @@ export const PremiumMenu: React.FC<Props> = ({ items, categories, type = 'drinks
                   </button>
                 </div>
                 
-                <div className="px-6 pt-1 relative">
+                <div className="px-6 pt-1 pb-4 relative">
                   {/* hero */}
                   <div className="flex flex-col items-center text-center mb-4">
                     <img
@@ -615,29 +616,27 @@ export const PremiumMenu: React.FC<Props> = ({ items, categories, type = 'drinks
               </motion.div>
             )}
           </AnimatePresence>
+          </div>
 
-          {/* Sticky CTA */}
-          <div className="fixed left-0 right-0 bottom-[88px] z-[60] px-4 pb-2 pointer-events-none">
-            <div ref={cartRef} className="pointer-events-auto bg-[var(--color-bg-elev-1)] rounded-[30px] p-4 flex items-center gap-4 shadow-[0_6px_22px_-10px_rgba(0,0,0,0.28)]">
-              <div className="flex items-center bg-[var(--color-bg-alt)] rounded-full overflow-hidden shadow">
-                <button onClick={()=>setQty(q=>Math.max(1,q-1))} className="w-12 h-12 flex items-center justify-center text-xl font-semibold active:scale-90 transition disabled:opacity-30 will-change-transform" disabled={qty===1}>-</button>
-                <div className="w-12 text-center font-semibold tabular-nums text-[17px]">{qty}</div>
-                <button onClick={()=>setQty(q=>q+1)} className="w-12 h-12 flex items-center justify-center text-xl font-semibold active:scale-90 transition will-change-transform">+</button>
+          {/* Fixed CTA at bottom */}
+          <div className="shrink-0 border-t border-gray-100 px-6 py-4 bg-white rounded-b-3xl">
+            <div ref={cartRef} className="bg-gray-50 rounded-[24px] p-3 flex items-center gap-3 shadow-sm border border-gray-200">
+              <div className="flex items-center bg-white rounded-full overflow-hidden shadow-sm border border-gray-200">
+                <button onClick={()=>setQty(q=>Math.max(1,q-1))} className="w-10 h-10 flex items-center justify-center text-lg font-bold active:scale-90 transition disabled:opacity-30" disabled={qty===1}>−</button>
+                <div className="w-10 text-center font-bold tabular-nums text-[16px]">{qty}</div>
+                <button onClick={()=>setQty(q=>q+1)} className="w-10 h-10 flex items-center justify-center text-lg font-bold active:scale-90 transition">+</button>
               </div>
-              <div className="flex-1" />
-              <motion.button onClick={handleAdd} whileTap={{scale:.93}} className="relative overflow-hidden rounded-full px-8 h-14 flex items-center gap-4 bg-black text-white font-semibold shadow-[0_12px_36px_-16px_rgba(0,0,0,0.65)] dark:bg-white dark:text-black will-change-transform">
-                <span className="text-[15px] font-bold">{t('ui.add')} {total} ₸</span>
-                {diff!==0 && <span key={total} className="absolute -top-3 right-3 bg-[var(--color-bg-alt)] text-[11px] px-2 py-0.5 rounded-full font-semibold shadow">{diff>0?`+${diff}`:diff}</span>}
+              <motion.button onClick={handleAdd} whileTap={{scale:.96}} className="relative flex-1 overflow-hidden rounded-full h-10 flex items-center justify-center bg-black text-white font-bold shadow-lg">
+                <span className="text-[14px]">{t('ui.add')} {total} ₸</span>
               </motion.button>
             </div>
 
             {openItem && (
-              <div className="mt-2 text-[11px] font-medium text-[var(--color-text-secondary)] px-2 flex flex-wrap gap-x-4 gap-y-1">
-                <span>{t('ui.base','База')}: {Math.round(basePrice * sizeMult)}₸</span>
-                {milkPrice>0 && <span>{t('ui.milk') } +{milkPrice}</span>}
-                {syrupPrice>0 && <span>{t('ui.syrups')} +{syrupPrice}</span>}
-                {toppingPrice>0 && <span>{t('ui.toppings')} +{toppingPrice}</span>}
-                <span className="font-semibold text-[var(--color-text-primary)]">= {total}₸</span>
+              <div className="mt-2.5 text-[10px] font-medium text-gray-500 px-1 flex flex-wrap gap-x-3 gap-y-0.5 justify-center">
+                <span>База: {Math.round(basePrice * sizeMult)}₸</span>
+                {milkPrice>0 && <span>Молоко +{milkPrice}₸</span>}
+                {syrupPrice>0 && <span>Сиропы +{syrupPrice}₸</span>}
+                {toppingPrice>0 && <span>Топпинги +{toppingPrice}₸</span>}
               </div>
             )}
           </div>

@@ -2,15 +2,16 @@ import React, { createContext, useEffect, useState, ReactNode, FC } from "react"
 import { onIdTokenChanged, getIdTokenResult, signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
-export type Role = "owner" | "admin" | "barista" | "user";
+export type Role = "owner" | "admin" | "barista" | "courier" | "user";
 export interface User { uid: string; email: string | null; role: Role; }
 interface Ctx { user: User | null; loading: boolean; logout: () => Promise<void>; }
 
 export const UserContext = createContext<Ctx>({ user: null, loading: true, logout: async () => {} });
 
 /** === НАСТРОЙКА ALLOWLIST (заполни своими адресами) === */
-const ADMIN_EMAILS   = ["admin121@gmail.com", "admin@mail.com"];
+const ADMIN_EMAILS   = ["admin121@gmail.com"];
 const BARISTA_EMAILS = ["barista121@gmail.com"];
+const COURIER_EMAILS = ["courier121@gmail.com"];
 const OWNER_EMAILS   = ["owner121@gmail.com"];
 
 /** normalize helper */
@@ -22,6 +23,7 @@ function roleFromEmail(email: string): Role {
   if (OWNER_EMAILS.map(norm).includes(norm(email))) return "owner";
   if (ADMIN_EMAILS.map(norm).includes(norm(email))) return "admin";
   if (BARISTA_EMAILS.map(norm).includes(norm(email))) return "barista";
+  if (COURIER_EMAILS.map(norm).includes(norm(email))) return "courier";
   return "user";
 }
 
@@ -29,13 +31,14 @@ function roleFromEmail(email: string): Role {
 function resolveRoleFromClaimsAndEmail(claims: any, email: string | null): Role {
   // 1) кастом-клейм single 'role'
   const ccRole = String(claims?.role || "").trim().toLowerCase();
-  if (ccRole === "owner" || ccRole === "admin" || ccRole === "barista" || ccRole === "user") {
+  if (ccRole === "owner" || ccRole === "admin" || ccRole === "barista" || ccRole === "courier" || ccRole === "user") {
     return ccRole as Role;
   }
   // 2) альтернативные клеймы (булевые)
   if (claims?.owner === true)   return "owner";
   if (claims?.admin === true)   return "admin";
   if (claims?.barista === true) return "barista";
+  if (claims?.courier === true) return "courier";
   // 3) allowlist по email
   return roleFromEmail(email ?? "");
 }
@@ -47,10 +50,10 @@ export const UserProvider: FC<{ children: ReactNode }> = ({ children }) => {
   useEffect(() => {
     console.log("🔐 UserContext init");
 
-    // 0) Режим имитации через query (?impersonate=admin|barista|owner)
+    // 0) Режим имитации через query (?impersonate=admin|barista|owner|courier)
     const params = new URLSearchParams(window.location.search);
     const impersonate = norm(params.get("impersonate"));
-    if (impersonate && ["owner", "admin", "barista"].includes(impersonate)) {
+    if (impersonate && ["owner", "admin", "barista", "courier"].includes(impersonate)) {
       const fake: User = {
         uid: `impersonated-${impersonate}`,
         email: `impersonated+${impersonate}@local.test`,

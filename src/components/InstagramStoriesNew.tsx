@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Heart, Eye } from 'lucide-react';
+import { X, Heart, Eye, Volume2, VolumeX, Play } from 'lucide-react';
 import { StoriesService, Story } from '../services/stories';
 import { db } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -43,37 +43,58 @@ const timeAgo = (d?: string | number | Date) => {
 
 // Stories ring (увеличил размер + убрал blur)
 const StoriesRing: React.FC<StoriesRingProps> = ({ story, onOpen }) => {
-  // DEBUG: выводим mediaUrl для проверки
-  console.log('🖼️ Story Ring:', story.id, 'mediaUrl:', story.mediaUrl, 'contentType:', story.contentType);
-  
-  // Проверяем что это изображение (может быть "image" или "image/jpeg" и т.д.)
-  const isImage = story.contentType?.startsWith('image/') || story.contentType === 'image';
-  
-  const content =
-    isImage && story.mediaUrl ? (
-      <div className="w-full h-full rounded-full overflow-hidden">
-        <img 
-          src={story.mediaUrl} 
-          alt={story.author}
-          className="w-full h-full object-cover"
-          onError={(e) => {
-            console.error('❌ Image load error for story:', story.id, 'URL:', story.mediaUrl);
-            console.error('Error details:', e);
-          }}
-          onLoad={() => {
-            console.log('✅ Image loaded successfully:', story.id);
-          }}
-        />
-      </div>
-    ) : story.contentType === 'text/plain' && story.text ? (
-      <div
-        className="w-full h-full rounded-full flex items-center justify-center text-white text-[11px] font-bold text-center px-2 leading-tight"
-        style={{ background: getGradient(story.gradient) }}
-      >
-        {story.text.slice(0, 18)}
-        {story.text.length > 18 ? '…' : ''}
-      </div>
-    ) : (
+  const isImage = story.contentType?.startsWith("image/") || story.contentType === "image";
+  const isVideo = story.contentType?.startsWith("video/") || story.contentType === "video";
+
+  const content = (() => {
+    if (isImage && story.mediaUrl) {
+      return (
+        <div className="w-full h-full rounded-full overflow-hidden">
+          <img src={story.mediaUrl} alt={story.author} className="w-full h-full object-cover" />
+        </div>
+      );
+    }
+
+    if (isVideo) {
+      return story.mediaUrl ? (
+        <div className="w-full h-full rounded-full overflow-hidden relative">
+          <video 
+            src={story.mediaUrl} 
+            className="w-full h-full object-cover" 
+            muted 
+            preload="metadata"
+            playsInline
+          />
+          {/* Иконка видео вместо Play */}
+          <div className="absolute bottom-1 right-1 bg-black/60 rounded-full p-1">
+            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+            </svg>
+          </div>
+        </div>
+      ) : (
+        <div
+          className="w-full h-full rounded-full flex items-center justify-center bg-black/75 text-white"
+          style={{ background: getGradient(story.gradient) }}
+        >
+          <Play size={24} className="opacity-80" />
+        </div>
+      );
+    }
+
+    if (story.contentType === "text/plain" && story.text) {
+      return (
+        <div
+          className="w-full h-full rounded-full flex items-center justify-center text-white text-[11px] font-bold text-center px-2 leading-tight"
+          style={{ background: getGradient(story.gradient) }}
+        >
+          {story.text.slice(0, 18)}
+          {story.text.length > 18 ? "�" : ""}
+        </div>
+      );
+    }
+
+    return (
       <div
         className="w-full h-full rounded-full flex items-center justify-center text-white text-xs font-bold"
         style={{ background: getGradient(story.gradient) }}
@@ -81,32 +102,56 @@ const StoriesRing: React.FC<StoriesRingProps> = ({ story, onOpen }) => {
         {initials(story.author)}
       </div>
     );
+  })();
 
-  const isCloseFriends = story.audience === 'close-friends';
-  
+  const isCloseFriends = story.audience === "close-friends";
+
   return (
     <button
+      type="button"
       onClick={onOpen}
-      aria-label={`Open stories by ${story.author || 'Anonymous'}`}
+      aria-label={`Open stories by ${story.author || "Anonymous"}`}
       className={`group flex-shrink-0 rounded-full active:scale-95 transition ${
-        story.viewed ? 'opacity-60' : 'opacity-100'
+        story.viewed ? "opacity-60" : "opacity-100"
       }`}
     >
-      <span className={`ring2 relative block w-[88px] h-[88px] ${isCloseFriends ? 'close-friends' : ''}`}>
-        {/* внутренняя таблетка: БЕЗ blur и полупрозрачности */}
-        <span className="ring2-inner absolute inset-[5px] rounded-full bg-white overflow-hidden">
+      <span
+        className="block w-[88px] h-[88px] rounded-full p-[3px] bg-transparent"
+        style={
+          story.viewed
+            ? {
+                outline: '2px solid #e5e7eb',
+                outlineOffset: '0px',
+                borderRadius: '50%',
+                background: 'transparent',
+              }
+            : isCloseFriends
+              ? {
+                  outline: '2px solid #22c55e',
+                  outlineOffset: '0px',
+                  borderRadius: '50%',
+                  background: 'transparent',
+                }
+              : {
+                  outline: '3px solid transparent',
+                  outlineOffset: '0px',
+                  borderRadius: '50%',
+                  background: 'conic-gradient(from 225deg at 50% 50%, #ff9800 0%, #ff9800 40%, #ff5e62 100%, #ff9800 100%)',
+                  padding: '3px',
+                }
+        }
+      >
+        <span className="block w-full h-full rounded-full overflow-hidden bg-white">
           {content}
-          <span className="pointer-events-none absolute inset-0 rounded-full shadow-[inset_0_0_22px_rgba(255,255,255,0.55)]" />
         </span>
       </span>
 
       <p className="text-[11px] text-center mt-1 truncate w-[84px] text-slate-800">
-        {story.author || 'Anonymous'}
+        {story.author || "Anonymous"}
       </p>
     </button>
   );
 };
-
 // Viewer
 interface StoryViewerProps {
   stories: StoryWithProgress[];
@@ -128,6 +173,8 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   const [progress, setProgress] = useState(0);
   const [paused, setPaused] = useState(false);
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
+  const [isMuted, setIsMuted] = useState(false); // ЗВУК ВКЛЮЧЁН ПО УМОЛЧАНИЮ
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const current = stories[currentIndex];
 
@@ -141,6 +188,23 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
 
   useEffect(() => {
     if (!current || paused) return;
+    
+    // Для видео используем реальное время воспроизведения
+    if (videoRef.current && (current.contentType?.startsWith('video/') || current.contentType === 'video')) {
+      const video = videoRef.current;
+      
+      const updateProgress = () => {
+        if (video.duration) {
+          const percent = (video.currentTime / video.duration) * 100;
+          setProgress(percent);
+        }
+      };
+      
+      video.addEventListener('timeupdate', updateProgress);
+      return () => video.removeEventListener('timeupdate', updateProgress);
+    }
+    
+    // Для изображений и текста используем таймер
     const dur = (current.duration || 5) * 1000;
     const step = 50;
     const inc = (step / dur) * 100;
@@ -161,12 +225,44 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     if (!current) return;
     setProgress(0);
     onStoryView(current.id);
+    
+    // Автоплей видео при смене сторис
+    const playVideo = async () => {
+      if (!videoRef.current) return;
+      
+      const video = videoRef.current;
+      video.currentTime = 0;
+      
+      try {
+        // Попытка 1: Играть со звуком
+        await video.play();
+      } catch (error) {
+        // Попытка 2: Если браузер блокирует - играть без звука, но пользователь может включить
+        console.warn('Autoplay with sound blocked, trying muted:', error);
+        setIsMuted(true);
+        video.muted = true;
+        
+        try {
+          await video.play();
+        } catch (mutedError) {
+          console.error('Autoplay failed even when muted:', mutedError);
+        }
+      }
+    };
+    
+    playVideo();
   }, [current?.id]); // eslint-disable-line
 
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
     setTouchStart({ x: t.clientX, y: t.clientY });
     setPaused(true);
+    
+    // Пауза видео
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+    
     navigator.vibrate?.(8);
   };
   const onTouchEnd = (e: React.TouchEvent) => {
@@ -190,8 +286,18 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     }
     setTouchStart(null);
     setPaused(false);
+    
+    // Возобновление видео
+    if (videoRef.current) {
+      videoRef.current.play().catch(console.error);
+    }
   };
-  const onMouseDown = () => setPaused(true);
+  const onMouseDown = () => {
+    setPaused(true);
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+  };
   const onMouseUp = (e: React.MouseEvent) => {
     const { width, left } = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const x = e.clientX - left;
@@ -201,6 +307,11 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
       onNext();
     }
     setPaused(false);
+    
+    // Возобновление видео
+    if (videoRef.current) {
+      videoRef.current.play().catch(console.error);
+    }
   };
 
   useEffect(() => {
@@ -220,6 +331,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
 
   // Проверяем что это изображение (может быть "image" или "image/jpeg" и т.д.)
   const isImage = current.contentType?.startsWith('image/') || current.contentType === 'image';
+  const isVideo = current.contentType?.startsWith('video/') || current.contentType === 'video';
 
   const content =
     isImage && current.mediaUrl ? (
@@ -229,6 +341,65 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
         className="w-full h-full object-cover" 
         loading="eager"
       />
+    ) : isVideo && current.mediaUrl ? (
+      <div className="relative w-full h-full">
+        <video 
+          ref={videoRef}
+          src={current.mediaUrl} 
+          className="w-full h-full object-cover" 
+          autoPlay
+          muted={isMuted}
+          playsInline
+          loop={false}
+          preload="auto"
+          onEnded={onNext}
+          onVolumeChange={(e) => {
+            // Синхронизируем состояние isMuted с реальным состоянием видео
+            const video = e.currentTarget;
+            setIsMuted(video.muted);
+          }}
+        />
+        {/* Кнопка звука - показываем только если звук выключен */}
+        {isMuted && (
+          <button
+            onClick={async () => {
+              if (!videoRef.current) return;
+              
+              const video = videoRef.current;
+              video.muted = false;
+              setIsMuted(false);
+              
+              // Если видео на паузе из-за отсутствия взаимодействия, запускаем
+              if (video.paused) {
+                try {
+                  await video.play();
+                } catch (error) {
+                  console.error('Failed to play video:', error);
+                }
+              }
+            }}
+            className="absolute top-4 right-4 w-12 h-12 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors z-10 animate-pulse"
+            aria-label="Включить звук"
+          >
+            <VolumeX size={24} />
+          </button>
+        )}
+        
+        {/* Индикатор звука когда звук включён */}
+        {!isMuted && (
+          <button
+            onClick={() => {
+              if (!videoRef.current) return;
+              videoRef.current.muted = true;
+              setIsMuted(true);
+            }}
+            className="absolute top-4 right-4 w-10 h-10 bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/50 transition-colors z-10"
+            aria-label="Выключить звук"
+          >
+            <Volume2 size={20} />
+          </button>
+        )}
+      </div>
     ) : current.contentType === 'text/plain' && current.text ? (
       <div className="w-full h-full flex items-center justify-center p-8" style={{ background: getGradient(current.gradient) }}>
         <div className="text-2xl md:text-3xl font-bold text-white text-center leading-snug drop-shadow">
@@ -253,7 +424,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
       onMouseDown={onMouseDown}
       onMouseUp={onMouseUp}
     >
-      <div className="absolute inset-0 bg-[radial-gradient(120%_120%_at_50%_-10%,rgba(8,8,8,0.85),rgba(0,0,0,0.95))]" />
+      <div className="absolute inset-0 bg-transparent" />
       <div className="absolute top-4 left-4 right-4 z-10 flex gap-1">
         {stories.map((_, i) => (
           <div key={i} className="flex-1 h-1.5 bg-white/25 rounded-full overflow-hidden">
@@ -492,7 +663,7 @@ export const InstagramStoriesNew: React.FC = () => {
   }
 
   return (
-    <div className="py-2">
+    <div className="py-2 bg-[#F6F7FB]">
       {/* Убрали надпись Stories - оставили только ленту */}
       
       {/* Кнопка обновления статуса и stories */}
@@ -509,7 +680,7 @@ export const InstagramStoriesNew: React.FC = () => {
         </button>
       </div>
 
-      <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
+      <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar bg-[#F6F7FB]">
         {authors.map((author, i) => {
           const arr = groups[author];
           const anyUnviewed = arr.some((s) => !s.viewed);
@@ -541,3 +712,4 @@ export const InstagramStoriesNew: React.FC = () => {
     </div>
   );
 };
+

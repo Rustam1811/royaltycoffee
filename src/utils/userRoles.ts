@@ -6,6 +6,7 @@
 export enum UserRole {
   CUSTOMER = 'customer',    // Обычный клиент
   BARISTA = 'barista',      // Бариста
+  COURIER = 'courier',      // Курьер
   ADMIN = 'admin'           // Администратор
 }
 
@@ -16,6 +17,9 @@ export interface UserPermissions {
   canManageMenu: boolean;
   canManageUsers: boolean;
   canManageBonuses: boolean;
+  canViewDeliveries: boolean;
+  canUpdateDeliveryStatus: boolean;
+  canUpdateLocation: boolean;
 }
 
 /**
@@ -31,6 +35,23 @@ export const ROLE_CONFIG = {
       canManageMenu: true,
       canManageUsers: true,
       canManageBonuses: true,
+      canViewDeliveries: true,
+      canUpdateDeliveryStatus: true,
+      canUpdateLocation: true,
+    }
+  },
+  [UserRole.COURIER]: {
+    userIds: ['87888888888'], // Пример ID курьера
+    permissions: {
+      canViewOrders: false,
+      canUpdateOrderStatus: false,
+      canViewAnalytics: false,
+      canManageMenu: false,
+      canManageUsers: false,
+      canManageBonuses: false,
+      canViewDeliveries: true,       // Может видеть свои доставки
+      canUpdateDeliveryStatus: true,  // Может обновлять статус доставки
+      canUpdateLocation: true,        // Может отправлять GPS координаты
     }
   },
   [UserRole.BARISTA]: {
@@ -42,6 +63,9 @@ export const ROLE_CONFIG = {
       canManageMenu: false,
       canManageUsers: false,
       canManageBonuses: false,
+      canViewDeliveries: false,
+      canUpdateDeliveryStatus: false,
+      canUpdateLocation: false,
     }
   },
   [UserRole.CUSTOMER]: {
@@ -53,6 +77,9 @@ export const ROLE_CONFIG = {
       canManageMenu: false,
       canManageUsers: false,
       canManageBonuses: false,
+      canViewDeliveries: false,
+      canUpdateDeliveryStatus: false,
+      canUpdateLocation: false,
     }
   }
 };
@@ -63,6 +90,10 @@ export const ROLE_CONFIG = {
 export const getUserRole = (userId: string): UserRole => {
   if (ROLE_CONFIG[UserRole.ADMIN].userIds.includes(userId)) {
     return UserRole.ADMIN;
+  }
+  
+  if (ROLE_CONFIG[UserRole.COURIER].userIds.includes(userId)) {
+    return UserRole.COURIER;
   }
   
   if (ROLE_CONFIG[UserRole.BARISTA].userIds.includes(userId)) {
@@ -95,6 +126,8 @@ export const getRoleDisplayName = (role: UserRole): string => {
   switch (role) {
     case UserRole.ADMIN:
       return 'Администратор';
+    case UserRole.COURIER:
+      return 'Курьер';
     case UserRole.BARISTA:
       return 'Бариста';
     case UserRole.CUSTOMER:
