@@ -690,6 +690,60 @@ httpApp.get('/api/orders', async (req: Request, res: Response) => {
   }
 });
 
+// Endpoint для поиска пользователей по телефону (для POS системы)
+httpApp.get('/api/users', async (req: Request, res: Response) => {
+  try {
+    const { action, phone } = req.query;
+    
+    // Get user by phone - FAST endpoint for POS
+    if (action === 'getByPhone' && phone) {
+      const normalizePhone = (p: string) => {
+        const cleaned = p.replace(/\D/g, '');
+        if (cleaned.startsWith('8') && cleaned.length === 11) {
+          return '+7' + cleaned.substring(1);
+        }
+        if (cleaned.startsWith('7') && cleaned.length === 11) {
+          return '+' + cleaned;
+        }
+        return p;
+      };
+      
+      const normalized = normalizePhone(phone as string);
+      console.log('[Users getByPhone] Searching for:', normalized);
+      
+      // Ищем по нормализованному номеру
+      const usersSnapshot = await db.collection('users')
+        .where('phone', '==', normalized)
+        .limit(1)
+        .get();
+      
+      if (usersSnapshot.empty) {
+        console.log('[Users getByPhone] Not found');
+        return res.status(404).json({ ok: false, error: 'User not found' });
+      }
+      
+      const userDoc = usersSnapshot.docs[0];
+      const userData = userDoc.data();
+      
+      console.log('[Users getByPhone] Found user:', userDoc.id);
+      return res.status(200).json({
+        ok: true,
+        user: {
+          id: userDoc.id,
+          phone: userData.phone,
+          displayName: userData.displayName || userData.name || null,
+          email: userData.email || null
+        }
+      });
+    }
+    
+    return res.status(400).json({ ok: false, error: 'Invalid action or missing parameters' });
+  } catch (error: any) {
+    console.error('[Users] Error:', error);
+    return res.status(500).json({ ok: false, error: error.message || 'Internal server error' });
+  }
+});
+
 // Endpoint для загрузки файлов (обходит CORS проблему)
 httpApp.post('/api/upload-story', async (req: Request, res: Response) => {
   try {

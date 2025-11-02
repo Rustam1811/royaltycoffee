@@ -1,13 +1,13 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { DrinkCardPremium, PremiumDrinkItem } from './DrinkCardPremium';
 import { BottomSheetPremium } from './BottomSheetPremium';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import SizeSelector from './SizeSelector';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useFlyToCart } from '../../menu/hooks/useFlyToCart';
 import { FlyToCartLayer } from '../../menu/components/FlyToCartLayer';
 import { useCart } from '../../../contexts/CartContext';
 import { useTranslation } from 'react-i18next';
-import { listContainer, fadeSlide } from '../../../ui/motion';
-import { findProductById } from '../../../utils/findProduct';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 // Restore Option interface (was removed accidentally)
 interface Option { key: string; name: string; price: number; image: string; }
@@ -85,7 +85,10 @@ interface Props {
 const Pill: React.FC<{ active: boolean; onClick: () => void; layoutId?: string; rightBadge?: React.ReactNode; children: React.ReactNode; }> = ({ active, onClick, layoutId, rightBadge, children }) => (
   <motion.button
     layoutId={layoutId}
-    onClick={onClick}
+    onClick={(e) => {
+      e.stopPropagation();
+      onClick();
+    }}
     whileHover={{ scale: 1.05 }}
     whileTap={{ scale: 0.95 }}
     transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
@@ -103,17 +106,15 @@ const Pill: React.FC<{ active: boolean; onClick: () => void; layoutId?: string; 
 );
 
 export const PremiumMenu: React.FC<Props> = ({ items, categories, type = 'drinks' }) => {
-  const { i18n, t } = useTranslation();
-  const prefersReduced = useReducedMotion();
+  const { t } = useTranslation();
   const [activeCat, setActiveCat] = useState<string>(categories?.[0]?.key || '');
   const [openId, setOpenId] = useState<string|number|null>(null);
   const [size, setSize] = useState(type === 'food' ? 'standard' : 'm');
-  const [qty, setQty] = useState(1);
+  const [qty] = useState(1); // Всегда 1, не редактируется
   const [milkKey, setMilkKey] = useState('regular');
   const [syrupKeys, setSyrupKeys] = useState<string[]>([]);
   const [toppingKeys, setToppingKeys] = useState<string[]>([]);
-  const [panel, setPanel] = useState<'milk'|'syrup'|'topping'|'sauce'|'extra'|'side'|null>(type === 'food' ? 'sauce' : 'milk');
-  const [dark,setDark] = useState(false);
+  const [panel, setPanel] = useState<'milk'|'syrup'|'topping'|'sauce'|'extra'|'side'|null>(null);
 
   // Context-aware detection
   const isFood = type === 'food';
@@ -149,11 +150,12 @@ export const PremiumMenu: React.FC<Props> = ({ items, categories, type = 'drinks
       resetState();
     }
     setOpenId(id);
+    // Always start with panels closed
+    setPanel(null);
   };
 
   const resetState = () => {
     setSize(isFood ? 'standard' : 'm'); 
-    setQty(1); 
     setMilkKey('regular'); 
     setSyrupKeys([]); 
     setToppingKeys([]); 
@@ -279,40 +281,19 @@ export const PremiumMenu: React.FC<Props> = ({ items, categories, type = 'drinks
     }
   }, [touchStart, touchEnd, handleSwipe]);
 
-  const changeLang = () => {
-    const order: string[] = ['ru','en','kz'];
-    const idx = order.indexOf(i18n.language as string);
-    const next = order[(idx+1)%order.length];
-    i18n.changeLanguage(next);
-  };
-
   return (
-    <div className={`min-h-screen ${dark?'dark-theme':''} bg-[var(--color-bg-base)] text-[var(--color-text-primary)] font-sans transition-colors`}>
-      {/* Header */}
-      <div className="pt-4 pb-4 sticky top-0 z-20 bg-[var(--color-bg-base)]/95 backdrop-blur supports-[backdrop-filter]:backdrop-blur-sm flex items-center justify-between px-5">
-          <div className="flex items-center gap-3">
-            <h1 className="text-[20px] font-semibold tracking-tight">{t('ui.menu')}</h1>
-            {categories && categories.length > 1 && (
-              <div className="flex items-center gap-1">
-                {categories.map((cat) => (
-                  <div
-                    key={cat.key}
-                    className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                      cat.key === activeCat ? 'bg-black w-4' : 'bg-gray-300'
-                    }`}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {categories && categories.length>0 && (
-              <div className="hidden sm:flex gap-3 mr-2">
-                {/* small category indicators (desktop) */}
-              </div>
-            )}
-            <button onClick={changeLang} className="px-3 h-9 rounded-full bg-[var(--color-bg-alt)] text-[13px] font-medium active:scale-95 shadow">{i18n.language.toUpperCase()}</button>
-            <button onClick={()=>setDark(d=>!d)} className="w-9 h-9 rounded-full bg-[var(--color-bg-alt)] flex items-center justify-center active:scale-95 shadow text-[13px] font-semibold">{dark?'🌙':'☀️'}</button>
+    <div className="min-h-screen bg-[var(--color-bg-base)] text-[var(--color-text-primary)] font-sans transition-colors">
+      {/* Header - только индикаторы категорий */}
+      <div className="pt-4 pb-4 sticky top-0 z-20 bg-[var(--color-bg-base)]/95 backdrop-blur supports-[backdrop-filter]:backdrop-blur-sm flex items-center justify-center px-5">
+          <div className="flex items-center gap-1">
+            {categories && categories.length > 1 && categories.map((cat) => (
+              <div
+                key={cat.key}
+                className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                  cat.key === activeCat ? 'bg-black w-4' : 'bg-gray-300'
+                }`}
+              />
+            ))}
           </div>
         </div>
         {categories && categories.length>0 && (
@@ -352,8 +333,7 @@ export const PremiumMenu: React.FC<Props> = ({ items, categories, type = 'drinks
         <BottomSheetPremium
           open={!!openId}
           onClose={() => { rememberSelection(); setOpenId(null); setPanel(null); }}
-          variant="center"
-          tone="light"
+          variant="light"
         >
           {/* Scrollable Content */}
           <div className="flex-1 overflow-y-auto overscroll-contain">
@@ -361,21 +341,19 @@ export const PremiumMenu: React.FC<Props> = ({ items, categories, type = 'drinks
             {openItem && (
               <motion.div key={openItem.id} initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:.18}}>
                 {/* Close button */}
-                <div className="sticky top-0 z-10 flex justify-end px-5 py-2 bg-white/80 backdrop-blur-sm rounded-t-3xl">
+                <div className="sticky top-0 z-10 px-4 pt-4 flex justify-end bg-white/80 backdrop-blur-sm rounded-t-3xl">
                   <button
                     onClick={()=>{rememberSelection(); setOpenId(null); setPanel(null);}}
-                    className="w-9 h-9 rounded-full bg-black/10 hover:bg-black/20 active:scale-95 flex items-center justify-center transition-all backdrop-blur-sm"
+                    className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 active:scale-95 flex items-center justify-center transition-all"
                     aria-label="Закрыть"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <XMarkIcon className="w-6 h-6 text-gray-900" />
                   </button>
                 </div>
                 
-                <div className="px-6 pt-1 pb-4 relative">
+                <div className="px-4 pt-0 pb-4 relative">
                   {/* hero */}
-                  <div className="flex flex-col items-center text-center mb-4">
+                  <div className="flex flex-col items-center text-center">
                     <img
                       src={openItem.image}
                       alt={openItem.name}
@@ -385,53 +363,21 @@ export const PremiumMenu: React.FC<Props> = ({ items, categories, type = 'drinks
                       className="w-[58%] max-w-[240px] drop-shadow-[0_18px_36px_rgba(0,0,0,0.22)]"
                     />
                   </div>
-                  <h2 className="text-[24px] font-semibold tracking-tight text-center">
+                  <h2 className="text-[22px] font-semibold tracking-tight text-center leading-tight">
                     {openItem.name}
                   </h2>
-                  <p className="text-[13px] text-[var(--color-text-secondary)] text-center mt-2">{t('ui.customize')}</p>
-
-                  {/* Size */}
-                  <div className="mt-8">
-                    <div className="text-[11px] uppercase font-semibold tracking-[1px] text-[var(--color-text-tertiary)] mb-3 px-1 flex items-center gap-2">
-                      {t('ui.size')}
-                    </div>
-                    <div className="flex gap-3 justify-center">
-                      {SIZES.map((s)=>{
-                        const active=s.key===size;
-                        return (
-                          <button
-                            key={s.key}
-                            onClick={()=>setSize(s.key)}
-                            className={`relative h-14 min-w-[72px] px-6 rounded-[20px] text-[13px] font-bold transition-all duration-200 outline-none overflow-hidden group
-                              ${active
-                                ? 'bg-gradient-to-br from-gray-900 via-black to-gray-800 text-white shadow-[0_20px_50px_-16px_rgba(0,0,0,0.60)] border border-gray-700'
-                                : 'bg-gradient-to-br from-white via-gray-50 to-gray-100 text-gray-700 hover:from-gray-50 hover:via-gray-100 hover:to-gray-150 shadow-[0_8px_24px_-12px_rgba(0,0,0,0.20)] hover:shadow-[0_12px_32px_-12px_rgba(0,0,0,0.30)] border border-gray-200/60 hover:border-gray-300/80'}`}
-                          >
-                            <div className="relative z-10">
-                              <span className="block leading-none text-[16px] font-black">{s.label}</span>
-                              {s.volume > 0 && (
-                                <span className="block text-[10px] mt-1 opacity-70 font-semibold tabular-nums">
-                                  {s.volume} {s.unit}
-                                </span>
-                              )}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  <p className="text-[13px] text-gray-500 text-center mt-2">{t('ui.customize')}</p>
 
                   {/* Toggles panels */}
-                  <div className="mt-8">
-                    <div className="text-[11px] uppercase font-semibold tracking-[1px] text-[var(--color-text-tertiary)] mb-3 px-1 flex items-center gap-2">
+                  <div className="mt-6">
+                    {/* <div className="text-[11px] uppercase font-semibold tracking-[1px] text-[var(--color-text-tertiary)] mb-3 px-1 flex items-center gap-2">
                       {t('ui.options')}
-                    </div>
+                    </div> */}
 
                     <motion.div
-                      variants={fadeSlide(!!prefersReduced)}
-                      initial="hidden"
-                      animate="visible"
-                      exit="out"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.2 }}
                       className="grid grid-cols-3 gap-3"
                     >
                       {isFood ? (
@@ -461,48 +407,67 @@ export const PremiumMenu: React.FC<Props> = ({ items, categories, type = 'drinks
                       )}
                     </motion.div>
 
-                    <AnimatePresence mode="wait">
+                    <AnimatePresence>
                       {panel && (
                         <motion.div
                           key={panel}
-                          variants={fadeSlide(!!prefersReduced)}
-                          initial="hidden"
-                          animate="visible"
-                          exit="out"
-                          className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          transition={{ duration: 0.2 }}
+                          className="mt-4 flex gap-2.5 overflow-x-auto scrollbar-hide pb-2"
+                          style={{ scrollSnapType: 'x mandatory' }}
                         >
                           {panelData.map((opt)=>{
                             const active = isSelected(opt.key);
                             return (
                               <button
                                 key={opt.key}
-                                onClick={()=>selectItem(opt.key)}
-                                className={`relative p-3 rounded-2xl border transition-all duration-200 text-left group overflow-hidden ${
-                                  active
-                                    ? 'border-black bg-black/5 shadow-lg'
-                                    : 'border-black/10 bg-white hover:border-black/20 hover:shadow-md'
-                                }`}
+                                onClick={(e)=>{
+                                  e.stopPropagation();
+                                  selectItem(opt.key);
+                                }}
+                                className="relative flex-shrink-0 w-[110px] h-[140px] rounded-2xl overflow-hidden shadow-lg active:scale-95 transition-all"
+                                style={{ scrollSnapAlign: 'start' }}
                               >
-                                <div className="relative mb-2">
-                                  <img
-                                    src={opt.image}
-                                    alt=""
-                                    loading="lazy"
-                                    width={160}
-                                    height={64}
-                                    className="w-full h-16 object-cover rounded-[16px]"
-                                  />
-                                </div>
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className="block leading-tight text-[13px] font-semibold">
-                                    {t(opt.name, opt.name.split('.').pop())}
-                                  </span>
-                                  {opt.price>0 && (
-                                    <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-black/5">
-                                      +{opt.price}₸
-                                    </span>
+                                {/* Simple colored background */}
+                                <div className={`absolute inset-0 ${active ? 'bg-gradient-to-br from-amber-500 to-orange-600' : 'bg-gradient-to-br from-gray-100 to-gray-200'}`} />
+                                
+                                {/* Content overlay */}
+                                <div className="relative h-full flex flex-col justify-between p-3">
+                                  {/* Image at top */}
+                                  {opt.image && (
+                                    <div className="w-14 h-14 mx-auto rounded-xl overflow-hidden bg-white shadow-md">
+                                      <img
+                                        src={opt.image}
+                                        alt=""
+                                        loading="lazy"
+                                        className="w-full h-full object-cover"
+                                      />
+                                    </div>
                                   )}
+                                  
+                                  {/* Name and price at bottom */}
+                                  <div className="space-y-1">
+                                    <span className={`block text-xs font-bold leading-tight line-clamp-2 ${active ? 'text-white' : 'text-gray-900'}`}>
+                                      {t(opt.name, opt.name.split('.').pop())}
+                                    </span>
+                                    {opt.price > 0 && (
+                                      <span className={`block text-[10px] font-bold ${active ? 'text-white' : 'text-amber-600'}`}>
+                                        +{opt.price}₸
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
+
+                                {/* Active checkmark */}
+                                {active && (
+                                  <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-white shadow-md flex items-center justify-center">
+                                    <svg className="w-3 h-3 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  </div>
+                                )}
                               </button>
                             );
                           })}
@@ -510,108 +475,6 @@ export const PremiumMenu: React.FC<Props> = ({ items, categories, type = 'drinks
                       )}
                     </AnimatePresence>
                   </div>
-
-                  {/* Toppings */}
-                  <div className="mt-8">
-                    <div className="text-[11px] uppercase font-semibold tracking-[1px] text-[var(--color-text-tertiary)] mb-3 px-1 flex items-center gap-2">
-                      {t('ui.toppings')}
-                      <motion.button
-                        layoutId="topping-toggle"
-                        onClick={()=>setPanel(panel==='topping' ? null : 'topping')}
-                        whileTap={{ scale: 0.95 }}
-                        whileHover={{ scale: 1.05 }}
-                        transition={{ type: 'spring', stiffness: 300, damping: 35 }}
-                        className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${
-                          panel==='topping' ? 'bg-black text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        }`}
-                      >
-                        {panel==='topping' ? '−' : '+'}
-                      </motion.button>
-                    </div>
-
-                    <AnimatePresence mode="wait">
-                      {panel === 'topping' && (
-                        <motion.div
-                          variants={listContainer(0.25)}
-                          initial="hidden"
-                          animate="show"
-                          exit="exit"
-                          className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3"
-                        >
-                          {TOPPINGS.map((opt)=>{
-                            const active = toppingKeys.includes(opt.key);
-                            return (
-                              <button
-                                key={opt.key}
-                                onClick={()=>toggleMulti(setToppingKeys, toppingKeys, opt.key)}
-                                className={`relative p-3 rounded-2xl border transition-all duration-200 text-left group overflow-hidden ${
-                                  active
-                                    ? 'border-black bg-black/5 shadow-lg'
-                                    : 'border-black/10 bg-white hover:border-black/20 hover:shadow-md'
-                                }`}
-                              >
-                                <div className="relative mb-2">
-                                  <img 
-                                    src={opt.image} 
-                                    alt="" 
-                                    loading="lazy"
-                                    width={160}
-                                    height={64}
-                                    className="w-full h-16 object-cover rounded-[16px]" 
-                                  />
-                                </div>
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className="block leading-tight text-[13px] font-semibold">
-                                    {t(opt.name, opt.name.split('.').pop())}
-                                  </span>
-                                  {opt.price>0 && (
-                                    <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-black/5">
-                                      +{opt.price}₸
-                                    </span>
-                                  )}
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </div>
-
-                {/* Upsell */}
-                <div className="px-6 pt-4 pb-2">
-                  {(() => {
-                    const fullProduct = findProductById(openItem.id);
-                    const together = fullProduct?.togetherBetter || [];
-                    
-                    if (together.length === 0) return null;
-                    
-                    return (
-                      <>
-                        <div className="text-[11px] uppercase font-semibold tracking-[1px] text-[var(--color-text-tertiary)] mb-3">{t('ui.together')}</div>
-                        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
-                          {together.map(u=> (
-                            <button
-                              key={u.id}
-                              onClick={()=>{
-                                const targetProduct = findProductById(u.id);
-                                if (targetProduct) {
-                                  openWith(u.id); // Открываем модалку с полным продуктом
-                                }
-                              }}
-                              className="flex-shrink-0 w-[140px] rounded-2xl bg-[var(--color-bg-alt)] p-3 text-left active:scale-95 transition shadow-[0_4px_16px_-10px_rgba(0,0,0,0.28)] hover:bg-[var(--color-bg-elev-2)]"
-                            >
-                              <div className="h-20 flex items-center justify-center">
-                                <img src={u.image} alt="" className="w-full h-full object-contain drop-shadow-[0_6px_14px_rgba(0,0,0,0.18)]" />
-                              </div>
-                              <p className="text-[13px] font-semibold text-[var(--color-text-primary)] leading-tight line-clamp-2 mt-2">{u.name}</p>
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    );
-                  })()}
                 </div>
               </motion.div>
             )}
@@ -619,24 +482,34 @@ export const PremiumMenu: React.FC<Props> = ({ items, categories, type = 'drinks
           </div>
 
           {/* Fixed CTA at bottom */}
-          <div className="shrink-0 border-t border-gray-100 px-6 py-4 bg-white rounded-b-3xl">
-            <div ref={cartRef} className="bg-gray-50 rounded-[24px] p-3 flex items-center gap-3 shadow-sm border border-gray-200">
-              <div className="flex items-center bg-white rounded-full overflow-hidden shadow-sm border border-gray-200">
-                <button onClick={()=>setQty(q=>Math.max(1,q-1))} className="w-10 h-10 flex items-center justify-center text-lg font-bold active:scale-90 transition disabled:opacity-30" disabled={qty===1}>−</button>
-                <div className="w-10 text-center font-bold tabular-nums text-[16px]">{qty}</div>
-                <button onClick={()=>setQty(q=>q+1)} className="w-10 h-10 flex items-center justify-center text-lg font-bold active:scale-90 transition">+</button>
+          <div className="shrink-0 border-t border-gray-100 px-4 py-4 bg-white rounded-b-3xl">
+            {/* Size selector and Add button on same row */}
+            <div className="flex gap-3 items-center" ref={cartRef}>
+              {/* Size selector - wider */}
+              <div className="flex-1">
+                <SizeSelector value={size} onChange={setSize} />
               </div>
-              <motion.button onClick={handleAdd} whileTap={{scale:.96}} className="relative flex-1 overflow-hidden rounded-full h-10 flex items-center justify-center bg-black text-white font-bold shadow-lg">
-                <span className="text-[14px]">{t('ui.add')} {total} ₸</span>
-              </motion.button>
+              
+              {/* Add button - narrower */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleAdd();
+                }}
+                className="flex-shrink-0 w-32 h-14 rounded-2xl bg-gradient-to-r from-black to-gray-800 text-white font-bold text-lg shadow-xl flex items-center justify-center active:scale-95 transition-transform hover:from-gray-800 hover:to-gray-700"
+              >
+                <span>+ {total} ₸</span>
+              </button>
             </div>
 
             {openItem && (
               <div className="mt-2.5 text-[10px] font-medium text-gray-500 px-1 flex flex-wrap gap-x-3 gap-y-0.5 justify-center">
                 <span>База: {Math.round(basePrice * sizeMult)}₸</span>
-                {milkPrice>0 && <span>Молоко +{milkPrice}₸</span>}
-                {syrupPrice>0 && <span>Сиропы +{syrupPrice}₸</span>}
-                {toppingPrice>0 && <span>Топпинги +{toppingPrice}₸</span>}
+                {milkPrice > 0 && <span>Молоко +{milkPrice}₸</span>}
+                {syrupPrice > 0 && <span>Сиропы +{syrupPrice}₸</span>}
+                {toppingPrice > 0 && <span>Топпинги +{toppingPrice}₸</span>}
               </div>
             )}
           </div>

@@ -1,6 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
-import JsBarcode from 'jsbarcode';
 import { useAuth } from '../auth/AuthContext';
 import { apiUrl } from '../config/api';
 
@@ -11,8 +10,6 @@ const CardPage: React.FC = () => {
   const [totalOrders, setTotalOrders] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-
-  const barcodeRef = useRef<SVGSVGElement | null>(null);
 
   const uid = user?.uid || '';
   const payload = useMemo(() => (uid ? `loyalty:uid=${encodeURIComponent(uid)}&v=1` : ''), [uid]);
@@ -48,20 +45,6 @@ const CardPage: React.FC = () => {
     void loadBalance();
   }, [loadBalance]);
 
-  useEffect(() => {
-    if (!payload || !barcodeRef.current) return;
-    try {
-      JsBarcode(barcodeRef.current, payload, {
-        format: 'CODE128',
-        displayValue: true,
-        fontSize: 16,
-        width: 2,
-        height: 120,
-        margin: 12
-      });
-    } catch { /* ignore barcode render errors */ }
-  }, [payload]);
-
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-100 to-white flex items-center justify-center p-6">
@@ -89,10 +72,6 @@ const CardPage: React.FC = () => {
           
           <div className="mb-6 p-4 bg-white border-2 border-slate-200 rounded-2xl">
             <QRCodeCanvas value={payload} size={220} includeMargin={true} />
-          </div>
-          
-          <div className="w-full flex items-center justify-center mb-6">
-            <svg ref={barcodeRef} />
           </div>
 
           <div className="w-full bg-slate-50 rounded-2xl p-4 mb-4">
@@ -134,7 +113,7 @@ const CardPage: React.FC = () => {
         <div className="max-w-md mx-auto bg-white rounded-2xl shadow-md p-4">
           <h3 className="font-bold text-black mb-2">ℹ️ Как использовать карту</h3>
           <ul className="text-sm text-slate-600 space-y-1">
-            <li>1. Покажите QR-код или штрих-код баристе</li>
+            <li>1. Покажите QR-код баристе</li>
             <li>2. Бариста отсканирует код</li>
             <li>3. Бонусы будут автоматически начислены</li>
             <li>4. Используйте бонусы при следующих заказах</li>

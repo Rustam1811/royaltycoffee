@@ -9,7 +9,7 @@ export interface Modifier {
   title: string;
   type: 'select' | 'multi' | 'toggle' | 'slider';
   options?: string[];
-  default: any;
+  default: string | string[] | boolean | number;
   min?: number;
   max?: number;
 }
@@ -307,7 +307,7 @@ export const drinkCategories: DrinkCategory[] = [
   {
     id: 2,
     title: 'menu.categories.seasonal',
-    image: '/drinks/сезонное/кола-бро-клубника-черника.png',
+    image: '/drinks/nocoffee/strawberry.png',
     products: [
       {
         id: 201,
@@ -320,7 +320,7 @@ export const drinkCategories: DrinkCategory[] = [
           'menu.cola_bro_strawberry_blueberry.ingredients.2'
         ],
         recommendation: 'menu.cola_bro_strawberry_blueberry.recommendation',
-        image: '/drinks/сезонное/кола-бро-клубника-черника.png',
+        image: '/drinks/nocoffee/strawberry.png',
         recommendations: [
           {
             id: 2001,
@@ -364,7 +364,7 @@ export const drinkCategories: DrinkCategory[] = [
           'menu.cardamom_syrup.ingredients.1'
         ],
         recommendation: 'menu.cardamom_syrup.recommendation',
-        image: '/drinks/сезонное/кардамоновый-сироп.png',
+        image: '/drinks/nocoffee/massala.png',
         recommendations: [
           {
             id: 2002,
@@ -409,7 +409,7 @@ export const drinkCategories: DrinkCategory[] = [
           'menu.lavender_mint.ingredients.2'
         ],
         recommendation: 'menu.lavender_mint.recommendation',
-        image: '/drinks/сезонное/лавандовая-мята.png',
+        image: '/drinks/nocoffee/lavandamatcha.png',
         recommendations: [
           {
             id: 2003,
@@ -453,7 +453,7 @@ export const drinkCategories: DrinkCategory[] = [
           'menu.tropical_mix.ingredients.2'
         ],
         recommendation: 'menu.tropical_mix.recommendation',
-        image: '/drinks/сезонное/тропический-микс.png',
+        image: '/drinks/nocoffee/tropikanonero.png',
         recommendations: [
           {
             id: 2004,
@@ -497,7 +497,7 @@ export const drinkCategories: DrinkCategory[] = [
           'menu.affogato.ingredients.2'
         ],
         recommendation: 'menu.affogato.recommendation',
-        image: '/drinks/сезонное/аффогато.png',
+        image: '/drinks/nocoffee/affogato.png',
         recommendations: [
           {
             id: 2005,
@@ -536,7 +536,7 @@ export const drinkCategories: DrinkCategory[] = [
   {
     id: 3,
     title: 'menu.categories.milk_coffee',
-    image: '/drinks/кофе-с-молоком/капучино.png',
+    image: '/drinks/milkcoffee/capuchino.png',
     products: [
       {
         id: 301,
@@ -548,7 +548,7 @@ export const drinkCategories: DrinkCategory[] = [
           'menu.cappuccino.ingredients.1'
         ],
         recommendation: 'menu.cappuccino.recommendation',
-        image: '/drinks/кофе-с-молоком/капучино.png',
+        image: '/drinks/milkcoffee/capuchino.png',
         recommendations: [
           {
             id: 3001,
@@ -593,7 +593,7 @@ export const drinkCategories: DrinkCategory[] = [
           'menu.flat_white.ingredients.1'
         ],
         recommendation: 'menu.flat_white.recommendation',
-        image: '/drinks/кофе-с-молоком/флэт-уайт.png',
+        image: '/drinks/milkcoffee/flatwhite.png',
         recommendations: [
           {
             id: 3002,
@@ -637,7 +637,7 @@ export const drinkCategories: DrinkCategory[] = [
           'menu.latte.ingredients.1'
         ],
         recommendation: 'menu.latte.recommendation',
-        image: '/drinks/кофе-с-молоком/латте.png',
+        image: '/drinks/milkcoffee/latte.png',
         recommendations: [
           {
             id: 3003,
@@ -683,7 +683,7 @@ export const drinkCategories: DrinkCategory[] = [
           'menu.mocha.ingredients.2'
         ],
         recommendation: 'menu.mocha.recommendation',
-        image: '/drinks/кофе-с-молоком/мокка.png',
+        image: '/drinks/milkcoffee/mokkokokos.png',
         recommendations: [
           {
             id: 3004,
@@ -727,7 +727,7 @@ export const drinkCategories: DrinkCategory[] = [
           'menu.macchiato.ingredients.1'
         ],
         recommendation: 'menu.macchiato.recommendation',
-        image: '/drinks/кофе-с-молоком/маккиато.png',
+        image: '/drinks/milkcoffee/capuchino.png',
         recommendations: [
           {
             id: 3005,
@@ -770,7 +770,7 @@ export const drinkCategories: DrinkCategory[] = [
           'menu.cortado.ingredients.1'
         ],
         recommendation: 'menu.cortado.recommendation',
-        image: '/drinks/кофе-с-молоком/кортадо.png',
+        image: '/drinks/milkcoffee/raf.png',
         recommendations: [
           {
             id: 3006,
@@ -808,7 +808,7 @@ export const drinkCategories: DrinkCategory[] = [
   {
   id: 4,
   title: 'menu.categories.alternative_drinks',
-  image: '/drinks/альтернативные/матча-латте.png',
+  image: '/drinks/nocoffee/matchalatte.png',
   products: [
     {
       id: 401,
@@ -821,7 +821,7 @@ export const drinkCategories: DrinkCategory[] = [
         'menu.matcha_latte.ingredients.2'
       ],
       recommendation: 'menu.matcha_latte.recommendation',
-      image: '/drinks/альтернативные/матча-латте.png',
+      image: '/drinks/nocoffee/matchalatte.png',
       recommendations: [
         {
           id: 4001,
@@ -868,7 +868,7 @@ export const drinkCategories: DrinkCategory[] = [
         'menu.turmeric_latte.ingredients.3'
       ],
       recommendation: 'menu.turmeric_latte.recommendation',
-      image: '/drinks/альтернативные/куркума-латте.png',
+      image: '/drinks/nocoffee/vanilla.png',
       recommendations: [
         {
           id: 4002,
@@ -913,7 +913,7 @@ export const drinkCategories: DrinkCategory[] = [
         'menu.beetroot_latte.ingredients.2'
       ],
       recommendation: 'menu.beetroot_latte.recommendation',
-      image: '/drinks/альтернативные/свекольный-латте.png',
+      image: '/drinks/nocoffee/strawberrytea.png',
       recommendations: [
         {
           id: 4003,
@@ -959,7 +959,7 @@ export const drinkCategories: DrinkCategory[] = [
         'menu.blue_spirulina_latte.ingredients.3'
       ],
       recommendation: 'menu.blue_spirulina_latte.recommendation',
-      image: '/drinks/альтернативные/голубая-спирулина-латте.png',
+      image: '/drinks/nocoffee/coldbruezhevika.png',
       recommendations: [
         {
           id: 4004,
@@ -1003,7 +1003,7 @@ export const drinkCategories: DrinkCategory[] = [
         'menu.mushroom_coffee.ingredients.2'
       ],
       recommendation: 'menu.mushroom_coffee.recommendation',
-      image: '/drinks/альтернативные/грибной-кофе.png',
+      image: '/drinks/nocoffee/oreo.png',
       recommendations: [
         {
           id: 4005,
@@ -1047,7 +1047,7 @@ export const drinkCategories: DrinkCategory[] = [
         'menu.chicory_coffee.ingredients.1'
       ],
       recommendation: 'menu.chicory_coffee.recommendation',
-      image: '/drinks/альтернативные/цикорий-кофе.png',
+      image: '/drinks/nocoffee/tea.png',
       recommendations: [
         {
           id: 4006,
@@ -1080,6 +1080,286 @@ export const drinkCategories: DrinkCategory[] = [
         { user: "Роза", text: "Полезно и без кофеина", rating: 4 }
       ],
       allergens: ["Молоко"]
+    }
+  ]
+},
+{
+  id: 5,
+  title: 'menu.categories.ice_coffee',
+  image: '/drinks/icecoffee/icelatte.png',
+  products: [
+    {
+      id: 501,
+      name: 'menu.ice_latte.name',
+      price: 1690,
+      description: 'menu.ice_latte.description',
+      ingredients: [
+        'menu.ice_latte.ingredients.0',
+        'menu.ice_latte.ingredients.1',
+        'menu.ice_latte.ingredients.2'
+      ],
+      recommendation: 'menu.ice_latte.recommendation',
+      image: '/drinks/icecoffee/icelatte.png',
+      recommendations: [],
+      isNew: false,
+      isHit: true,
+      energy: 165,
+      protein: 8.5,
+      fat: 8.0,
+      carbs: 13.0,
+      caffeine: 80,
+      modifiers: [
+        { id: 1, title: "Молоко", type: "select", options: ["Обычное", "Овсяное", "Кокосовое"], default: "Обычное" },
+        { id: 2, title: "Сироп", type: "multi", options: ["Ваниль", "Карамель", "Лесной орех"], default: [] },
+        { id: 3, title: "Лёд", type: "select", options: ["Мало", "Средне", "Много"], default: "Средне" }
+      ],
+      togetherBetter: [
+        { id: 1203, name: "Фисташковый круассан", image: "https://images.unsplash.com/photo-1549903072-7e6e0bedb7fb?w=400&h=400&fit=crop" },
+        { id: 1301, name: "Тирамису", image: "https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=400&h=400&fit=crop" }
+      ],
+      badges: ["HIT"],
+      promo: "Освежающий холодный латте",
+      bonusPay: 250,
+      rating: 4.8,
+      reviews: [
+        { user: "Дарья", text: "Идеально для жаркого дня!", rating: 5 },
+        { user: "Нурлан", text: "Очень вкусный и освежающий", rating: 5 }
+      ],
+      allergens: ["Молоко"]
+    },
+    {
+      id: 502,
+      name: 'menu.espresso_tonic.name',
+      price: 1590,
+      description: 'menu.espresso_tonic.description',
+      ingredients: [
+        'menu.espresso_tonic.ingredients.0',
+        'menu.espresso_tonic.ingredients.1',
+        'menu.espresso_tonic.ingredients.2'
+      ],
+      recommendation: 'menu.espresso_tonic.recommendation',
+      image: '/drinks/icecoffee/espressotonik.png',
+      recommendations: [],
+      isNew: true,
+      isHit: true,
+      energy: 45,
+      protein: 0.5,
+      fat: 0.2,
+      carbs: 8.5,
+      caffeine: 120,
+      modifiers: [
+        { id: 1, title: "Тоник", type: "select", options: ["Классический", "С лимоном", "С бузиной"], default: "Классический" },
+        { id: 2, title: "Лёд", type: "select", options: ["Мало", "Средне", "Много"], default: "Много" },
+        { id: 3, title: "Цитрус", type: "multi", options: ["Лайм", "Лимон", "Апельсин"], default: ["Лимон"] }
+      ],
+      togetherBetter: [
+        { id: 1204, name: "Шоколадный круассан", image: "https://images.unsplash.com/photo-1612182062975-321b9aabfbd0?w=400&h=400&fit=crop" },
+        { id: 1201, name: "Печенье Слимс", image: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&h=400&fit=crop" }
+      ],
+      badges: ["NEW", "HIT"],
+      promo: "Необычное сочетание эспрессо и тоника",
+      bonusPay: 240,
+      rating: 4.6,
+      reviews: [
+        { user: "Асель", text: "Необычно, но очень вкусно!", rating: 5 },
+        { user: "Максат", text: "Освежает и бодрит", rating: 4 }
+      ],
+      allergens: []
+    },
+    {
+      id: 503,
+      name: 'menu.bamble_coffee.name',
+      price: 1790,
+      description: 'menu.bamble_coffee.description',
+      ingredients: [
+        'menu.bamble_coffee.ingredients.0',
+        'menu.bamble_coffee.ingredients.1',
+        'menu.bamble_coffee.ingredients.2',
+        'menu.bamble_coffee.ingredients.3'
+      ],
+      recommendation: 'menu.bamble_coffee.recommendation',
+      image: '/drinks/icecoffee/bamblecoffee.png',
+      recommendations: [],
+      isNew: false,
+      isHit: false,
+      energy: 195,
+      protein: 7.2,
+      fat: 7.8,
+      carbs: 22.0,
+      caffeine: 95,
+      modifiers: [
+        { id: 1, title: "Молоко", type: "select", options: ["Обычное", "Овсяное", "Кокосовое"], default: "Обычное" },
+        { id: 2, title: "Сироп", type: "select", options: ["Ваниль", "Карамель", "Лесной орех"], default: "Ваниль" },
+        { id: 3, title: "Лёд", type: "select", options: ["Мало", "Средне", "Много"], default: "Средне" }
+      ],
+      togetherBetter: [
+        { id: 1302, name: "Брауни", image: "https://images.unsplash.com/photo-1607920591413-4ec007e70023?w=400&h=400&fit=crop" },
+        { id: 1206, name: "Шоколадный маффин", image: "https://images.unsplash.com/photo-1426869884541-df7117556757?w=400&h=400&fit=crop" }
+      ],
+      badges: [],
+      promo: "Сладкий холодный кофе с карамелью",
+      bonusPay: 270,
+      rating: 4.5,
+      reviews: [
+        { user: "Гульнара", text: "Очень сладкий и вкусный", rating: 5 },
+        { user: "Ернур", text: "Как десерт в стакане", rating: 4 }
+      ],
+      allergens: ["Молоко"]
+    }
+  ]
+},
+{
+  id: 6,
+  title: 'menu.categories.lemonade',
+  image: '/drinks/lemonade/orange.png',
+  products: [
+    {
+      id: 601,
+      name: 'menu.orange_lemonade.name',
+      price: 1290,
+      description: 'menu.orange_lemonade.description',
+      ingredients: [
+        'menu.orange_lemonade.ingredients.0',
+        'menu.orange_lemonade.ingredients.1',
+        'menu.orange_lemonade.ingredients.2'
+      ],
+      recommendation: 'menu.orange_lemonade.recommendation',
+      image: '/drinks/lemonade/orange.png',
+      recommendations: [],
+      isNew: false,
+      isHit: true,
+      energy: 145,
+      protein: 1.2,
+      fat: 0.3,
+      carbs: 35.0,
+      modifiers: [
+        { id: 1, title: "Лёд", type: "select", options: ["Мало", "Средне", "Много"], default: "Много" },
+        { id: 2, title: "Мята", type: "toggle", default: true },
+        { id: 3, title: "Сладость", type: "slider", min: 0, max: 100, default: 70 }
+      ],
+      togetherBetter: [
+        { id: 1203, name: "Фисташковый круассан", image: "https://images.unsplash.com/photo-1549903072-7e6e0bedb7fb?w=400&h=400&fit=crop" }
+      ],
+      badges: ["HIT"],
+      promo: "Свежевыжатый апельсиновый лимонад",
+      bonusPay: 195,
+      rating: 4.7,
+      reviews: [
+        { user: "Айгуль", text: "Очень освежает!", rating: 5 },
+        { user: "Дамир", text: "Натуральный вкус апельсина", rating: 5 }
+      ],
+      allergens: []
+    },
+    {
+      id: 602,
+      name: 'menu.kiwi_lemonade.name',
+      price: 1390,
+      description: 'menu.kiwi_lemonade.description',
+      ingredients: [
+        'menu.kiwi_lemonade.ingredients.0',
+        'menu.kiwi_lemonade.ingredients.1',
+        'menu.kiwi_lemonade.ingredients.2'
+      ],
+      recommendation: 'menu.kiwi_lemonade.recommendation',
+      image: '/drinks/lemonade/kiwi.png',
+      recommendations: [],
+      isNew: true,
+      isHit: false,
+      energy: 138,
+      protein: 1.0,
+      fat: 0.2,
+      carbs: 33.5,
+      modifiers: [
+        { id: 1, title: "Лёд", type: "select", options: ["Мало", "Средне", "Много"], default: "Много" },
+        { id: 2, title: "Мята", type: "toggle", default: true },
+        { id: 3, title: "Газировка", type: "toggle", default: false }
+      ],
+      togetherBetter: [
+        { id: 1201, name: "Печенье Слимс", image: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&h=400&fit=crop" }
+      ],
+      badges: ["NEW"],
+      promo: "Экзотический киви с мятой",
+      bonusPay: 210,
+      rating: 4.5,
+      reviews: [
+        { user: "Мадина", text: "Необычный и приятный вкус", rating: 5 },
+        { user: "Олжас", text: "Кисло-сладкий, очень хорошо", rating: 4 }
+      ],
+      allergens: []
+    },
+    {
+      id: 603,
+      name: 'menu.red_lemonade.name',
+      price: 1390,
+      description: 'menu.red_lemonade.description',
+      ingredients: [
+        'menu.red_lemonade.ingredients.0',
+        'menu.red_lemonade.ingredients.1',
+        'menu.red_lemonade.ingredients.2'
+      ],
+      recommendation: 'menu.red_lemonade.recommendation',
+      image: '/drinks/lemonade/red.png',
+      recommendations: [],
+      isNew: false,
+      isHit: true,
+      energy: 152,
+      protein: 0.8,
+      fat: 0.2,
+      carbs: 37.0,
+      modifiers: [
+        { id: 1, title: "Лёд", type: "select", options: ["Мало", "Средне", "Много"], default: "Много" },
+        { id: 2, title: "Мята", type: "toggle", default: true },
+        { id: 3, title: "Ягоды", type: "multi", options: ["Клубника", "Малина", "Вишня"], default: ["Клубника"] }
+      ],
+      togetherBetter: [
+        { id: 1302, name: "Ягодный чизкейк", image: "https://images.unsplash.com/photo-1533134242116-8518c8a20431?w=400&h=400&fit=crop" }
+      ],
+      badges: ["HIT"],
+      promo: "Ягодный микс для настоящего удовольствия",
+      bonusPay: 210,
+      rating: 4.8,
+      reviews: [
+        { user: "Айжан", text: "Самый вкусный лимонад!", rating: 5 },
+        { user: "Санжар", text: "Ягодный взрыв вкуса", rating: 5 }
+      ],
+      allergens: []
+    },
+    {
+      id: 604,
+      name: 'menu.apple_lemonade.name',
+      price: 1290,
+      description: 'menu.apple_lemonade.description',
+      ingredients: [
+        'menu.apple_lemonade.ingredients.0',
+        'menu.apple_lemonade.ingredients.1',
+        'menu.apple_lemonade.ingredients.2'
+      ],
+      recommendation: 'menu.apple_lemonade.recommendation',
+      image: '/drinks/lemonade/apple.png',
+      recommendations: [],
+      isNew: false,
+      isHit: false,
+      energy: 135,
+      protein: 0.5,
+      fat: 0.1,
+      carbs: 33.0,
+      modifiers: [
+        { id: 1, title: "Лёд", type: "select", options: ["Мало", "Средне", "Много"], default: "Много" },
+        { id: 2, title: "Корица", type: "toggle", default: false },
+        { id: 3, title: "Имбирь", type: "toggle", default: false }
+      ],
+      togetherBetter: [
+        { id: 1205, name: "Коричное пирожное", image: "https://images.unsplash.com/photo-1587241321921-91aaab6f2d3a?w=400&h=400&fit=crop" }
+      ],
+      badges: [],
+      promo: "Классический яблочный лимонад",
+      bonusPay: 195,
+      rating: 4.4,
+      reviews: [
+        { user: "Лаура", text: "Свежий вкус яблок", rating: 4 },
+        { user: "Арман", text: "Простой и вкусный", rating: 4 }
+      ],
+      allergens: []
     }
   ]
 }

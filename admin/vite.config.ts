@@ -11,6 +11,16 @@ export default defineConfig({
       "@": path.resolve(__dirname, "src"),
     },
   },
+  server: {
+    port: 5174,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5001/coffeeaddict-c9d70/us-central1/app',
+        changeOrigin: true,
+        rewrite: (path) => path
+      }
+    }
+  },
   build: {
     outDir: "../dist/admin",
     emptyOutDir: true,

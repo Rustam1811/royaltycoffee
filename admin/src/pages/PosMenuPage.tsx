@@ -4,8 +4,9 @@ import { drinkCategories } from '../../../src/pages/menu/data/drinksData';
 import { foodCategories } from '../../../src/pages/menu/data/foodData';
 import { ShoppingCartIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PremiumMenu } from '../../../src/features/menu/premium/PremiumMenu';
 import { useTranslation } from 'react-i18next';
+import { QRScanner } from '../components/QRScanner';
+import { ProductConfigModal } from '../components/ProductConfigModal';
 
 const humanize = (key: string) => key.split('.').pop()?.replace(/_/g,' ') || key;
 const CURRENCY = '₸';
@@ -37,8 +38,13 @@ export default function PosMenuPage() {
   const { items: cartItems, dispatch } = useCart();
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'drinks' | 'food'>('drinks');
+  const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [orderNumber, setOrderNumber] = useState<number | null>(null);
+  const [orderNumber, setOrderNumber] = useState<string | null>(null); // ✅ Изменено с number на string
+  
+  // Product modal
+  const [selectedProduct, setSelectedProduct] = useState<{id: number; name: string; price: number; image: string; description?: string} | null>(null);
+  const [showProductModal, setShowProductModal] = useState(false);
   
   // Customer linking
   const [customerPhone, setCustomerPhone] = useState('');
@@ -50,6 +56,16 @@ export default function PosMenuPage() {
   const [loadingBonus, setLoadingBonus] = useState(false);
   const [useBonuses, setUseBonuses] = useState(false);
   const [bonusError, setBonusError] = useState<string | null>(null);
+  
+  // Auto-hide success toast after 2 seconds
+  useEffect(() => {
+    if (showSuccessModal && orderNumber && orderNumber !== '...') {
+      const timer = setTimeout(() => {
+        setShowSuccessModal(false);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccessModal, orderNumber]);
   
   // Fetch customer bonus when phone is entered (live search)
   useEffect(() => {
@@ -152,15 +168,6 @@ export default function PosMenuPage() {
     ),
     [t]
   );
-  
-  const drinksCategories = useMemo(() => 
-    drinkCategories.map(c => { 
-      const raw = t(c.title); 
-      const label = raw === c.title ? humanize(c.title) : raw; 
-      return { key: String(c.id), label }; 
-    }),
-    [t]
-  );
 
   const foodItems = useMemo(() => 
     foodCategories.flatMap(cat =>
@@ -180,13 +187,32 @@ export default function PosMenuPage() {
     []
   );
 
-  const foodCategoriesFormatted = useMemo(() =>
-    foodCategories.map(c => ({
-      key: String(c.id),
-      label: c.title
-    })),
-    []
-  );
+  // Get categories for current tab
+  const currentCategories = useMemo(() => {
+    const cats = activeTab === 'drinks' ? drinkCategories : foodCategories;
+    const items = activeTab === 'drinks' ? drinksItems : foodItems;
+    
+    return cats.map(c => {
+      const count = items.filter(item => item.categoryId === c.id).length;
+      return {
+        id: c.id,
+        title: activeTab === 'drinks' ? (t(c.title) !== c.title ? t(c.title) : humanize(c.title)) : c.title,
+        count
+      };
+    });
+  }, [activeTab, t, drinksItems, foodItems]);
+
+  // Filter items by category
+  const filteredItems = useMemo(() => {
+    const items = activeTab === 'drinks' ? drinksItems : foodItems;
+    if (activeCategoryId === null) return items;
+    return items.filter(item => item.categoryId === activeCategoryId);
+  }, [activeTab, activeCategoryId, drinksItems, foodItems]);
+
+  // Reset category when switching tabs
+  useEffect(() => {
+    setActiveCategoryId(null);
+  }, [activeTab]);
 
   const handleRemoveFromCart = useCallback(
     (id: string) => {
@@ -208,59 +234,71 @@ export default function PosMenuPage() {
 
   const total = useMemo(() => cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0), [cartItems]);
 
-  const handleCheckout = useCallback(async () => {
+  const handleCheckout = useCallback(() => {
     if (cartItems.length === 0) return;
     
     const normalizedPhone = customerPhone ? normalizePhone(customerPhone) : null;
     const bonusToUse = useBonuses ? customerBonus : 0;
     const finalTotal = Math.max(0, total - bonusToUse);
     
-    try {
-      const response = await fetch('/api/orders?action=create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items: cartItems.map((item) => ({
-            id: item.id,
-            name: item.name,
-            price: item.price,
-            quantity: item.quantity,
-            image: item.image,
-            sizeKey: item.sizeKey,
-            milkKey: item.milkKey,
-            syrupKey: item.syrupKey,
-          })),
-          total: finalTotal,
-          userPhone: normalizedPhone,
-          customerName: customerName || null,
-          bonusUsed: bonusToUse,
-        }),
+    // � Сохраняем snapshot данных ДО очистки
+    const currentCartItems = [...cartItems];
+    const currentCustomerName = customerName;
+    
+    // 1️⃣ МГНОВЕННО очищаем UI и показываем успех (синхронно, без await!)
+    dispatch({ type: 'CLEAR_CART' });
+    setCustomerPhone('');
+    setCustomerName('');
+    setCustomerLinked(false);
+    setShowCustomerInput(false);
+    setCustomerBonus(0);
+    setUseBonuses(false);
+    setOrderNumber('...'); 
+    setShowSuccessModal(true);
+    
+    // 2️⃣ Fire-and-forget: Отправляем в фоне БЕЗ БЛОКИРОВКИ UI
+    // Используем Promise без await - выполнится асинхронно
+    fetch('/api/orders?action=create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items: currentCartItems.map((item) => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          image: item.image,
+          sizeKey: item.sizeKey,
+          milkKey: item.milkKey,
+          syrupKey: item.syrupKey,
+        })),
+        total: finalTotal,
+        userPhone: normalizedPhone,
+        customerName: currentCustomerName || null,
+        bonusUsed: bonusToUse,
+      }),
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(result => {
+        if (result.ok) {
+          // 3️⃣ Обновляем номер когда придёт (может быть через 1-2 сек)
+          setOrderNumber(result.orderNumber);
+        } else {
+          throw new Error(result.error || 'Ошибка создания заказа');
+        }
+      })
+      .catch(error => {
+        console.error('Ошибка оформления заказа:', error);
+        setOrderNumber('ERROR');
+        // НЕ показываем alert - не мешаем бариста работать
       });
-
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({ error: 'Network error' }));
-        throw new Error(payload.error || `HTTP ${response.status}`);
-      }
-
-      const result = await response.json();
-      if (result.ok) {
-        setOrderNumber(result.orderNumber);
-        setShowSuccessModal(true);
-        dispatch({ type: 'CLEAR_CART' });
-        // Очищаем данные клиента после успешного заказа
-        setCustomerPhone('');
-        setCustomerName('');
-        setCustomerLinked(false);
-        setShowCustomerInput(false);
-        setCustomerBonus(0);
-        setUseBonuses(false);
-      } else {
-        throw new Error(result.error || 'Не удалось оформить заказ');
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Неизвестная ошибка';
-      alert(`Ошибка оформления заказа: ${message}`);
-    }
+    
+    // Функция завершается СРАЗУ, не ждёт fetch!
   }, [cartItems, dispatch, total, customerPhone, customerName, customerBonus, useBonuses]);
   
   return (
@@ -297,13 +335,91 @@ export default function PosMenuPage() {
           </div>
         </div>
 
-        {/* PremiumMenu with mobile-sized centered modal */}
-        <div className="flex-1 overflow-y-auto">
-          {activeTab === 'drinks' ? (
-            <PremiumMenu items={drinksItems} categories={drinksCategories} type="drinks" />
-          ) : (
-            <PremiumMenu items={foodItems} categories={foodCategoriesFormatted} type="food" />
-          )}
+        {/* Category Pills */}
+        <div className="border-b border-slate-200 bg-white px-4 py-3">
+          <div className="mx-auto max-w-6xl">
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              <button
+                onClick={() => setActiveCategoryId(null)}
+                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  activeCategoryId === null
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                Все ({activeTab === 'drinks' ? drinksItems.length : foodItems.length})
+              </button>
+              {currentCategories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setActiveCategoryId(cat.id)}
+                  className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    activeCategoryId === cat.id
+                      ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  {cat.title} ({cat.count})
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Products Grid */}
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="mx-auto max-w-6xl">
+            {filteredItems.length === 0 ? (
+              <div className="flex items-center justify-center h-64">
+                <p className="text-slate-400 text-sm">Нет товаров в этой категории</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {filteredItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setSelectedProduct(item);
+                      setShowProductModal(true);
+                    }}
+                    className="bg-white rounded-2xl p-4 shadow-sm hover:shadow-lg transition-all active:scale-95 text-left relative"
+                  >
+                    {/* Badges */}
+                    {item.badges && item.badges.length > 0 && (
+                      <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
+                        {item.badges.map((badge, idx) => (
+                          <span
+                            key={idx}
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                              badge.type === 'HIT' || badge.label === 'HIT'
+                                ? 'bg-red-500 text-white'
+                                : badge.type === 'NEW' || badge.label === 'NEW'
+                                ? 'bg-green-500 text-white'
+                                : 'bg-amber-500 text-white'
+                            }`}
+                          >
+                            {badge.label || badge.type}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    
+                    <div className="w-full aspect-square bg-gray-100 rounded-xl overflow-hidden mb-3">
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <h3 className="font-semibold text-sm text-gray-900 line-clamp-2 mb-1">
+                      {item.name}
+                    </h3>
+                    <p className="text-sm font-bold text-amber-600">{item.price} ₸</p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -516,7 +632,7 @@ export default function PosMenuPage() {
               ) : customerBonus > 0 ? (
                 <div className="space-y-2">
                   <div className="rounded-lg bg-amber-50 px-3 py-2.5 border border-amber-200">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-3">
                       <div className="flex-1">
                         <div className="text-xs font-medium text-amber-900">
                           🎁 Доступно бонусов: {customerBonus} ₸
@@ -525,17 +641,17 @@ export default function PosMenuPage() {
                           Можно использовать все или ничего
                         </div>
                       </div>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={useBonuses}
-                          onChange={(e) => setUseBonuses(e.target.checked)}
-                          className="w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
-                        />
-                        <span className="text-xs font-semibold text-amber-900">
-                          Использовать
-                        </span>
-                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setUseBonuses(!useBonuses)}
+                        className={`flex-shrink-0 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+                          useBonuses
+                            ? 'bg-green-600 text-white shadow-md hover:bg-green-700'
+                            : 'bg-amber-600 text-white shadow-sm hover:bg-amber-700 hover:shadow-md'
+                        }`}
+                      >
+                        {useBonuses ? '✓ Списано' : 'Списать все'}
+                      </button>
                     </div>
                   </div>
                   {useBonuses && (
@@ -576,41 +692,32 @@ export default function PosMenuPage() {
         </div>
       </div>
 
-      {/* Success modal */}
+      {/* Success Toast (Auto-dismiss in 2s) */}
       <AnimatePresence>
         {showSuccessModal && orderNumber && (
-          <>
-            <motion.div
-              className="fixed inset-0 z-[999] bg-black/50"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowSuccessModal(false)}
-            />
-            <motion.div
-              className="fixed left-1/2 top-1/2 z-[1000] w-[min(400px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 rounded-3xl bg-white p-8 text-center shadow-2xl ring-1 ring-slate-900/5"
-              role="dialog"
-              aria-modal="true"
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            >
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-2xl text-green-600">
-                ✓
-              </div>
-              <h3 className="text-xl font-bold text-slate-900">Заказ оформлен!</h3>
-              <p className="mt-2 text-sm text-slate-500">
-                Номер заказа <span className="font-semibold text-slate-900">#{orderNumber}</span>
+          <motion.div
+            className="fixed left-1/2 top-8 z-[1000] flex items-center gap-3 rounded-2xl bg-green-600 px-6 py-4 text-white shadow-2xl ring-1 ring-green-700/20"
+            initial={{ opacity: 0, y: -50, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: -20, x: '-50%' }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-xl">
+              ✓
+            </div>
+            <div>
+              <p className="font-semibold">Заказ принят!</p>
+              <p className="text-sm text-green-100">
+                {orderNumber === '...' ? (
+                  <span>Обработка...</span>
+                ) : orderNumber === 'ERROR' ? (
+                  <span>Ошибка создания</span>
+                ) : (
+                  <span>Номер #{orderNumber}</span>
+                )}
               </p>
-              <button
-                type="button"
-                onClick={() => setShowSuccessModal(false)}
-                className="mt-6 w-full rounded-xl bg-slate-900 px-4 py-3 font-semibold text-white transition hover:bg-slate-800"
-              >
-                Готово
-              </button>
-            </motion.div>
-          </>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -717,6 +824,54 @@ export default function PosMenuPage() {
           </>
         )}
       </AnimatePresence>
+
+      {/* Real QR Scanner */}
+      <QRScanner 
+        isOpen={scanningQR}
+        onClose={() => setScanningQR(false)}
+        onScan={async (userId) => {
+          console.log('✅ Scanned userId:', userId);
+          
+          try {
+            // Загружаем данные пользователя по userId
+            const userResponse = await fetch(`/api/bonus?userId=${userId}`);
+            if (userResponse.ok) {
+              const bonusData = await userResponse.json();
+              if (bonusData.ok && bonusData.balance !== undefined) {
+                setCustomerBonus(bonusData.balance);
+                setCustomerLinked(true);
+                setCustomerPhone(bonusData.phone || '');
+                setCustomerName(bonusData.name || 'Клиент');
+                console.log('✅ User loaded from QR:', bonusData);
+              }
+            }
+          } catch (error) {
+            console.error('❌ Failed to load user from QR:', error);
+          }
+        }}
+      />
+
+      {/* Product Config Modal */}
+      <ProductConfigModal
+        product={selectedProduct}
+        open={showProductModal}
+        onClose={() => setShowProductModal(false)}
+        onAdd={(config) => {
+          dispatch({
+            type: 'ADD_ITEM',
+            payload: {
+              id: config.id,
+              name: config.name,
+              price: config.price,
+              quantity: config.quantity,
+              image: config.image,
+              sizeKey: config.sizeKey,
+              milkKey: config.milkKey,
+              syrupKey: config.syrupKey,
+            },
+          });
+        }}
+      />
     </div>
   );
 }

@@ -11,6 +11,7 @@ const Order = lazy(() => import('./pages/Order'));
 const Booking = lazy(() => import('./pages/Booking'));
 const Card = lazy(() => import('./pages/Card'));
 const Login = lazy(() => import('./pages/Login'));
+const MyQRCode = lazy(() => import('./pages/MyQRCode'));
 
 import { CartProvider } from './contexts/CartContext';
 import { AuthProvider, useAuth } from './auth/AuthContext';
@@ -157,6 +158,7 @@ const AppContent: React.FC = () => {
             <PrivateRoute exact path="/menu" component={Menu} />
             <PrivateRoute exact path="/profile" component={Profile} />
             <PrivateRoute exact path="/card" component={Card} />
+            <PrivateRoute exact path="/my-qr" component={MyQRCode} />
             <PrivateRoute exact path="/booking" component={Booking} />
             <PrivateRoute exact path="/order" component={Order} />
             {/* /admin теперь отдельное приложение */}

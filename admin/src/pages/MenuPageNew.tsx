@@ -9,7 +9,9 @@ import {
 import { DrinkCategoryLocal, Product } from "@/types/types";
 import CategoryModal from "@/components/CategoryModalNew";
 import ProductModal from "@/components/ProductModalNew";
+import { ProductViewerSheet } from "@/components/ProductViewerSheet";
 import { UserContext } from "@/contexts/UserContext";
+import { useCart } from "@/contexts/CartContext";
 import { 
   PlusIcon, 
   PencilIcon, 
@@ -24,9 +26,12 @@ const MenuPage: React.FC = () => {
   const [editCat, setEditCat] = useState<DrinkCategoryLocal | null>(null);
   const [selCat, setSelCat] = useState<DrinkCategoryLocal | null>(null);
   const [editProd, setEditProd] = useState<Product | null>(null);
+  const [viewProd, setViewProd] = useState<Product | null>(null);
   const [showCatM, setShowCatM] = useState(false);
   const [showProdM, setShowProdM] = useState(false);
+  const [showViewerSheet, setShowViewerSheet] = useState(false);
   const { user, loading } = useContext(UserContext);
+  const { dispatch } = useCart();
 
   // Навигация по категориям для мобильных
   const [catIdx, setCatIdx] = useState(0);
@@ -48,6 +53,31 @@ const MenuPage: React.FC = () => {
     if (id) await updateCategory(id, data);
     else await addCategory(data);
     setShowCatM(false);
+  };
+
+  const handleAddToCart = (config: {
+    productId: string;
+    name: string;
+    sizeKey: string;
+    syrupKey: string;
+    milkKey: string;
+    quantity: number;
+    totalPrice: number;
+    image?: string;
+  }) => {
+    dispatch({
+      type: 'ADD_ITEM',
+      payload: {
+        id: `${config.productId}_${config.sizeKey}_${config.milkKey}_${config.syrupKey}`,
+        name: config.name,
+        price: config.totalPrice / config.quantity,
+        quantity: config.quantity,
+        image: config.image,
+        sizeKey: config.sizeKey,
+        milkKey: config.milkKey,
+        syrupKey: config.syrupKey,
+      },
+    });
   };
 
   if (loading || !user) return (
@@ -208,11 +238,10 @@ const MenuPage: React.FC = () => {
                         {category.products.slice(0, 4).map((product) => (
                           <div
                             key={product.id}
-                            className="bg-[var(--color-bg-hover)] rounded-2xl p-3 hover:bg-[color-mix(in_oklab,var(--color-bg-hover)_80%,white)] transition-colors cursor-pointer"
+                            className="relative bg-[var(--color-bg-hover)] rounded-2xl p-3 hover:bg-[color-mix(in_oklab,var(--color-bg-hover)_80%,white)] transition-colors cursor-pointer group"
                             onClick={() => {
-                              setEditProd(product);
-                              setSelCat(category);
-                              setShowProdM(true);
+                              setViewProd(product);
+                              setShowViewerSheet(true);
                             }}
                           >
                             <div className="w-12 h-12 bg-gradient-to-br from-[var(--color-accent-orange)]/15 to-[var(--color-accent-pink)]/15 rounded-xl mb-2 flex items-center justify-center overflow-hidden">
@@ -224,6 +253,18 @@ const MenuPage: React.FC = () => {
                             </div>
                             <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">{product.name.ru}</p>
                             <p className="text-xs text-[var(--color-text-secondary)]">{product.price} ₸</p>
+                            {/* Edit button */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditProd(product);
+                                setSelCat(category);
+                                setShowProdM(true);
+                              }}
+                              className="absolute top-2 right-2 w-6 h-6 bg-white/90 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-white"
+                            >
+                              <PencilIcon className="w-3.5 h-3.5 text-gray-700" />
+                            </button>
                           </div>
                         ))}
                       </div>
@@ -257,6 +298,13 @@ const MenuPage: React.FC = () => {
           />
         )}
       </AnimatePresence>
+      {/* Product Viewer Sheet */}
+      <ProductViewerSheet
+        open={showViewerSheet}
+        product={viewProd}
+        onClose={() => setShowViewerSheet(false)}
+        onAdd={handleAddToCart}
+      />
     </div>
   );
 };

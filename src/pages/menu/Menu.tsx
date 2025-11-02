@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 const humanize = (key: string) => key.split('.').pop()?.replace(/_/g,' ') || key;
 
 const Menu: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<'drinks' | 'food'>('drinks');
   
   const drinksItems = useMemo(() => 
@@ -66,31 +66,60 @@ const Menu: React.FC = () => {
     })),
     []
   );
+
+  const changeLang = () => {
+    const order: string[] = ['ru','en','kz'];
+    const idx = order.indexOf(i18n.language as string);
+    const next = order[(idx+1)%order.length];
+    i18n.changeLanguage(next);
+  };
   
   return (
     <div className="min-h-screen bg-[var(--color-bg-base)]">
-      {/* Переключатель Напитки/Еда */}
-      <div className="sticky top-0 z-30 bg-white/90 border-b border-slate-200 px-4 py-3" style={{ backdropFilter: 'blur(8px)' }}>
-        <div className="flex gap-2 max-w-md mx-auto">
-          <button
-            onClick={() => setActiveTab('drinks')}
-            className={`flex-1 px-6 py-3 rounded-full font-semibold text-sm transition-all duration-150 active:scale-95 ${
-              activeTab === 'drinks'
-                ? 'bg-slate-900 text-white shadow-lg'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
+      {/* Header с переключателем Напитки/Еда, Меню и языком */}
+      <div className="sticky top-0 z-30 bg-white/90 border-b border-slate-200 px-4 py-2" style={{ backdropFilter: 'blur(8px)' }}>
+        <div className="flex items-center justify-between gap-3 max-w-4xl mx-auto">
+          {/* Переключатель Напитки/Еда слева - только иконки */}
+          <div className="flex-shrink-0">
+            <div className="flex justify-between rounded-full bg-gray-100 p-1 gap-1">
+              <button
+                onClick={() => setActiveTab('drinks')}
+                className={`
+                  flex items-center justify-center rounded-full
+                  transition-all duration-300 ease-in-out
+                  ${activeTab === 'drinks'
+                    ? 'bg-white text-black shadow-md w-20 h-14'
+                    : 'bg-transparent text-gray-600 hover:text-gray-900 w-14 h-12'
+                  }
+                `}
+              >
+                <span className="text-2xl">☕</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('food')}
+                className={`
+                  flex items-center justify-center rounded-full
+                  transition-all duration-300 ease-in-out
+                  ${activeTab === 'food'
+                    ? 'bg-white text-black shadow-md w-20 h-14'
+                    : 'bg-transparent text-gray-600 hover:text-gray-900 w-14 h-12'
+                  }
+                `}
+              >
+                <span className="text-2xl">🍔</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Меню по центру */}
+          <h1 className="text-lg font-semibold tracking-tight">Меню</h1>
+
+          {/* Кнопка языка справа */}
+          <button 
+            onClick={changeLang} 
+            className="px-3 h-9 rounded-full bg-gray-100 text-sm font-medium active:scale-95 shadow-sm hover:bg-gray-200 transition-colors whitespace-nowrap flex-shrink-0"
           >
-            ☕ Напитки
-          </button>
-          <button
-            onClick={() => setActiveTab('food')}
-            className={`flex-1 px-6 py-3 rounded-full font-semibold text-sm transition-all duration-150 active:scale-95 ${
-              activeTab === 'food'
-                ? 'bg-slate-900 text-white shadow-lg'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            🍔 Еда
+            {i18n.language.toUpperCase()}
           </button>
         </div>
       </div>

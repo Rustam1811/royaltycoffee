@@ -3,7 +3,6 @@ import {
   CheckCircleIcon,
   ClockIcon,
   BellIcon,
-  QrCodeIcon,
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
@@ -107,6 +106,7 @@ const OrderManagement: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'pending' | 'accepted' | 'ready'>('pending');
   const [refreshing, setRefreshing] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [lastSuccessfulUpdate, setLastSuccessfulUpdate] = useState<Date>(new Date());
   
   const { user } = useContext(UserContext);
   const userRole: Role = user?.role || 'user';
@@ -124,6 +124,11 @@ const OrderManagement: React.FC = () => {
       const result = await safeApiRequestWithRetry<{ orders: ApiOrder[] }>('orders', { action: 'get', admin: 'true' });
       
       if (!result.success) {
+        // Не показываем ошибку если это просто временная проблема с сетью
+        if (result.error?.includes('NetworkError') || result.error?.includes('Failed to fetch')) {
+          console.warn('Временная проблема с сетью, повторяем позже...');
+          return; // Просто пропускаем этот цикл обновления
+        }
         setApiError(result.error || 'Неизвестная ошибка');
         return;
       }
@@ -134,6 +139,9 @@ const OrderManagement: React.FC = () => {
         setOrders([]);
         return;
       }
+      
+      // Обновляем время последнего успешного обновления
+      setLastSuccessfulUpdate(new Date());
         
         // Универсальная нормализация времени:
         const toIso = (o: Record<string, unknown>) => {
@@ -161,7 +169,7 @@ const OrderManagement: React.FC = () => {
             intensityKey: it.intensityKey,
           })),
           amount: o.amount ?? 0,
-          status: (o.status as Order['status']) || 'pending',
+          status: (o.status === 'NEW' ? 'pending' : (o.status as Order['status'])) || 'pending',
           date: o.date || toIso(o as unknown as Record<string, unknown>),
           customerName: o.customerName,
           customerPhone: o.customerPhone,
@@ -171,10 +179,27 @@ const OrderManagement: React.FC = () => {
         
         setOrders(normalized);
       } catch (error) {
-        if (error instanceof Error && error.message === 'NON_JSON_RESPONSE') {
-          setApiError('Ошибка API: получен HTML вместо JSON');
+        console.error('Ошибка загрузки заказов:', error);
+        
+        // Обработка специфичных ошибок Firestore
+        if (error instanceof Error) {
+          const errorMessage = error.message.toLowerCase();
+          
+          // Игнорируем временные сетевые ошибки
+          if (errorMessage.includes('network') || 
+              errorMessage.includes('failed to fetch') ||
+              errorMessage.includes('bad request')) {
+            console.warn('Временная проблема с подключением, пропускаем обновление');
+            return;
+          }
+          
+          if (error.message === 'NON_JSON_RESPONSE') {
+            setApiError('Ошибка API: получен HTML вместо JSON');
+          } else {
+            setApiError(error.message);
+          }
         } else {
-          setApiError(error instanceof Error ? error.message : 'Ошибка загрузки заказов');
+          setApiError('Ошибка загрузки заказов');
         }
       }
   };
@@ -223,9 +248,9 @@ const OrderManagement: React.FC = () => {
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="bg-slate-50 min-h-screen overflow-x-hidden w-full pb-20"
+      className="bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen overflow-x-hidden w-full pb-20"
     >
-      {apiError && (
+      {apiError && !apiError.includes('network') && !apiError.includes('Bad Request') && (
         <motion.div 
           initial={{ y: -100 }}
           animate={{ y: 0 }}
@@ -236,19 +261,24 @@ const OrderManagement: React.FC = () => {
           </div>
         </motion.div>
       )}
-      <div className="px-4 sm:px-6 py-8 w-full max-w-7xl mx-auto">
+      <div className="px-3 sm:px-4 py-4 w-full max-w-7xl mx-auto">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between mb-8"
+          className="flex items-center justify-between mb-4"
         >
           <div>
-            <h1 className="text-3xl sm:text-4xl font-semibold text-slate-900">
+            <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900">
               Заказы
             </h1>
-            <p className="text-sm text-slate-500 mt-2">
-              {userRole === 'admin' ? 'Администратор' : userRole === 'courier' ? 'Курьер' : 'Бариста'} · Автообновление каждые 5 сек
+            <p className="text-xs text-slate-500 mt-1">
+              {userRole === 'admin' ? 'Администратор' : userRole === 'courier' ? 'Курьер' : 'Бариста'} · Обновление каждые 5 сек
+              {lastSuccessfulUpdate && (
+                <span className="ml-2 text-green-600">
+                  ● Подключено
+                </span>
+              )}
             </p>
           </div>
           <motion.button
@@ -256,7 +286,7 @@ const OrderManagement: React.FC = () => {
             disabled={refreshing}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="p-4 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-3 bg-black text-white rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-50 shadow-lg"
           >
             <ArrowPathIcon className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
           </motion.button>
@@ -267,7 +297,7 @@ const OrderManagement: React.FC = () => {
           initial={prefersReducedMotion ? { y: 0 } : { opacity: 0, y: 16 }}
           animate={prefersReducedMotion ? { y: 0 } : { opacity: 1, y: 0 }}
           transition={prefersReducedMotion ? undefined : { delay: 0.05 }}
-          className="flex gap-2 mb-8 overflow-x-auto pb-2 w-full"
+          className="flex gap-2 mb-4 overflow-x-auto pb-2 w-full"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           {(['pending', 'accepted', 'ready'] as const).map((status) => {
@@ -279,17 +309,17 @@ const OrderManagement: React.FC = () => {
                 onClick={() => setActiveTab(status)}
                 whileHover={prefersReducedMotion ? undefined : { y: -2 }}
                 whileTap={prefersReducedMotion ? undefined : { scale: 0.98 }}
-                className={`flex-shrink-0 px-6 py-3 rounded-lg font-medium text-sm whitespace-nowrap transition-all border ${
+                className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-all ${
                   isActive
-                    ? 'bg-slate-900 text-white border-slate-900'
-                    : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                    ? 'bg-black text-white shadow-lg'
+                    : 'bg-white text-slate-700 border border-slate-200 hover:border-slate-300 shadow-sm hover:shadow-md'
                 }`}
               >
                 <div className="flex items-center gap-2">
                   {getStatusIcon(status)}
                   <span>{getStatusText(status)}</span>
                   <span
-                    className={`px-2 py-0.5 rounded-md text-xs font-semibold ${
+                    className={`px-1.5 py-0.5 rounded text-xs font-semibold ${
                       isActive 
                         ? 'bg-white/20 text-white' 
                         : 'bg-slate-100 text-slate-600'
@@ -310,19 +340,19 @@ const OrderManagement: React.FC = () => {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
-            className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5"
+            className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3"
           >
             {filteredOrders.length === 0 ? (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="col-span-full text-center text-slate-500 py-20 bg-white rounded-lg border border-slate-200"
+                className="col-span-full text-center text-slate-500 py-12 bg-white rounded-xl border border-slate-200 shadow-sm"
               >
-                <BellIcon className="w-12 h-12 mx-auto mb-4 text-slate-300" />
-                <p className="text-lg font-medium text-slate-700">
+                <BellIcon className="w-10 h-10 mx-auto mb-3 text-slate-300" />
+                <p className="text-base font-medium text-slate-700">
                   Нет заказов со статусом "{getStatusText(activeTab)}"
                 </p>
-                <p className="text-sm text-slate-500 mt-2">Заказы появятся здесь автоматически</p>
+                <p className="text-xs text-slate-500 mt-1">Заказы появятся здесь автоматически</p>
               </motion.div>
             ) : (
               filteredOrders.map((order) => (
@@ -331,21 +361,20 @@ const OrderManagement: React.FC = () => {
                   layout
                   initial={{ opacity: 0, scale: 0.98 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  whileHover={{ y: -4 }}
+                  whileHover={{ y: -3, boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08)' }}
                   transition={{ duration: 0.2 }}
-                  className="bg-white rounded-lg border border-slate-200 p-6 hover:border-slate-300 hover:shadow-sm transition-all"
+                  className="bg-white rounded-xl border border-slate-200 p-4 shadow-md hover:border-slate-300 transition-all"
                 >
                   {/* Заголовок заказа */}
-                  <div className="flex items-start justify-between mb-6 pb-4 border-b border-slate-100">
+                  <div className="flex items-start justify-between mb-3 pb-3 border-b border-slate-100">
                     <div className="flex-1">
-                      <h3 className="text-xl font-semibold text-slate-900 mb-1">
+                      <h3 className="text-lg font-semibold text-slate-900">
                         Заказ #{getOrderDisplayNumber(order)}
                       </h3>
-                      <p className="text-sm text-slate-500">
+                      <p className="text-xs text-slate-500 mt-0.5">
                         {new Date(order.date).toLocaleString('ru-RU', {
                           day: '2-digit',
                           month: '2-digit',
-                          year: 'numeric',
                           hour: '2-digit',
                           minute: '2-digit',
                         })}
@@ -353,8 +382,8 @@ const OrderManagement: React.FC = () => {
                     </div>
                     
                     {/* Статус заказа */}
-                    <div className={`px-3 py-1.5 rounded-md text-xs font-medium border ${getStatusColor(order.status)}`}>
-                      <div className="flex items-center gap-1.5">
+                    <div className={`px-2 py-1 rounded text-xs font-medium border ${getStatusColor(order.status)}`}>
+                      <div className="flex items-center gap-1">
                         {getStatusIcon(order.status)}
                         <span>{getStatusText(order.status)}</span>
                       </div>
@@ -363,58 +392,54 @@ const OrderManagement: React.FC = () => {
 
                   {/* Информация о клиенте */}
                   {(order.customerName || order.customerPhone) && (
-                    <div className="mb-6 pb-4 border-b border-slate-100">
-                      <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-3">
-                        Клиент
-                      </h4>
-                      <div className="space-y-2">
-                        {order.customerName && (
-                          <div className="text-sm text-slate-700">
-                            {order.customerName}
-                          </div>
-                        )}
-                        {order.customerPhone && (
-                          <a 
-                            href={`tel:${order.customerPhone}`} 
-                            className="text-sm text-slate-900 hover:text-slate-700 font-medium"
-                          >
-                            {order.customerPhone}
-                          </a>
-                        )}
-                      </div>
-                      
-                      {/* Тип доставки */}
-                      <div className="mt-3 inline-flex items-center gap-2 text-xs font-medium text-slate-600">
-                        {order.deliveryType === 'delivery' ? 'Доставка' : 'Самовывоз'}
+                    <div className="mb-3 pb-3 border-b border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          {order.customerName && (
+                            <div className="text-sm font-medium text-slate-900 truncate">
+                              {order.customerName}
+                            </div>
+                          )}
+                          {order.customerPhone && (
+                            <a 
+                              href={`tel:${order.customerPhone}`} 
+                              className="text-xs text-slate-600 hover:text-slate-900"
+                            >
+                              {order.customerPhone}
+                            </a>
+                          )}
+                        </div>
+                        
+                        {/* Тип доставки */}
+                        <div className="text-xs px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-medium">
+                          {order.deliveryType === 'delivery' ? '🚗 Доставка' : '🏃 Самовывоз'}
+                        </div>
                       </div>
                     </div>
                   )}
 
                   {/* Позиции заказа */}
-                  <div className="mb-6">
-                    <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-3">
-                      Состав заказа
-                    </h4>
-                    <div className="space-y-3 max-h-80 overflow-y-auto">
+                  <div className="mb-3">
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
                       {order.items.map((item, idx) => {
                         const modifiers = formatOrderItemModifiers(item);
                         return (
                           <div
                             key={idx}
-                            className="flex justify-between items-start gap-4 py-3 border-b border-slate-100 last:border-0"
+                            className="flex justify-between items-start gap-2 py-2 border-b border-slate-50 last:border-0"
                           >
                             <div className="flex-1 min-w-0">
-                              <div className="font-medium text-slate-900 mb-1">
-                                <span className="text-slate-500 mr-2">×{item.quantity}</span>
+                              <div className="text-sm font-medium text-slate-900">
+                                <span className="text-slate-500 mr-1.5">×{item.quantity}</span>
                                 {item.name}
                               </div>
                               {modifiers && (
-                                <div className="text-xs text-slate-500 leading-relaxed">
+                                <div className="text-xs text-slate-500 mt-0.5">
                                   {modifiers}
                                 </div>
                               )}
                             </div>
-                            <span className="text-slate-900 font-semibold whitespace-nowrap">
+                            <span className="text-sm text-slate-900 font-semibold whitespace-nowrap">
                               {item.price * item.quantity} ₸
                             </span>
                           </div>
@@ -423,23 +448,23 @@ const OrderManagement: React.FC = () => {
                     </div>
                     
                     {/* Итого */}
-                    <div className="mt-4 pt-4 border-t-2 border-slate-200 flex justify-between items-center">
-                      <span className="font-semibold text-slate-900">Итого</span>
-                      <span className="text-2xl font-bold text-slate-900">
+                    <div className="mt-3 pt-3 border-t border-slate-200 flex justify-between items-center">
+                      <span className="text-sm font-semibold text-slate-900">Итого</span>
+                      <span className="text-xl font-bold text-slate-900">
                         {order.amount} ₸
                       </span>
                     </div>
                     
                     {/* Использованные бонусы */}
                     {order.bonusUsed && order.bonusUsed > 0 && (
-                      <div className="mt-3 text-sm text-amber-700">
-                        Использовано бонусов: <span className="font-semibold">−{order.bonusUsed} ₸</span>
+                      <div className="mt-2 text-xs text-amber-700">
+                        Бонусы: <span className="font-semibold">−{order.bonusUsed} ₸</span>
                       </div>
                     )}
                   </div>
 
                   {/* Status Control - Smart Action Button */}
-                  <div className="mt-4">
+                  <div className="mt-3">
                     <OrderStatusControl
                       orderId={order.id}
                       currentStatus={mapToOrderStatus(order.status)}
@@ -451,17 +476,6 @@ const OrderManagement: React.FC = () => {
                       }}
                     />
                   </div>
-
-                  {/* QR Code for Ready Orders (Pickup only) */}
-                  {order.status === 'ready' && order.deliveryType === 'pickup' && (
-                    <div className="mt-4 bg-slate-900 rounded-lg p-4 text-center">
-                      <QrCodeIcon className="w-8 h-8 mx-auto mb-2 text-white" />
-                      <div className="text-white font-bold text-lg">
-                        {order.id.slice(-4).toUpperCase()}
-                      </div>
-                      <div className="text-xs text-slate-400 mt-1">Код выдачи</div>
-                    </div>
-                  )}
                 </motion.div>
               ))
             )}

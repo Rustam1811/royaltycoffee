@@ -75,7 +75,7 @@ export const DrinkCardPremiumImpl: React.FC<Props> = ({ item, onOpen }) => {
       </div>
 
       {/* Info section - minimal and clean */}
-      <div className="flex flex-col p-3 pt-0">
+      <div className="flex flex-col p-3 pt-1">
         <h3 className="
             text-[13px] font-medium leading-tight
             text-black
