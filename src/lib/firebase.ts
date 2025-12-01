@@ -3,8 +3,8 @@ import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getMessaging, Messaging } from 'firebase/messaging';
+import { logger } from './logger';
 
-// Web Firebase initialization (Vite env vars prefixed with VITE_)
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string,
@@ -14,44 +14,31 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID as string,
 };
 
-// Debug Firebase config in development
-if (import.meta.env.DEV) {
-  console.log('Firebase config loaded:', {
-    ...firebaseConfig,
-    apiKey: firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 10)}...` : 'MISSING'
-  });
-}
-
-// Validate Firebase configuration
 const requiredKeys = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
 const missingKeys = requiredKeys.filter(key => !firebaseConfig[key as keyof typeof firebaseConfig]);
 
 if (missingKeys.length > 0) {
-  console.error('Missing Firebase environment variables:', missingKeys);
-  console.error('Current config:', firebaseConfig);
-  throw new Error(`Missing Firebase configuration: ${missingKeys.join(', ')}`);
+  const error = new Error(`Missing Firebase configuration: ${missingKeys.join(', ')}`);
+  logger.error('Firebase configuration incomplete', error, { missingKeys });
+  throw error;
 }
 
-// Safe Firebase initialization with duplicate app handling
 let app: FirebaseApp;
 
 const existingApps = getApps();
 if (existingApps.length > 0) {
-  // Use existing app if available
-  console.log('Using existing Firebase app');
   app = existingApps[0];
+  logger.debug('Using existing Firebase app');
 } else {
-  // Initialize new app only if none exists
   try {
-    console.log('Initializing new Firebase app');
     app = initializeApp(firebaseConfig);
+    logger.info('Firebase initialized successfully');
   } catch (error: unknown) {
-    // Handle duplicate app error during development
     if (error instanceof FirebaseError && error.code === 'app/duplicate-app') {
-      console.warn('Firebase app already exists, using existing instance');
       app = getApps()[0];
+      logger.debug('Firebase app already exists, using existing instance');
     } else {
-      console.error('Failed to initialize Firebase:', error);
+      logger.error('Failed to initialize Firebase', error);
       throw error;
     }
   }
@@ -61,13 +48,13 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 
-// Initialize Firebase Cloud Messaging (only on client, guard for SSR)
 let messaging: Messaging | null = null;
 if (typeof window !== 'undefined') {
   try {
     messaging = getMessaging(app);
+    logger.debug('Firebase Messaging initialized');
   } catch (error) {
-    console.error('Failed to initialize Firebase Messaging:', error);
+    logger.warn('Firebase Messaging not available', { error });
   }
 }
 

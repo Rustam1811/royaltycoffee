@@ -36,7 +36,6 @@ export enum OrderType {
 export const ORDER_STATUS_FLOW = {
   [OrderType.DELIVERY]: [
     OrderStatus.NEW,
-    OrderStatus.ACCEPTED,
     OrderStatus.PREPARING,
     OrderStatus.READY,
     OrderStatus.ASSIGNED,
@@ -46,14 +45,12 @@ export const ORDER_STATUS_FLOW = {
   ],
   [OrderType.PICKUP]: [
     OrderStatus.NEW,
-    OrderStatus.ACCEPTED,
     OrderStatus.PREPARING,
     OrderStatus.READY,
     OrderStatus.COMPLETED,
   ],
   [OrderType.DINE_IN]: [
     OrderStatus.NEW,
-    OrderStatus.ACCEPTED,
     OrderStatus.PREPARING,
     OrderStatus.READY,
     OrderStatus.COMPLETED,

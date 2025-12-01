@@ -6,8 +6,9 @@ import {
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { collection, query, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
 import { UserContext, type Role } from '@/contexts/UserContext';
-import { safeApiRequestWithRetry } from '../utils/safeApi';
+import { db } from '../firebase';
 import { 
   formatOrderItemModifiers, 
   getOrderDisplayNumber 
@@ -103,7 +104,7 @@ type ApiOrder = {
  */
 const OrderManagement: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [activeTab, setActiveTab] = useState<'pending' | 'accepted' | 'ready'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'preparing' | 'ready'>('pending');
   const [refreshing, setRefreshing] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [lastSuccessfulUpdate, setLastSuccessfulUpdate] = useState<Date>(new Date());
@@ -112,111 +113,85 @@ const OrderManagement: React.FC = () => {
   const userRole: Role = user?.role || 'user';
   const prefersReducedMotion = useReducedMotion();
 
+  // Real-time Firestore listener (replaces polling)
   useEffect(() => {
-    fetchOrders();
-    // Обновляем заказы каждые 5 секунд
-    const interval = setInterval(fetchOrders, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    console.log('🔥 Setting up real-time orders listener...');
+    setApiError(null);
 
-  const fetchOrders = async () => {
-    try {
-      const result = await safeApiRequestWithRetry<{ orders: ApiOrder[] }>('orders', { action: 'get', admin: 'true' });
-      
-      if (!result.success) {
-        // Не показываем ошибку если это просто временная проблема с сетью
-        if (result.error?.includes('NetworkError') || result.error?.includes('Failed to fetch')) {
-          console.warn('Временная проблема с сетью, повторяем позже...');
-          return; // Просто пропускаем этот цикл обновления
-        }
-        setApiError(result.error || 'Неизвестная ошибка');
-        return;
-      }
+    const ordersQuery = query(
+      collection(db, 'orders'),
+      orderBy('createdAt', 'desc')
+    );
 
-      setApiError(null);
-      const data = result.data;
-      if (!data) {
-        setOrders([]);
-        return;
-      }
-      
-      // Обновляем время последнего успешного обновления
-      setLastSuccessfulUpdate(new Date());
+    const unsubscribe = onSnapshot(
+      ordersQuery,
+      (snapshot) => {
+        console.log(`📦 Real-time update: ${snapshot.docs.length} orders received`);
         
-        // Универсальная нормализация времени:
-        const toIso = (o: Record<string, unknown>) => {
-          // Firestore Timestamp -> ISO
-          if (o?.createdAt && typeof o.createdAt === 'object' && 'seconds' in o.createdAt) {
-            return new Date((o.createdAt as { seconds: number }).seconds * 1000).toISOString();
+        const normalized: Order[] = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          
+          // Normalize Firestore Timestamp to ISO string
+          let dateStr = new Date().toISOString();
+          if (data.createdAt instanceof Timestamp) {
+            dateStr = data.createdAt.toDate().toISOString();
+          } else if (data.createdAt && typeof data.createdAt === 'string') {
+            dateStr = new Date(data.createdAt).toISOString();
+          } else if (data.date && typeof data.date === 'string') {
+            dateStr = new Date(data.date).toISOString();
           }
-          // Строка / число -> дата
-          if (o?.createdAt && typeof o.createdAt === 'string') return new Date(o.createdAt).toISOString();
-          if (o?.date && typeof o.date === 'string') return new Date(o.date).toISOString();
-          return new Date().toISOString();
-        };
-        
-        const normalized: Order[] = ((data.orders || []) as ApiOrder[]).map((o) => ({
-          id: o.id,
-          orderNumberDisplay: o.orderNumberDisplay,
-          items: (o.items ?? []).map((it) => ({
-            name: it.name ?? '',
-            quantity: it.quantity ?? 0,
-            price: it.price ?? 0,
-            sizeKey: it.sizeKey,
-            milkKey: it.milkKey,
-            syrupKey: it.syrupKey,
-            temperatureKey: it.temperatureKey,
-            intensityKey: it.intensityKey,
-          })),
-          amount: o.amount ?? 0,
-          status: (o.status === 'NEW' ? 'pending' : (o.status as Order['status'])) || 'pending',
-          date: o.date || toIso(o as unknown as Record<string, unknown>),
-          customerName: o.customerName,
-          customerPhone: o.customerPhone,
-          bonusUsed: o.bonusUsed,
-          deliveryType: o.deliveryType || 'pickup',
-        }));
-        
+
+          return {
+            id: doc.id,
+            orderNumberDisplay: data.orderNumberDisplay || doc.id.substring(0, 8),
+            items: (data.items || []).map((it: any) => ({
+              name: it.name || '',
+              quantity: it.quantity || 0,
+              price: it.price || 0,
+              sizeKey: it.sizeKey,
+              milkKey: it.milkKey,
+              syrupKey: it.syrupKey,
+              temperatureKey: it.temperatureKey,
+              intensityKey: it.intensityKey,
+            })),
+            amount: data.amount || 0,
+            status: (data.status === 'NEW' ? 'pending' : data.status) || 'pending',
+            date: dateStr,
+            customerName: data.customerName,
+            customerPhone: data.customerPhone,
+            bonusUsed: data.bonusUsed,
+            deliveryType: data.deliveryType || 'pickup',
+            courierId: data.courierId,
+          };
+        });
+
         setOrders(normalized);
-      } catch (error) {
-        console.error('Ошибка загрузки заказов:', error);
-        
-        // Обработка специфичных ошибок Firestore
-        if (error instanceof Error) {
-          const errorMessage = error.message.toLowerCase();
-          
-          // Игнорируем временные сетевые ошибки
-          if (errorMessage.includes('network') || 
-              errorMessage.includes('failed to fetch') ||
-              errorMessage.includes('bad request')) {
-            console.warn('Временная проблема с подключением, пропускаем обновление');
-            return;
-          }
-          
-          if (error.message === 'NON_JSON_RESPONSE') {
-            setApiError('Ошибка API: получен HTML вместо JSON');
-          } else {
-            setApiError(error.message);
-          }
-        } else {
-          setApiError('Ошибка загрузки заказов');
-        }
+        setLastSuccessfulUpdate(new Date());
+        setApiError(null);
+      },
+      (error) => {
+        console.error('❌ Firestore listener error:', error);
+        setApiError(`Real-time sync error: ${error.message}`);
       }
-  };
+    );
 
-  /**
-   * Ручное обновление списка заказов
-   */
-  const handleManualRefresh = async () => {
+    return () => {
+      console.log('🔥 Cleaning up real-time listener');
+      unsubscribe();
+    };
+  }, []); // Run once on mount
+
+  // Manual refresh for UI feedback (real-time listener handles auto-updates)
+  const handleManualRefresh = () => {
     setRefreshing(true);
-    await fetchOrders();
+    console.log('🔄 Manual refresh triggered (real-time listener active)');
     setTimeout(() => setRefreshing(false), 500);
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200';
-      case 'accepted': return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'preparing': return 'bg-blue-50 text-blue-700 border-blue-200';
       case 'ready': return 'bg-green-50 text-green-700 border-green-200';
       case 'completed': return 'bg-slate-50 text-slate-600 border-slate-200';
       default: return 'bg-slate-50 text-slate-600 border-slate-200';
@@ -226,7 +201,7 @@ const OrderManagement: React.FC = () => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pending': return <ClockIcon className="w-5 h-5" />;
-      case 'accepted': return <CheckCircleIcon className="w-5 h-5" />;
+      case 'preparing': return <CheckCircleIcon className="w-5 h-5" />;
       case 'ready': return <BellIcon className="w-5 h-5" />;
       default: return <ClockIcon className="w-5 h-5" />;
     }
@@ -235,7 +210,7 @@ const OrderManagement: React.FC = () => {
   const getStatusText = (status: string) => {
     switch (status) {
       case 'pending': return 'Новый';
-      case 'accepted': return 'В работе';
+      case 'preparing': return 'Готовится';
       case 'ready': return 'Готов';
       case 'completed': return 'Выдан';
       default: return status;
@@ -300,7 +275,7 @@ const OrderManagement: React.FC = () => {
           className="flex gap-2 mb-4 overflow-x-auto pb-2 w-full"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
-          {(['pending', 'accepted', 'ready'] as const).map((status) => {
+          {(['pending', 'preparing', 'ready'] as const).map((status) => {
             const count = orders.filter((o) => o.status === status).length;
             const isActive = activeTab === status;
             return (
@@ -470,9 +445,19 @@ const OrderManagement: React.FC = () => {
                       currentStatus={mapToOrderStatus(order.status)}
                       orderType={mapToOrderType(order.deliveryType)}
                       courierId={order.courierId}
-                      onStatusChanged={async () => {
-                        // Refresh orders after status change
-                        await fetchOrders();
+                      onOptimisticUpdate={(nextStatus) => {
+                        // 🚀 Мгновенное обновление UI - без ожидания сервера!
+                        setOrders(prevOrders => 
+                          prevOrders.map(o => 
+                            o.id === order.id 
+                              ? { ...o, status: nextStatus.toLowerCase() as Order['status'] }
+                              : o
+                          )
+                        );
+                      }}
+                      onStatusChanged={() => {
+                        // Real-time listener handles updates automatically
+                        console.log('✅ Status updated - real-time listener will sync');
                       }}
                     />
                   </div>

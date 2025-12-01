@@ -1,12 +1,9 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-
-// Re-add static JSON imports so translations guaranteed to be present at init time
+import { logger } from './lib/logger';
 import ru from './pages/menu/locales/ru.json';
 import en from './pages/menu/locales/en.json';
 import kz from './pages/menu/locales/kz.json';
-
-// Remove http backend (keep code minimal & deterministic)
 
 if (!i18n.isInitialized) {
   i18n
@@ -27,7 +24,10 @@ if (!i18n.isInitialized) {
       defaultNS: 'translation',
     })
     .then(() => {
-      console.log('[i18n] Loaded. Sample:', i18n.t('menu.espresso.name'));
+      logger.debug('i18n initialized', { languages: ['ru', 'en', 'kz'] });
+    })
+    .catch((error) => {
+      logger.error('Failed to initialize i18n', error);
     });
 }
 

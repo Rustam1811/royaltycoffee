@@ -1,44 +1,61 @@
-# ☕ Coffee Addict - SunfoodApp
+# ☕ Coffee Shop PWA - Production Ready
 
-> Премиальное мобильное приложение для заказа кофе и еды
+> Enterprise-grade Progressive Web App for coffee shops with multi-tenancy support
 
+[![Version](https://img.shields.io/badge/Version-1.0.0-blue)](package.json)
 [![Performance](https://img.shields.io/badge/Performance-94%2F100-brightgreen)](PERFORMANCE_CHECKLIST.md)
-[![Bundle Size](https://img.shields.io/badge/Bundle-400KB-success)](PERFORMANCE_OPTIMIZATION.md)
-[![Load Time](https://img.shields.io/badge/Load%20Time-%3C3s-success)](PERFORMANCE_COMPARISON.md)
+[![Security](https://img.shields.io/badge/Security-Hardened-success)](docs/DEPLOYMENT.md)
+[![License](https://img.shields.io/badge/License-Proprietary-red)](LICENSE)
 
-## 🚀 Быстрый старт
+## 🚀 Quick Start
 
 ```bash
-# Установка зависимостей
+# 1. Clone and install
+git clone <repo>
 npm install
 
-# Запуск dev сервера
-npm run dev
+# 2. Setup environment
+cp .env.example .env
+# Edit .env with your Firebase credentials
 
-# Сборка production
+# 3. Start development
+npm run dev:local  # Starts API + Web + Admin
+
+# 4. Build for production
 npm run build
 
-# Preview production build
-npm run preview
+# 5. Deploy
+npm run deploy
 ```
 
-## ⚡ Производительность
+📖 **Full deployment guide**: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
-### Результаты оптимизации
+## ⚡ Production-Ready Features
+
+### Security
+- ✅ **Environment validation** with Zod
+- ✅ **Firestore rules** with role-based access control
+- ✅ **Storage rules** with file size limits and admin-only writes
+- ✅ **No secrets in Git** - all credentials in environment variables
+- ✅ **Error boundaries** for graceful error handling
+
+### Architecture
+- ✅ **Multi-tenancy** - Support multiple cafes with isolated data
+- ✅ **Clean code** - No console.logs, proper logger implementation
+- ✅ **Modular structure** - Providers, routes, navigation separated
+- ✅ **Type safety** - Full TypeScript coverage
+
+### DevOps
+- ✅ **CI/CD pipeline** with GitHub Actions
+- ✅ **Automated testing** - TypeScript checks, linting
+- ✅ **Preview deployments** for pull requests
+- ✅ **Version 1.0.0** - Production ready
+
+### Performance
 - ✅ **FCP:** <1.5s (First Contentful Paint)
 - ✅ **TTI:** <3s (Time to Interactive)
-- ✅ **Bundle:** 400KB (с chunking)
+- ✅ **Bundle:** 400KB with code splitting
 - ✅ **Lighthouse:** 94/100
-
-### До и После
-```
-ДО:  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 10s+ ❌
-ПОСЛЕ: ━━━━━━━ <3s ✅
-
-Улучшение: ↓70% времени загрузки
-```
-
-📊 [Детальное сравнение](PERFORMANCE_COMPARISON.md)
 
 ## 🛠️ Технологии
 

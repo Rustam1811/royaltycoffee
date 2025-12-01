@@ -16,6 +16,7 @@ interface OrderStatusControlProps {
   orderType: OrderType;
   courierId?: string;
   onStatusChanged?: () => void;
+  onOptimisticUpdate?: (nextStatus: OrderStatus) => void;
 }
 
 /**
@@ -30,6 +31,7 @@ export const OrderStatusControl: React.FC<OrderStatusControlProps> = ({
   orderType,
   courierId,
   onStatusChanged,
+  onOptimisticUpdate,
 }) => {
   const { user } = useContext(UserContext);
   const [loading, setLoading] = React.useState(false);
@@ -46,6 +48,12 @@ export const OrderStatusControl: React.FC<OrderStatusControlProps> = ({
   const handleStatusChange = async () => {
     if (!nextStatus || !user) return;
     
+    // 🚀 ОПТИМИСТИЧНОЕ ОБНОВЛЕНИЕ - UI обновляется мгновенно!
+    if (onOptimisticUpdate) {
+      onOptimisticUpdate(nextStatus);
+    }
+    
+    // Запрос идет в фоне, UI уже обновлен
     setLoading(true);
     
     try {
@@ -101,9 +109,12 @@ export const OrderStatusControl: React.FC<OrderStatusControlProps> = ({
         if (result.notificationSent) {
           console.log('✅ Уведомление клиенту отправлено');
         }
+        // Синхронизируем с сервером в фоне (без await)
         onStatusChanged?.();
       } else {
+        // Если ошибка - откатываем оптимистичное обновление
         alert(`Ошибка: ${result.error}`);
+        onStatusChanged?.(); // Перезагрузим состояние с сервера
       }
       
     } catch (error) {
@@ -121,10 +132,8 @@ export const OrderStatusControl: React.FC<OrderStatusControlProps> = ({
     if (!nextStatusMeta) return '';
     
     switch (nextStatus) {
-      case OrderStatus.ACCEPTED:
-        return '✅ Принять заказ';
       case OrderStatus.PREPARING:
-        return '👨‍🍳 Начать готовку';
+        return '✅ Принять и готовить';
       case OrderStatus.READY:
         return '✨ Готов';
       case OrderStatus.PICKED_UP:

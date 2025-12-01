@@ -1,9 +1,15 @@
 import React, { useEffect, Suspense, lazy } from 'react';
-import { BrowserRouter, Switch, Route, Redirect, NavLink, useRouteMatch, useLocation } from "react-router-dom";
+import { BrowserRouter, Switch, Route, Redirect, useLocation } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
-import { HomeIcon, Squares2X2Icon, ShoppingBagIcon, CreditCardIcon, UserCircleIcon } from '@heroicons/react/24/solid';
+import { CartProvider } from './contexts/CartContext';
+import { AuthProvider, useAuth } from './auth/AuthContext';
+import { HomeSkeleton } from './components/Skeleton';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { pageVariants } from './ui/motion';
+import './lib/env';
+import './index.css';
 
-// Lazy load страницы для быстрой загрузки
+// Lazy load pages
 const Home = lazy(() => import('./pages/Home'));
 const Profile = lazy(() => import('./pages/Profile'));
 const Menu = lazy(() => import('./pages/menu/Menu'));
@@ -13,74 +19,25 @@ const Card = lazy(() => import('./pages/Card'));
 const Login = lazy(() => import('./pages/Login'));
 const MyQRCode = lazy(() => import('./pages/MyQRCode'));
 
-import { CartProvider } from './contexts/CartContext';
-import { AuthProvider, useAuth } from './auth/AuthContext';
-import { HomeSkeleton } from './components/Skeleton';
-import "./index.css";
-import { pageVariants } from './ui/motion';
+// Bottom navigation
+import { BottomNavBar } from './app/navigation/BottomNavBar';
 
-// Lazy загрузка FCM только когда нужно
 const initializeFCM = () => import('./services/messaging').then(m => m.initializeFCM());
 const createPWAUpdater = () => import('./pwa/pwa-updater').then(m => m.createPWAUpdater);
 
-const navItems = [
-  { to: "/home", icon: HomeIcon, label: "Главная" },
-  { to: "/menu", icon: Squares2X2Icon, label: "Меню" },
-  { to: "/order", icon: ShoppingBagIcon, label: "Заказ" },
-  { to: "/card", icon: CreditCardIcon, label: "Карта" },
-  { to: "/profile", icon: UserCircleIcon, label: "Профиль" },
-];
-
-const NavItem = ({ to, icon: Icon, label }: { to: string, icon: React.ElementType, label: string }) => {
-  const match = useRouteMatch({ path: to, exact: true });
-  const isActive = !!match;
-  return (
-    <NavLink to={to} className="relative flex flex-col items-center justify-center py-3 px-2 rounded-xl transition-all duration-300 min-w-0 flex-1 group">
-      <>
-        <Icon className={`w-6 h-6 transition-all duration-300 ${isActive ? 'text-slate-900' : 'text-slate-600 group-hover:text-slate-900'}`} />
-        <span className={`text-xs mt-1.5 transition-all duration-300 ${isActive ? 'font-bold text-slate-900' : 'font-medium text-slate-600 group-hover:text-slate-900'}`}>
-          {label}
-        </span>
-        {isActive && (
-          <motion.div
-            layoutId="active-nav-indicator"
-            className="absolute top-1 h-1 w-8 bg-slate-900 rounded-full shadow-lg"
-            transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-          />
-        )}
-      </>
-    </NavLink>
-  );
-};
-
-const BottomNavBar = () => {
-  const location = useLocation();
-  const isAdminRoute = location.pathname.startsWith('/admin');
-  const isLogin = location.pathname === '/login';
-  if (isAdminRoute || isLogin) return null;
-
-  return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center p-4">
-      <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-xl px-4 py-3 flex justify-center border border-slate-200/60 max-w-sm">
-        <div className="flex justify-around gap-2 w-full">
-          {navItems.map(item => <NavItem key={item.to} {...item} />)}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const PrivateRoute: React.FC<{ component: React.ComponentType<Record<string, unknown>>; exact?: boolean; path: string; }> = ({ component: C, ...rest }) => {
+const PrivateRoute: React.FC<{ component: React.ComponentType<any>; exact?: boolean; path: string }> = ({ component: Component, ...rest }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
   const prefersReduced = useReducedMotion();
+
   return (
     <Route
       {...rest}
-      render={(props) =>
-        loading ? (
-          <HomeSkeleton />
-        ) : user ? (
+      render={(props) => {
+        if (loading) return <HomeSkeleton />;
+        if (!user) return <Redirect to={{ pathname: '/login', state: { redirect: location.pathname } }} />;
+        
+        return (
           <Suspense fallback={<HomeSkeleton />}>
             <motion.div
               key={location.pathname}
@@ -90,13 +47,11 @@ const PrivateRoute: React.FC<{ component: React.ComponentType<Record<string, unk
               exit="exit"
               className="w-full min-h-screen"
             >
-              <C {...props} />
+              <Component {...props} />
             </motion.div>
           </Suspense>
-        ) : (
-          <Redirect to={{ pathname: '/login', state: { redirect: location.pathname } }} />
-        )
-      }
+        );
+      }}
     />
   );
 };
@@ -105,33 +60,28 @@ const AppContent: React.FC = () => {
   const location = useLocation();
   const prefersReduced = useReducedMotion();
   const { user } = useAuth();
-  
+
   useEffect(() => {
-    // Lazy init PWA updater
     createPWAUpdater().then((factory) => {
       const pwaUpdater = factory({ autoReload: true });
       pwaUpdater.init();
-      
-      return () => {
-        pwaUpdater.destroy();
-      };
+      return () => pwaUpdater.destroy();
     });
   }, []);
 
   useEffect(() => {
-    if (user) {
-      const hasAskedForNotifications = localStorage.getItem('notifications-asked');
-      
-      if (!hasAskedForNotifications && 'Notification' in window) {
-        setTimeout(() => {
-          initializeFCM().then(() => {
-            localStorage.setItem('notifications-asked', 'true');
-          });
-        }, 3000); // Увеличиваем задержку до 3 секунд
-      } else if (hasAskedForNotifications) {
-        // Загружаем FCM в фоне, только если пользователь уже согласился
-        initializeFCM().catch(console.error);
-      }
+    if (!user) return;
+
+    const hasAskedForNotifications = localStorage.getItem('notifications-asked');
+    
+    if (!hasAskedForNotifications && 'Notification' in window) {
+      setTimeout(() => {
+        initializeFCM().then(() => {
+          localStorage.setItem('notifications-asked', 'true');
+        });
+      }, 3000);
+    } else if (hasAskedForNotifications) {
+      initializeFCM();
     }
   }, [user]);
   
@@ -140,7 +90,6 @@ const AppContent: React.FC = () => {
       <main className="pb-24 overflow-hidden min-h-screen">
         <Suspense fallback={<HomeSkeleton />}>
           <Switch location={location} key={location.pathname}>
-            {/* /admin теперь отдельное приложение */}
             <Route exact path="/login" render={() => (
               <motion.div
                 key={location.pathname}
@@ -161,7 +110,6 @@ const AppContent: React.FC = () => {
             <PrivateRoute exact path="/my-qr" component={MyQRCode} />
             <PrivateRoute exact path="/booking" component={Booking} />
             <PrivateRoute exact path="/order" component={Order} />
-            {/* /admin теперь отдельное приложение */}
             <Route exact path="/"><Redirect to="/home" /></Route>
           </Switch>
         </Suspense>
@@ -172,14 +120,17 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => (
-  <AuthProvider>
-    <CartProvider>
-      <BrowserRouter>
-        <div className="min-h-screen bg-[#F6F7FB] text-slate-900">
-          <AppContent />
-        </div>
-      </BrowserRouter>
-    </CartProvider>
-  </AuthProvider>
+  <ErrorBoundary>
+    <BrowserRouter>
+      <AuthProvider>
+        <CartProvider>
+          <div className="min-h-screen bg-[#F6F7FB] text-slate-900">
+            <AppContent />
+          </div>
+        </CartProvider>
+      </AuthProvider>
+    </BrowserRouter>
+  </ErrorBoundary>
 );
+
 export default App;

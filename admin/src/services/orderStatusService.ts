@@ -223,8 +223,8 @@ class OrderStatusService {
   }
   
   /**
-   * Перевести в готовку (ACCEPTED → PREPARING)
-   * ОПТИМИЗИРОВАНО: мгновенный отклик
+   * Принять и начать готовку (NEW → PREPARING)
+   * ОПТИМИЗИРОВАНО: мгновенный отклик, упрощенный флоу
    */
   async startPreparing(
     orderId: string,
@@ -247,7 +247,7 @@ class OrderStatusService {
         userId,
         userEmail,
         userRole: 'barista',
-        note: 'Начато приготовление',
+        note: 'Заказ принят и готовится',
       }).catch(err => console.error('История не записана:', err));
       
       const statusMeta = ORDER_STATUS_META[OrderStatus.PREPARING];

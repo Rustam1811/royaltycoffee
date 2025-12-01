@@ -7,7 +7,7 @@ import { motion, AnimatePresence, anticipate } from 'framer-motion';
 import Dashboard from '@/pages/Dashboard';
 import OrderManagement from '@/pages/OrderManagement';
 import Analytics from '@/pages/Analytics';
-import MenuPageNew from '@/pages/MenuPageNew';
+import MenuPage from '@/pages/MenuPage';
 import BonusManagement from '@/pages/BonusManagement';
 import AchievementManagement from '@/pages/AchievementManagement';
 import PromotionManagement from '@/pages/PromotionManagement';
@@ -33,7 +33,7 @@ const MobileAdminRoutes: React.FC = () => {
       case 'analytics':
         return userRole === 'admin' ? <Analytics /> : <div>Нет доступа</div>;
       case 'menu':
-        return userRole === 'admin' ? <MenuPageNew /> : <div>Нет доступа</div>;
+        return userRole === 'admin' ? <MenuPage /> : <div>Нет доступа</div>;
       case 'bonuses':
         return userRole === 'admin' ? <BonusManagement /> : <div>Нет доступа</div>;
       case 'achievements':

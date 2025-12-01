@@ -21,6 +21,13 @@ export interface SyrupDef {
   image?: string;
 }
 
+export interface ToppingDef {
+  key: string;
+  name: string;
+  price: number;
+  image?: string;
+}
+
 // Размеры напитков
 export const SIZES: SizeDef[] = [
   { key: 'S', label: 'S', ml: 250, priceMultiplier: 0.9 },
@@ -87,5 +94,33 @@ export const SYRUPS: SyrupDef[] = [
     name: 'Фундук', 
     price: 220, 
     image: 'https://images.unsplash.com/photo-1633436370590-223c9e0d2afd?w=160&h=160&fit=crop&auto=format' 
+  },
+];
+
+// Топпинги
+export const TOPPINGS: ToppingDef[] = [
+  { 
+    key: 'whipped_cream', 
+    name: 'Взбитые сливки', 
+    price: 150, 
+    image: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=160&h=160&fit=crop&auto=format' 
+  },
+  { 
+    key: 'chocolate_chips', 
+    name: 'Шоколадная крошка', 
+    price: 180, 
+    image: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=160&h=160&fit=crop&auto=format' 
+  },
+  { 
+    key: 'cinnamon', 
+    name: 'Корица', 
+    price: 100, 
+    image: 'https://images.unsplash.com/photo-1509831128611-c3f02e67db59?w=160&h=160&fit=crop&auto=format' 
+  },
+  { 
+    key: 'marshmallow', 
+    name: 'Маршмеллоу', 
+    price: 200, 
+    image: 'https://images.unsplash.com/photo-1585670274787-048f4acb94f8?w=160&h=160&fit=crop&auto=format' 
   },
 ];

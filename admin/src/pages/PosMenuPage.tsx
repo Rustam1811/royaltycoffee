@@ -6,7 +6,7 @@ import { ShoppingCartIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { QRScanner } from '../components/QRScanner';
-import { ProductConfigModal } from '../components/ProductConfigModal';
+import { PremiumMenuModal } from '../components/PremiumMenuModal';
 
 const humanize = (key: string) => key.split('.').pop()?.replace(/_/g,' ') || key;
 const CURRENCY = '₸';
@@ -851,26 +851,18 @@ export default function PosMenuPage() {
         }}
       />
 
-      {/* Product Config Modal */}
-      <ProductConfigModal
-        product={selectedProduct}
+      {/* Premium Menu Modal */}
+      <PremiumMenuModal
+        item={selectedProduct ? {
+          id: selectedProduct.id,
+          name: selectedProduct.name,
+          price: selectedProduct.price,
+          image: selectedProduct.image,
+          categoryId: selectedProduct.id
+        } : null}
         open={showProductModal}
         onClose={() => setShowProductModal(false)}
-        onAdd={(config) => {
-          dispatch({
-            type: 'ADD_ITEM',
-            payload: {
-              id: config.id,
-              name: config.name,
-              price: config.price,
-              quantity: config.quantity,
-              image: config.image,
-              sizeKey: config.sizeKey,
-              milkKey: config.milkKey,
-              syrupKey: config.syrupKey,
-            },
-          });
-        }}
+        type="drinks"
       />
     </div>
   );

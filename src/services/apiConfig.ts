@@ -78,12 +78,11 @@ export class ApiService {
       const response = await fetch(url, { ...defaultOptions, ...options });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
       return await response.json();
     } catch (error) {
-      console.error(`API Error for ${url}:`, error);
       throw error;
     }
   }
@@ -156,7 +155,6 @@ export class ApiService {
         
         return response;
       } catch (error) {
-        console.error('Story deletion failed:', error);
         throw new Error(error instanceof Error ? error.message : 'Failed to delete story');
       }
     },
