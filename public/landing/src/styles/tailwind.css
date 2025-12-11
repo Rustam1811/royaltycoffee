@@ -1,0 +1,134 @@
+﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: #1a1a1a;
+    background-color: #FFFBF7;
+    
+    /* Coffee-inspired color palette */
+    --color-espresso: #2C1810;
+    --color-coffee: #4A2C2A;
+    --color-mocha: #6B4423;
+    --color-caramel: #C68B59;
+    --color-cream: #FFF8F0;
+    --color-latte: #E8DDD4;
+    --color-foam: #FFFBF7;
+  }
+  
+  h1, h2, h3 {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+  }
+  
+  .font-display {
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+  
+  body {
+    min-height: 100vh;
+    background-color: var(--color-foam);
+    color: var(--color-espresso);
+  }
+  
+  ::selection {
+    background-color: rgba(198, 139, 89, 0.25);
+    color: var(--color-espresso);
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-white/90 backdrop-blur-xl ring-1 ring-black/5 shadow-lg;
+  }
+  
+  .coffee-card {
+    @apply bg-white rounded-3xl border border-[#E8DDD4] shadow-[0_4px_24px_rgba(44,24,16,0.08)] hover:shadow-[0_12px_48px_rgba(44,24,16,0.12)] transition-all duration-500;
+  }
+  
+  .premium-shadow {
+    @apply shadow-[0_8px_32px_rgba(44,24,16,0.15),0_2px_8px_rgba(198,139,89,0.1)];
+  }
+  
+  .premium-card {
+    @apply bg-white rounded-3xl border border-[#E8DDD4] shadow-[0_8px_32px_rgba(44,24,16,0.08)] hover:shadow-[0_16px_48px_rgba(44,24,16,0.15)] hover:-translate-y-1 transition-all duration-500;
+  }
+  
+  .gradient-coffee {
+    @apply bg-gradient-to-br from-[#6B4423] via-[#4A2C2A] to-[#2C1810];
+  }
+  
+  .gradient-warm {
+    @apply bg-gradient-to-br from-[#FFFBF7] via-[#FFF8F0] to-[#E8DDD4];
+  }
+  
+  .text-gradient-coffee {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-[#6B4423] to-[#C68B59];
+  }
+  
+  .btn-primary {
+    @apply bg-gradient-to-r from-[#6B4423] to-[#4A2C2A] text-white font-semibold px-8 py-4 rounded-2xl shadow-[0_4px_16px_rgba(74,44,42,0.3)] hover:shadow-[0_8px_32px_rgba(74,44,42,0.4)] hover:-translate-y-0.5 transition-all duration-300;
+  }
+  
+  .btn-secondary {
+    @apply bg-white text-[#4A2C2A] font-semibold px-8 py-4 rounded-2xl border-2 border-[#E8DDD4] hover:border-[#C68B59] hover:bg-[#FFF8F0] transition-all duration-300;
+  }
+  
+  /* Phone mockup styles */
+  .phone-mockup {
+    @apply relative bg-[#1a1a1a] rounded-[3rem] p-3 shadow-[0_25px_80px_rgba(44,24,16,0.25),0_10px_30px_rgba(0,0,0,0.2)];
+  }
+  
+  .phone-screen {
+    @apply rounded-[2.5rem] overflow-hidden bg-white;
+  }
+  
+  .phone-notch {
+    @apply absolute top-3 left-1/2 -translate-x-1/2 w-32 h-7 bg-[#1a1a1a] rounded-full z-10;
+  }
+}
+
+/* Custom animations */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
