@@ -15,7 +15,7 @@ const DIST_DIR = join(ROOT, 'dist');
 
 // Paths to always remove from dist
 const REMOVE_PATHS = [
-  // Landing build artifacts
+  // Landing build artifacts (root-level copy)
   'landing/node_modules',
   'landing/src',
   'landing/.env',
@@ -27,19 +27,37 @@ const REMOVE_PATHS = [
   'landing/tailwind.config.ts',
   'landing/postcss.config.js',
   'landing/eslint.config.js',
-  // App landing duplicates
+  // App landing duplicates (Vite copies public/landing/ into dist/app/)
   'app/landing/node_modules',
   'app/landing/src',
-  // НЕ удаляем drinks/images/uploads - они нужны для /drinks/ путей
+  'app/landing/.env',
+  'app/landing/.env.local',
+  'app/landing/package.json',
+  'app/landing/package-lock.json',
+  'app/landing/tsconfig.json',
+  'app/landing/vite.config.ts',
+  'app/landing/tailwind.config.ts',
+  'app/landing/postcss.config.js',
+  'app/landing/eslint.config.js',
+  // Duplicate image folders inside app/ (already at root via copy-public)
+  'app/drinks',
+  'app/eats',
+  'app/images',
+  'app/uploads',
+  'app/locales',
 ];
 
-// Critical files that must exist after build
+// Critical files that must exist after build:web (admin/landing/workshop built separately)
 const REQUIRED_FILES = [
   'sw.js',
   'manifest.json',
   'firebase-messaging-sw.js',
   'coffeeaddict.jpg',
   'app/index.html',
+];
+
+// Optional files — only present after build:all
+const OPTIONAL_FILES = [
   'landing/index.html',
   'admin/index.html',
   'workshop/index.html',
@@ -93,6 +111,13 @@ for (const relPath of REQUIRED_FILES) {
   const exists = existsSync(fullPath);
   console.log(`  ${exists ? '✅' : '❌'} ${relPath}`);
   if (!exists) allPresent = false;
+}
+
+// Check optional files (only present after build:all)
+for (const relPath of OPTIONAL_FILES) {
+  const fullPath = join(DIST_DIR, relPath);
+  const exists = existsSync(fullPath);
+  console.log(`  ${exists ? '✅' : '⏭️ '} ${relPath} ${exists ? '' : '(skipped — run build:all)'}`);
 }
 
 // Calculate and report final size

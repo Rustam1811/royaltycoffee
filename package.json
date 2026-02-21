@@ -21,7 +21,7 @@
         "test.e2e": "cypress run",
         "test.unit": "vitest",
         "lint": "eslint",
-        "build:web": "cross-env NODE_ENV=production vite build && npm run build:copy-public",
+        "build:web": "cross-env NODE_ENV=production vite build && npm run build:copy-public && npm run build:cleanup",
         "build:admin": "cd admin && npm run build",
         "build:workshop": "cd workshop && npm run build",
         "build:landing": "cd public/landing && npm run build",

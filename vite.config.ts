@@ -60,6 +60,9 @@ export default defineConfig(() => {
     build: {
       outDir: "dist/app",
       emptyOutDir: true,
+      // Disable default publicDir copy — we handle it via scripts/copy-public.mjs
+      // This prevents Vite from copying public/landing/node_modules (118 MB!) into dist
+      copyPublicDir: false,
       rollupOptions: {
         output: {
           manualChunks: {
