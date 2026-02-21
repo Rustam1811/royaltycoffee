@@ -61,6 +61,10 @@ serviceAccountKey.json
 *.p12
 *.secret.json
 
+# Mobile platform secrets
+**/google-services.json
+**/GoogleService-Info.plist
+
 # Local env files
 .env
 .env.*
