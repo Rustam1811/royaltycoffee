@@ -18,11 +18,6 @@ const Locations = lazy(() => import('./pages/Locations'));
 const MyQRCode = lazy(() => import('./pages/MyQRCode'));
 const Login = lazy(() => import('./pages/Login'));
 
-// Закомментированные неиспользуемые страницы:
-// const Order = lazy(() => import('./pages/Order'));
-// const Booking = lazy(() => import('./pages/Booking'));
-// const Card = lazy(() => import('./pages/Card'));
-
 // Bottom navigation
 import { BottomNavBar } from './app/navigation/BottomNavBar';
 
@@ -112,12 +107,6 @@ const AppContent: React.FC = () => {
             <PrivateRoute exact path="/profile" component={Profile} />
             <PrivateRoute exact path="/qr" component={MyQRCode} />
             <PrivateRoute exact path="/locations" component={Locations} />
-            
-            {/* Закомментированные неиспользуемые роуты: */}
-            {/* <PrivateRoute exact path="/card" component={Card} /> */}
-            {/* <PrivateRoute exact path="/my-qr" component={MyQRCode} /> */}
-            {/* <PrivateRoute exact path="/booking" component={Booking} /> */}
-            {/* <PrivateRoute exact path="/order" component={Order} /> */}
             
             <Route exact path="/"><Redirect to="/home" /></Route>
             <Route path="*"><Redirect to="/home" /></Route>
