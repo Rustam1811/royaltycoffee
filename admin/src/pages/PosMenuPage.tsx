@@ -1,19 +1,42 @@
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
+﻿import React, { useCallback, useMemo, useState, useEffect, useRef, useContext } from 'react';
 import { useCart } from '../../../src/contexts/CartContext';
-import { drinkCategories } from '../../../src/pages/menu/data/drinksData';
-import { foodCategories } from '../../../src/pages/menu/data/foodData';
-import { ShoppingCartIcon } from '@heroicons/react/24/outline';
+import { MenuService, MenuCategory, MenuItem } from '@/services/menuService';
+import { ShoppingCartIcon, TrashIcon, MinusIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useTranslation } from 'react-i18next';
 import { QRScanner } from '../components/QRScanner';
 import { PremiumMenuModal } from '../components/PremiumMenuModal';
+import { parseLoyaltyPayload } from '@/utils/parseLoyaltyPayload';
+import { UserContext } from '../contexts/UserContext';
 
-const humanize = (key: string) => key.split('.').pop()?.replace(/_/g,' ') || key;
-const CURRENCY = '₸';
+// Helper for authenticated API calls
+async function callApi(path: string, body: unknown) {
+  const base: string = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_BASE || '/api';
+  const url = base.replace(/\/$/, '') + path;
+  const { auth } = await import('@/lib/firebase');
+  const token = await auth.currentUser?.getIdToken();
+  const res = await fetch(url, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    let detail: unknown = null;
+    try { detail = await res.json(); } catch { /* ignore */ }
+    const err = new Error(`API ${res.status}`) as Error & { status?: number; detail?: unknown };
+    err.status = res.status;
+    err.detail = detail;
+    throw err;
+  }
+  return res.json();
+}
 
 // Normalize phone number: 8xxx or +7xxx -> +7xxx
 const normalizePhone = (phone: string): string => {
-  const cleaned = phone.replace(/\D/g, ''); // Remove all non-digits
+  const cleaned = phone.replace(/\D/g, '');
   if (cleaned.startsWith('8') && cleaned.length === 11) {
     return '+7' + cleaned.substring(1);
   }
@@ -36,14 +59,20 @@ const getMilkLabel = (key: string | undefined) => {
 
 export default function PosMenuPage() {
   const { items: cartItems, dispatch } = useCart();
-  const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<'drinks' | 'food'>('drinks');
-  const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
+  const { user: adminUser } = useContext(UserContext);
+  const posLocationId = adminUser?.locationId || 'royal-main';
+
+  // ─── Firestore data ───
+  const [categories, setCategories] = useState<MenuCategory[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [menuLoading, setMenuLoading] = useState(true);
+
+  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [orderNumber, setOrderNumber] = useState<string | null>(null); // ✅ Изменено с number на string
+  const [orderNumber, setOrderNumber] = useState<string | null>(null);
   
   // Product modal
-  const [selectedProduct, setSelectedProduct] = useState<{id: number; name: string; price: number; image: string; description?: string} | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<{id: string; name: string; price: number; image: string} | null>(null);
   const [showProductModal, setShowProductModal] = useState(false);
   
   // Customer linking
@@ -56,6 +85,151 @@ export default function PosMenuPage() {
   const [loadingBonus, setLoadingBonus] = useState(false);
   const [useBonuses, setUseBonuses] = useState(false);
   const [bonusError, setBonusError] = useState<string | null>(null);
+
+  // ─── Pistol scanner state ───
+  const [pistolListen, setPistolListen] = useState(true);
+  const [targetUid, setTargetUid] = useState<string | null>(null);
+  const [pistolToast, setPistolToast] = useState<string | null>(null);
+  const [autoProcessing, setAutoProcessing] = useState(false);
+  const [mobileCartOpen, setMobileCartOpen] = useState(false);
+  const scanBufRef = useRef('');
+  const scanTimesRef = useRef<number[]>([]);
+  const lastTimeRef = useRef(0);
+  const resetTimerRef = useRef<number | null>(null);
+  const toastTimerRef = useRef<number | null>(null);
+  // Use a ref to call handleCheckout from within handlePistolScan without dep ordering issues
+  const checkoutRef = useRef<() => void>(() => {});
+
+  // ─── Pistol scanner: handle scanned QR/barcode ───
+  const handlePistolScan = useCallback(async (raw: string) => {
+    const parsed = parseLoyaltyPayload(raw);
+    if (!parsed) return; // Not a loyalty QR — ignore
+
+    const payload = parsed.uid || parsed.cardId || raw;
+    setAutoProcessing(true);
+
+    try {
+      let uid: string | undefined;
+      let name = 'Клиент';
+      let phone = '';
+      let bonus = 0;
+
+      try {
+        const resp = await callApi('/pos/scan', { payload });
+        if (resp?.ok && resp.user?.uid) {
+          uid = resp.user.uid;
+          name = resp.user.name || 'Клиент';
+          phone = resp.user.phone || '';
+          bonus = Number(resp.balance) || 0;
+        }
+      } catch {
+        // /pos/scan 404 — fallback to /bonus API
+        try {
+          const bonusRes = await fetch(`/api/bonus?userId=${encodeURIComponent(payload)}`);
+          if (bonusRes.ok) {
+            const bonusData = await bonusRes.json();
+            if (bonusData.ok) {
+              uid = payload;
+              name = bonusData.name || 'Клиент';
+              phone = bonusData.phone || '';
+              bonus = Number(bonusData.balance) || 0;
+            }
+          }
+        } catch { /* ignore */ }
+      }
+
+      // Last resort: link by uid even without profile
+      if (!uid) uid = payload;
+
+      setTargetUid(uid);
+      setCustomerPhone(phone);
+      setCustomerName(name);
+      setCustomerBonus(bonus);
+      setCustomerLinked(true);
+      setShowCustomerInput(false);
+      setBonusError(null);
+
+      // Show toast
+      const msg = `✅ ${name}${phone ? ` (${phone})` : ''} — ${bonus}₸ бонусов`;
+      setPistolToast(msg);
+      if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = window.setTimeout(() => setPistolToast(null), 3000);
+
+      // If cart has items → show confirmation toast (barista clicks checkout manually)
+      if (cartItems.length > 0) {
+        // Don't auto-checkout — let barista review and press the button
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Ошибка сканирования';
+      setPistolToast(`⚠️ ${msg}`);
+      if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = window.setTimeout(() => setPistolToast(null), 3000);
+    } finally {
+      setAutoProcessing(false);
+    }
+  }, [cartItems.length]);
+
+  // ─── Pistol scanner global keydown listener ───
+  useEffect(() => {
+    if (!pistolListen) {
+      if (resetTimerRef.current) window.clearTimeout(resetTimerRef.current);
+      scanBufRef.current = '';
+      scanTimesRef.current = [];
+      lastTimeRef.current = 0;
+      return;
+    }
+
+    const handleKey = (e: KeyboardEvent) => {
+      // Ignore if focus is on an input/textarea
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      const now = Date.now();
+
+      if (e.key === 'Enter') {
+        if (scanBufRef.current.trim().length > 0) {
+          const val = scanBufRef.current.trim();
+          scanBufRef.current = '';
+          scanTimesRef.current = [];
+          void handlePistolScan(val);
+        }
+        return;
+      }
+
+      if (e.key.length === 1) {
+        if (resetTimerRef.current) window.clearTimeout(resetTimerRef.current);
+        resetTimerRef.current = window.setTimeout(() => {
+          scanBufRef.current = '';
+          scanTimesRef.current = [];
+        }, 200);
+
+        const delta = now - lastTimeRef.current;
+        lastTimeRef.current = now;
+
+        scanBufRef.current += e.key;
+        if (delta > 0 && delta < 1000) {
+          scanTimesRef.current.push(delta);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      window.removeEventListener('keydown', handleKey);
+      if (resetTimerRef.current) window.clearTimeout(resetTimerRef.current);
+    };
+  }, [pistolListen, handlePistolScan]);
+
+  // ─── Subscribe to Firestore menu ───
+  useEffect(() => {
+    const unsubCats = MenuService.listenCategories(setCategories);
+    const unsubItems = MenuService.listenItems((items) => {
+      // POS only shows available items
+      setMenuItems(items.filter(i => i.isAvailable));
+      setMenuLoading(false);
+    });
+    return () => { unsubCats(); unsubItems(); };
+  }, []);
   
   // Auto-hide success toast after 2 seconds
   useEffect(() => {
@@ -70,7 +244,6 @@ export default function PosMenuPage() {
   // Fetch customer bonus when phone is entered (live search)
   useEffect(() => {
     const fetchBonus = async () => {
-      // Требуем минимум 10 цифр для поиска
       if (!customerPhone || customerPhone.replace(/\D/g, '').length < 10) {
         setCustomerBonus(0);
         setCustomerName('');
@@ -83,57 +256,34 @@ export default function PosMenuPage() {
       
       try {
         const normalized = normalizePhone(customerPhone);
-        console.log('🔍 POS - Поиск клиента:');
-        console.log('   Введено:', customerPhone);
-        console.log('   Нормализовано:', normalized);
-        
         const url = `/api/users?action=getByPhone&phone=${encodeURIComponent(normalized)}`;
-        console.log('   URL:', url);
-        
         const response = await fetch(url);
-        console.log('   Статус ответа:', response.status);
-        
         const data = await response.json();
-        console.log('   Данные:', data);
         
-        // Проверяем успешность и наличие пользователя
         if (response.ok && data.ok && data.user) {
-          console.log('   ✅ Пользователь найден:', data.user.displayName || data.user.name);
-          
-          // Fetch bonus balance
           const bonusResponse = await fetch(`/api/bonus?userId=${data.user.id}`);
-          
           if (bonusResponse.ok) {
             const bonusData = await bonusResponse.json();
-            // После исправления ok() сервер возвращает { ok: true, balance: xxx, ... }
             if (bonusData.ok && bonusData.balance !== undefined) {
               setCustomerBonus(bonusData.balance);
               setCustomerName(data.user.displayName || data.user.name || '');
               setBonusError(null);
-              console.log('   💰 Бонусы загружены:', bonusData.balance);
             } else {
-              // Пользователь найден, но не удалось загрузить бонусы
               setCustomerName(data.user.displayName || data.user.name || '');
               setCustomerBonus(0);
               setBonusError('Не удалось загрузить бонусы');
-              console.log('   ⚠️ Не удалось загрузить бонусы');
             }
           } else {
-            // Пользователь найден, но запрос бонусов вернул ошибку
             setCustomerName(data.user.displayName || data.user.name || '');
             setCustomerBonus(0);
             setBonusError('Не удалось загрузить бонусы');
-            console.log('   ⚠️ Не удалось загрузить бонусы');
           }
         } else {
-          // Пользователь не найден
-          console.log('   ❌ Клиент не найден');
           setBonusError('Клиент не найден');
           setCustomerBonus(0);
           setCustomerName('');
         }
-      } catch (error) {
-        console.error('❌ Ошибка загрузки:', error);
+      } catch {
         setBonusError('Ошибка загрузки данных');
         setCustomerBonus(0);
         setCustomerName('');
@@ -142,77 +292,22 @@ export default function PosMenuPage() {
       }
     };
     
-    // Debounce: ждём 500мс после последнего изменения
     const timeoutId = setTimeout(fetchBonus, 500);
     return () => clearTimeout(timeoutId);
   }, [customerPhone]);
-  
-  const drinksItems = useMemo(() => 
-    drinkCategories.flatMap(cat =>
-      cat.products.map(p => {
-        const rawName = t(p.name);
-        const name = rawName === p.name ? humanize(p.name) : rawName;
-        return { 
-          id: p.id, 
-          name, 
-          price: p.price, 
-          image: p.image, 
-          energy: p.energy, 
-          protein: p.protein, 
-          fat: p.fat, 
-          carbs: p.carbs, 
-          badges: p.badges?.map(b => ({ type: b, label: b })) || [], 
-          categoryId: cat.id 
-        };
-      })
-    ),
-    [t]
-  );
 
-  const foodItems = useMemo(() => 
-    foodCategories.flatMap(cat =>
-      cat.products.map(p => ({
-        id: p.id,
-        name: p.name,
-        price: p.price,
-        image: p.image,
-        energy: p.energy,
-        protein: p.protein,
-        fat: p.fat,
-        carbs: p.carbs,
-        badges: p.badges?.map(b => ({ type: b, label: b })) || [],
-        categoryId: cat.id
-      }))
-    ),
-    []
-  );
-
-  // Get categories for current tab
-  const currentCategories = useMemo(() => {
-    const cats = activeTab === 'drinks' ? drinkCategories : foodCategories;
-    const items = activeTab === 'drinks' ? drinksItems : foodItems;
-    
-    return cats.map(c => {
-      const count = items.filter(item => item.categoryId === c.id).length;
-      return {
-        id: c.id,
-        title: activeTab === 'drinks' ? (t(c.title) !== c.title ? t(c.title) : humanize(c.title)) : c.title,
-        count
-      };
-    });
-  }, [activeTab, t, drinksItems, foodItems]);
-
-  // Filter items by category
+  // ─── Filtered items ───
   const filteredItems = useMemo(() => {
-    const items = activeTab === 'drinks' ? drinksItems : foodItems;
-    if (activeCategoryId === null) return items;
-    return items.filter(item => item.categoryId === activeCategoryId);
-  }, [activeTab, activeCategoryId, drinksItems, foodItems]);
+    if (activeCategoryId === null) return menuItems;
+    return menuItems.filter(item => item.categoryId === activeCategoryId);
+  }, [activeCategoryId, menuItems]);
 
-  // Reset category when switching tabs
+  // Reset category when data changes
   useEffect(() => {
-    setActiveCategoryId(null);
-  }, [activeTab]);
+    if (activeCategoryId && !categories.find(c => c.id === activeCategoryId)) {
+      setActiveCategoryId(null);
+    }
+  }, [categories, activeCategoryId]);
 
   const handleRemoveFromCart = useCallback(
     (id: string) => {
@@ -241,11 +336,11 @@ export default function PosMenuPage() {
     const bonusToUse = useBonuses ? customerBonus : 0;
     const finalTotal = Math.max(0, total - bonusToUse);
     
-    // � Сохраняем snapshot данных ДО очистки
     const currentCartItems = [...cartItems];
     const currentCustomerName = customerName;
+    const currentTargetUid = targetUid;
     
-    // 1️⃣ МГНОВЕННО очищаем UI и показываем успех (синхронно, без await!)
+    // Instantly clear UI & show success
     dispatch({ type: 'CLEAR_CART' });
     setCustomerPhone('');
     setCustomerName('');
@@ -253,82 +348,113 @@ export default function PosMenuPage() {
     setShowCustomerInput(false);
     setCustomerBonus(0);
     setUseBonuses(false);
+    setTargetUid(null);
     setOrderNumber('...'); 
     setShowSuccessModal(true);
     
-    // 2️⃣ Fire-and-forget: Отправляем в фоне БЕЗ БЛОКИРОВКИ UI
-    // Используем Promise без await - выполнится асинхронно
-    fetch('/api/orders?action=create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        items: currentCartItems.map((item) => ({
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity,
-          image: item.image,
-          sizeKey: item.sizeKey,
-          milkKey: item.milkKey,
-          syrupKey: item.syrupKey,
-        })),
-        total: finalTotal,
-        userPhone: normalizedPhone,
-        customerName: currentCustomerName || null,
-        bonusUsed: bonusToUse,
-      }),
+    // Fire-and-forget order creation via /api/placeOrder
+    callApi('/placeOrder', {
+      userId: currentTargetUid || 'pos_guest',
+      locationId: posLocationId,
+      items: currentCartItems.map((item) => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        image: item.image,
+        sizeKey: item.sizeKey,
+        milkKey: item.milkKey,
+        syrupKey: item.syrupKey,
+      })),
+      amount: finalTotal,
+      customerName: currentCustomerName || 'POS Клиент',
+      customerPhone: normalizedPhone,
+      bonusToUse: bonusToUse,
+      deliveryType: 'pickup',
     })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        return response.json();
-      })
       .then(result => {
         if (result.ok) {
-          // 3️⃣ Обновляем номер когда придёт (может быть через 1-2 сек)
-          setOrderNumber(result.orderNumber);
+          setOrderNumber(result.orderNumberFormatted || String(result.orderNumber));
+          
+          // If we had a target user, accrue bonuses (1%)
+          if (currentTargetUid && finalTotal > 0) {
+            const accrueAmount = Math.floor(finalTotal * 0.01);
+            if (accrueAmount > 0) {
+              callApi('/pos/accrue', {
+                uid: currentTargetUid,
+                amount: accrueAmount,
+                reason: `Покупка в POS ${result.orderNumberFormatted || ''}`.trim(),
+              }).catch(() => { /* ignore accrue errors */ });
+            }
+          }
+          
+          // Redeem bonuses if used (placeOrder already handles deduction,
+          // but POS may also call /pos/redeem for ledger sync)
+          // bonusToUse is already deducted by placeOrder endpoint
         } else {
           throw new Error(result.error || 'Ошибка создания заказа');
         }
       })
-      .catch(error => {
-        console.error('Ошибка оформления заказа:', error);
+      .catch(() => {
         setOrderNumber('ERROR');
-        // НЕ показываем alert - не мешаем бариста работать
       });
-    
-    // Функция завершается СРАЗУ, не ждёт fetch!
-  }, [cartItems, dispatch, total, customerPhone, customerName, customerBonus, useBonuses]);
+  }, [cartItems, dispatch, total, customerPhone, customerName, customerBonus, useBonuses, targetUid, posLocationId]);
+
+  // Keep checkoutRef in sync for pistol scanner auto-checkout
+  useEffect(() => { checkoutRef.current = handleCheckout; }, [handleCheckout]);
+
+  // ─── Loading state ───
+  if (menuLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="mt-4 text-sm text-slate-500">Загрузка меню…</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // ─── Mobile cart drawer ───
   
   return (
-    <div className="flex h-screen overflow-hidden bg-gradient-to-b from-slate-100 via-slate-100 to-white">
-      {/* Main menu area */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Header with tabs */}
+    <div className="absolute inset-0 flex bg-white">
+      {/* ══════ CENTER: Menu catalog ══════ */}
+      <div className="flex-1 min-w-0 flex flex-col min-h-0">
+        {/* Header */}
         <div className="border-b border-slate-200 bg-white/95 backdrop-blur">
           <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-10">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-semibold text-slate-900">Меню POS</h1>
-                <p className="text-sm text-slate-500">Интерфейс как в клиентском приложении</p>
+                <p className="text-sm text-slate-500">
+                  {categories.length} категорий · {menuItems.length} доступных позиций
+                </p>
               </div>
-              <div className="inline-flex rounded-full bg-slate-100/80 p-1 text-sm font-medium shadow-inner">
+              <div className="flex items-center gap-3">
+                {/* Pistol scanner toggle */}
+                <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    className="accent-slate-900 w-4 h-4"
+                    checked={pistolListen}
+                    onChange={(e) => setPistolListen(e.target.checked)}
+                  />
+                  🔫 Пистолет-сканер
+                </label>
+                {/* Mobile cart button */}
                 <button
-                  onClick={() => setActiveTab('drinks')}
-                  className={`rounded-full px-5 py-2 transition ${
-                    activeTab === 'drinks' ? 'bg-white text-slate-900 shadow' : 'text-slate-500 hover:text-slate-900'
-                  }`}
+                  type="button"
+                  onClick={() => setMobileCartOpen(true)}
+                  className="lg:hidden relative bg-slate-900 text-white rounded-xl px-4 py-3 text-base font-semibold flex items-center gap-2"
                 >
-                  🥤 Напитки
-                </button>
-                <button
-                  onClick={() => setActiveTab('food')}
-                  className={`rounded-full px-5 py-2 transition ${
-                    activeTab === 'food' ? 'bg-white text-slate-900 shadow' : 'text-slate-500 hover:text-slate-900'
-                  }`}
-                >
-                  🍽️ Еда
+                  <ShoppingCartIcon className="w-5 h-5" />
+                  {cartItems.length > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 bg-amber-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                      {cartItems.reduce((s, i) => s + i.quantity, 0)}
+                    </span>
+                  )}
+                  <span className="hidden sm:inline">{total > 0 ? `${total.toLocaleString('ru')} ₸` : 'Корзина'}</span>
                 </button>
               </div>
             </div>
@@ -341,48 +467,57 @@ export default function PosMenuPage() {
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
               <button
                 onClick={() => setActiveCategoryId(null)}
-                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                className={`flex-shrink-0 px-5 py-3 rounded-full text-base font-medium transition-all ${
                   activeCategoryId === null
                     ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg'
                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
               >
-                Все ({activeTab === 'drinks' ? drinksItems.length : foodItems.length})
+                Все ({menuItems.length})
               </button>
-              {currentCategories.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => setActiveCategoryId(cat.id)}
-                  className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                    activeCategoryId === cat.id
-                      ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  {cat.title} ({cat.count})
-                </button>
-              ))}
+              {categories.map((cat) => {
+                const count = menuItems.filter(i => i.categoryId === cat.id).length;
+                if (count === 0) return null;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setActiveCategoryId(cat.id)}
+                    className={`flex-shrink-0 px-5 py-3 rounded-full text-base font-medium transition-all ${
+                      activeCategoryId === cat.id
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {cat.icon} {cat.name} ({count})
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
 
-        {/* Products Grid */}
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* Products Grid — invisible scrollbar */}
+        <div className="flex-1 min-h-0 overflow-y-auto p-6 scrollbar-invisible">
           <div className="mx-auto max-w-6xl">
             {filteredItems.length === 0 ? (
               <div className="flex items-center justify-center h-64">
                 <p className="text-slate-400 text-sm">Нет товаров в этой категории</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-5">
                 {filteredItems.map((item) => (
                   <button
                     key={item.id}
                     onClick={() => {
-                      setSelectedProduct(item);
+                      setSelectedProduct({
+                        id: item.id,
+                        name: item.name,
+                        price: item.price,
+                        image: item.image,
+                      });
                       setShowProductModal(true);
                     }}
-                    className="bg-white rounded-2xl p-4 shadow-sm hover:shadow-lg transition-all active:scale-95 text-left relative"
+                    className="bg-white rounded-2xl p-5 shadow-sm hover:shadow-lg transition-all active:scale-95 text-left relative min-h-[180px]"
                   >
                     {/* Badges */}
                     {item.badges && item.badges.length > 0 && (
@@ -391,30 +526,40 @@ export default function PosMenuPage() {
                           <span
                             key={idx}
                             className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                              badge.type === 'HIT' || badge.label === 'HIT'
-                                ? 'bg-red-500 text-white'
-                                : badge.type === 'NEW' || badge.label === 'NEW'
-                                ? 'bg-green-500 text-white'
-                                : 'bg-amber-500 text-white'
+                              badge === 'HIT' ? 'bg-red-500 text-white'
+                              : badge === 'NEW' ? 'bg-green-500 text-white'
+                              : 'bg-amber-500 text-white'
                             }`}
                           >
-                            {badge.label || badge.type}
+                            {badge}
                           </span>
                         ))}
                       </div>
                     )}
+                    {item.isPopular && (!item.badges || item.badges.length === 0) && (
+                      <div className="absolute top-2 left-2 z-10">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500 text-white">
+                          🔥 ХИТ
+                        </span>
+                      </div>
+                    )}
                     
-                    <div className="w-full aspect-square bg-gray-100 rounded-xl overflow-hidden mb-3">
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                      />
+                    <div className="w-full aspect-square bg-white rounded-xl overflow-hidden mb-3">
+                      {item.image ? (
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                          onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-4xl text-slate-300">☕</div>
+                      )}
                     </div>
-                    <h3 className="font-semibold text-sm text-gray-900 line-clamp-2 mb-1">
+                    <h3 className="font-semibold text-base text-gray-900 line-clamp-2 mb-1">
                       {item.name}
                     </h3>
-                    <p className="text-sm font-bold text-amber-600">{item.price} ₸</p>
+                    <p className="text-base font-bold text-amber-600">{item.price.toLocaleString('ru')} ₸</p>
                   </button>
                 ))}
               </div>
@@ -423,430 +568,159 @@ export default function PosMenuPage() {
         </div>
       </div>
 
-      {/* Cart sidebar */}
-      <div className="hidden w-[320px] flex-col border-l border-slate-200 bg-white lg:flex">
-        <div className="border-b border-slate-200 px-4 py-4">
-          <div className="flex items-center justify-between">
-            <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
-              <ShoppingCartIcon className="h-5 w-5" />
-              Корзина
-            </h2>
-            <span className="text-xs text-slate-500">{cartItems.length} шт</span>
-          </div>
-        </div>
+      {/* ══════ RIGHT: Cart Sidebar ══════ */}
+      <aside className="hidden lg:flex w-[360px] flex-shrink-0 flex-col min-h-0 border-l border-slate-200 bg-white">
+        {renderCartContent()}
+      </aside>
 
-        <div className="flex-1 overflow-y-auto px-3 py-4">
-          {cartItems.length === 0 ? (
-            <div className="flex h-full w-full items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white/60 text-xs text-slate-500">
-              Пусто
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {cartItems.map((item) => (
-                <div key={item.id} className="flex items-start gap-2">
-                  {item.image ? (
-                    <img src={item.image} alt={item.name} className="h-10 w-10 flex-shrink-0 rounded-lg object-cover" />
-                  ) : (
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400">
-                      <span className="text-xl">☕</span>
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-slate-900 text-sm leading-tight">{item.name}</div>
-                    <div className="mt-1 text-xs text-slate-600 space-y-0.5">
-                      {item.sizeKey && <div>Размер: {item.sizeKey.toUpperCase()}</div>}
-                      {item.milkKey && item.milkKey !== 'regular' && <div>{getMilkLabel(item.milkKey)}</div>}
-                      {item.syrupKey && item.syrupKey !== '' && (
-                        <div className="text-xs">
-                          Сиропы: {item.syrupKey.split('+').map(s => humanize(s)).join(', ')}
-                        </div>
-                      )}
-                    </div>
-                    <div className="mt-2 flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleQuantityChange(item.id, -1)}
-                        className="rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 text-sm w-6 h-6 flex items-center justify-center font-medium"
-                      >
-                        −
-                      </button>
-                      <span className="w-5 text-center text-sm font-semibold text-slate-900">{item.quantity}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleQuantityChange(item.id, 1)}
-                        className="rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 text-sm w-6 h-6 flex items-center justify-center font-medium"
-                      >
-                        +
-                      </button>
-                      <div className="ml-auto text-sm font-bold text-slate-900">
-                        {item.price * item.quantity} ₸
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveFromCart(item.id)}
-                      className="mt-1.5 text-xs text-red-600 hover:underline font-medium"
-                    >
-                      Удалить
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="border-t border-slate-200 px-4 py-3">
-          {/* Customer linking section */}
-          {!customerLinked ? (
-            <div className="mb-3 space-y-2">
-              {!showCustomerInput ? (
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowCustomerInput(true)}
-                    className="flex-1 rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
-                  >
-                    📱 Добавить клиента
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setScanningQR(true)}
-                    className="rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
-                    title="Сканировать QR-код"
-                  >
-                    📷
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="relative">
-                    <input
-                      type="tel"
-                      placeholder="+7 (___) ___-__-__"
-                      value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none pr-16"
-                    />
-                    {loadingBonus && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Live bonus display */}
-                  {customerPhone.length >= 10 && !loadingBonus && (
-                    <div className="rounded-lg border-2 px-3 py-2" style={{
-                      borderColor: bonusError ? '#fee2e2' : customerBonus > 0 ? '#d4edda' : '#e2e8f0',
-                      backgroundColor: bonusError ? '#fef2f2' : customerBonus > 0 ? '#f0fdf4' : '#f8fafc'
-                    }}>
-                      {bonusError ? (
-                        <div className="text-xs text-red-600">
-                          ⚠️ {bonusError}
-                        </div>
-                      ) : customerBonus > 0 ? (
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-green-900">
-                              ✓ Клиент найден{customerName && `: ${customerName}`}
-                            </span>
-                            <span className="text-xs font-bold text-green-700">
-                              🎁 {customerBonus} ₸
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-xs text-slate-600">
-                          ℹ️ Новый клиент - бонусов нет
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  <input
-                    type="text"
-                    placeholder="Имя клиента (опционально)"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (customerPhone.trim()) {
-                          setCustomerLinked(true);
-                        }
-                      }}
-                      disabled={!customerPhone.trim()}
-                      className="flex-1 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
-                    >
-                      ✓ Привязать
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowCustomerInput(false);
-                        setCustomerPhone('');
-                        setCustomerName('');
-                      }}
-                      className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
-                    >
-                      Отмена
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="mb-3 space-y-2">
-              <div className="flex items-center justify-between rounded-lg bg-green-50 px-3 py-2.5 border border-green-200">
-                <div className="flex-1">
-                  <div className="text-sm font-semibold text-green-900">
-                    ✓ {customerName || customerPhone}
-                  </div>
-                  <div className="text-xs text-green-700">
-                    {customerName && customerPhone ? customerPhone : 'Клиент привязан'}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCustomerLinked(false);
-                    setCustomerPhone('');
-                    setCustomerName('');
-                    setCustomerBonus(0);
-                    setUseBonuses(false);
-                  }}
-                  className="ml-2 text-xs font-medium text-green-700 hover:text-green-900 transition"
-                >
-                  Отвязать
+      {/* ═══════════════════════════════════════════ MOBILE: Cart Drawer ═══════════════════════════════════════════ */}
+      <AnimatePresence>
+        {mobileCartOpen && (
+          <>
+            <motion.div
+              className="fixed inset-0 z-[900] bg-black/40"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMobileCartOpen(false)}
+            />
+            <motion.div
+              className="fixed right-0 top-0 bottom-0 z-[901] w-full max-w-[400px] bg-white shadow-2xl flex flex-col"
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+            >
+              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
+                <h2 className="font-bold text-lg text-slate-900">Корзина</h2>
+                <button onClick={() => setMobileCartOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-100 transition">
+                  <XMarkIcon className="w-5 h-5 text-slate-500" />
                 </button>
               </div>
-              
-              {loadingBonus ? (
-                <div className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600 border border-slate-100 text-center">
-                  Загрузка бонусов...
-                </div>
-              ) : customerBonus > 0 ? (
-                <div className="space-y-2">
-                  <div className="rounded-lg bg-amber-50 px-3 py-2.5 border border-amber-200">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex-1">
-                        <div className="text-xs font-medium text-amber-900">
-                          🎁 Доступно бонусов: {customerBonus} ₸
-                        </div>
-                        <div className="text-xs text-amber-700 mt-0.5">
-                          Можно использовать все или ничего
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setUseBonuses(!useBonuses)}
-                        className={`flex-shrink-0 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
-                          useBonuses
-                            ? 'bg-green-600 text-white shadow-md hover:bg-green-700'
-                            : 'bg-amber-600 text-white shadow-sm hover:bg-amber-700 hover:shadow-md'
-                        }`}
-                      >
-                        {useBonuses ? '✓ Списано' : 'Списать все'}
-                      </button>
-                    </div>
-                  </div>
-                  {useBonuses && (
-                    <div className="rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-700 border border-blue-100">
-                      💰 Будет списано: {customerBonus} ₸ | К оплате: {Math.max(0, total - customerBonus)} ₸
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-700 border border-blue-100">
-                  🎁 После принятия заказа клиенту начислятся бонусы (1% от суммы)
-                </div>
-              )}
-            </div>
-          )}
-          
-          <div className="flex items-center justify-between text-base font-semibold text-slate-900 mb-3">
-            <span>Итого:</span>
-            <div className="text-right">
-              {useBonuses && customerBonus > 0 ? (
-                <>
-                  <div className="text-xs text-slate-500 line-through font-normal">{total} {CURRENCY}</div>
-                  <div className="text-green-600">{Math.max(0, total - customerBonus)} {CURRENCY}</div>
-                </>
-              ) : (
-                <span>{total} {CURRENCY}</span>
-              )}
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={handleCheckout}
-            disabled={cartItems.length === 0}
-            className="w-full rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Оформить заказ
-          </button>
-        </div>
-      </div>
+              {renderCartContent()}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
-      {/* Success Toast (Auto-dismiss in 2s) */}
+      {/* ═══════════════════════════════════════════ Toasts & Modals ═══════════════════════════════════════════ */}
+      
+      {/* Success Toast */}
       <AnimatePresence>
         {showSuccessModal && orderNumber && (
           <motion.div
-            className="fixed left-1/2 top-8 z-[1000] flex items-center gap-3 rounded-2xl bg-green-600 px-6 py-4 text-white shadow-2xl ring-1 ring-green-700/20"
+            className="fixed left-1/2 top-6 z-[1000] flex items-center gap-3 rounded-2xl bg-emerald-600 px-6 py-4 text-white shadow-2xl"
             initial={{ opacity: 0, y: -50, x: '-50%' }}
             animate={{ opacity: 1, y: 0, x: '-50%' }}
-            exit={{ opacity: 0, y: -20, x: '-50%' }}
-            transition={{ duration: 0.3 }}
+            exit={{ opacity: 0, y: -30, x: '-50%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-xl">
-              ✓
-            </div>
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-xl">✓</div>
             <div>
-              <p className="font-semibold">Заказ принят!</p>
-              <p className="text-sm text-green-100">
-                {orderNumber === '...' ? (
-                  <span>Обработка...</span>
-                ) : orderNumber === 'ERROR' ? (
-                  <span>Ошибка создания</span>
-                ) : (
-                  <span>Номер #{orderNumber}</span>
-                )}
+              <p className="font-bold text-base">Заказ принят!</p>
+              <p className="text-sm text-emerald-100">
+                {orderNumber === '...' ? 'Обработка...' : orderNumber === 'ERROR' ? 'Ошибка создания' : `Номер #${orderNumber}`}
               </p>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* QR Scanner Modal */}
+      {/* Pistol scanner toast */}
       <AnimatePresence>
-        {scanningQR && (
-          <>
-            <motion.div
-              className="fixed inset-0 z-[999] bg-black/50"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setScanningQR(false)}
-            />
-            <motion.div
-              className="fixed left-1/2 top-1/2 z-[1000] w-[min(400px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-900/5"
-              role="dialog"
-              aria-modal="true"
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            >
-              <h3 className="text-lg font-bold text-slate-900 mb-4">Сканировать QR-код клиента</h3>
-              <div className="mb-4 aspect-square rounded-2xl bg-slate-100 flex items-center justify-center border-2 border-dashed border-slate-300">
-                <div className="text-center">
-                  <div className="text-6xl mb-2">📷</div>
-                  <p className="text-sm text-slate-600">Направьте камеру на QR-код</p>
-                  <p className="text-xs text-slate-500 mt-1">из приложения клиента</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-xs text-slate-500 text-center">
-                  Или введите номер телефона вручную:
-                </p>
-                <div className="relative">
-                  <input
-                    type="tel"
-                    placeholder="+7 (___) ___-__-__"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none pr-16"
-                  />
-                  {loadingBonus && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Live bonus display in QR modal */}
-                {customerPhone.length >= 10 && !loadingBonus && (
-                  <div className="rounded-lg border-2 px-3 py-2" style={{
-                    borderColor: bonusError ? '#fee2e2' : customerBonus > 0 ? '#d4edda' : '#e2e8f0',
-                    backgroundColor: bonusError ? '#fef2f2' : customerBonus > 0 ? '#f0fdf4' : '#f8fafc'
-                  }}>
-                    {bonusError ? (
-                      <div className="text-xs text-red-600">
-                        ⚠️ {bonusError}
-                      </div>
-                    ) : customerBonus > 0 ? (
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-green-900">
-                          ✓ Клиент найден{customerName && `: ${customerName}`}
-                        </span>
-                        <span className="text-xs font-bold text-green-700">
-                          🎁 {customerBonus} ₸
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="text-xs text-slate-600">
-                        ℹ️ Новый клиент - бонусов нет
-                      </div>
-                    )}
-                  </div>
-                )}
-                
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (customerPhone.trim()) {
-                        setCustomerLinked(true);
-                        setScanningQR(false);
-                      }
-                    }}
-                    disabled={!customerPhone.trim()}
-                    className="flex-1 rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    Продолжить
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setScanningQR(false);
-                      setCustomerPhone('');
-                    }}
-                    className="rounded-lg bg-slate-100 px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
-                  >
-                    Отмена
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </>
+        {pistolToast && (
+          <motion.div
+            className="fixed right-4 top-6 z-[1001] rounded-2xl bg-slate-900 px-5 py-3 text-white shadow-2xl max-w-xs"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 50 }}
+            transition={{ duration: 0.25 }}
+          >
+            <p className="text-sm font-semibold">{pistolToast}</p>
+          </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Real QR Scanner */}
+      {/* Auto-processing overlay */}
+      <AnimatePresence>
+        {autoProcessing && (
+          <motion.div
+            className="fixed inset-0 z-[998] flex items-center justify-center bg-black/30 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div className="rounded-2xl bg-white px-8 py-6 shadow-2xl text-center">
+              <div className="w-10 h-10 border-4 border-slate-900 border-t-transparent rounded-full animate-spin mx-auto" />
+              <p className="mt-3 text-sm font-medium text-slate-700">Обработка сканирования…</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* QR Scanner */}
       <QRScanner 
         isOpen={scanningQR}
         onClose={() => setScanningQR(false)}
-        onScan={async (userId) => {
-          console.log('✅ Scanned userId:', userId);
-          
+        onScan={async (scannedValue) => {
           try {
-            // Загружаем данные пользователя по userId
-            const userResponse = await fetch(`/api/bonus?userId=${userId}`);
-            if (userResponse.ok) {
-              const bonusData = await userResponse.json();
-              if (bonusData.ok && bonusData.balance !== undefined) {
-                setCustomerBonus(bonusData.balance);
-                setCustomerLinked(true);
-                setCustomerPhone(bonusData.phone || '');
-                setCustomerName(bonusData.name || 'Клиент');
-                console.log('✅ User loaded from QR:', bonusData);
-              }
+            const parsed = parseLoyaltyPayload(scannedValue);
+            const payload = parsed?.uid || parsed?.cardId;
+
+            if (!payload) {
+              alert(`QR не распознан. Содержимое: ${scannedValue.slice(0, 80)}`);
+              setScanningQR(false);
+              return;
             }
-          } catch (error) {
-            console.error('❌ Failed to load user from QR:', error);
+
+            let linked = false;
+
+            try {
+              const resp = await callApi('/pos/scan', { payload });
+              if (resp?.ok && resp.user?.uid) {
+                setTargetUid(resp.user.uid);
+                setCustomerName(resp.user.name || 'Клиент');
+                setCustomerPhone(resp.user.phone || '');
+                setCustomerBonus(Number(resp.balance) || 0);
+                setCustomerLinked(true);
+                setShowCustomerInput(false);
+                setBonusError(null);
+                linked = true;
+              }
+            } catch {
+              try {
+                const bonusRes = await fetch(`/api/bonus?userId=${encodeURIComponent(payload)}`);
+                if (bonusRes.ok) {
+                  const bonusData = await bonusRes.json();
+                  if (bonusData.ok) {
+                    setTargetUid(payload);
+                    setCustomerName(bonusData.name || 'Клиент');
+                    setCustomerPhone(bonusData.phone || '');
+                    setCustomerBonus(Number(bonusData.balance) || 0);
+                    setCustomerLinked(true);
+                    setShowCustomerInput(false);
+                    setBonusError(null);
+                    linked = true;
+                  }
+                }
+              } catch { /* ignore fallback error */ }
+            }
+
+            if (!linked) {
+              setTargetUid(payload);
+              setCustomerName('Клиент');
+              setCustomerPhone('');
+              setCustomerBonus(0);
+              setCustomerLinked(true);
+              setShowCustomerInput(false);
+              setBonusError(null);
+            }
+
+            setScanningQR(false);
+          } catch (err) {
+            console.error('QR scan error:', err);
+            alert('Ошибка при поиске клиента');
+            setScanningQR(false);
           }
         }}
       />
@@ -866,4 +740,266 @@ export default function PosMenuPage() {
       />
     </div>
   );
+
+  // ═══════════════════════════════════════════
+  // Extracted: shared cart content (sidebar + mobile drawer)
+  // ═══════════════════════════════════════════
+  function renderCartContent() {
+    return (
+      <div className="flex flex-col flex-1 min-h-0">
+        {/* ═══ BLOCK 1 (FIXED TOP): Header + Customer ═══ */}
+        <div className="flex-shrink-0 overflow-hidden">
+          {/* Cart header (desktop only — mobile has its own) */}
+          <div className="border-b border-slate-100 px-4 py-3 hidden lg:block">
+            <div className="flex items-center justify-between">
+              <h2 className="flex items-center gap-2 font-bold text-slate-900">
+                <ShoppingCartIcon className="h-5 w-5" />
+                Корзина
+              </h2>
+              {cartItems.length > 0 && (
+                <span className="bg-slate-100 text-slate-600 text-xs font-semibold px-2 py-0.5 rounded-full">
+                  {cartItems.reduce((s, i) => s + i.quantity, 0)} шт
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* ── Customer section ── */}
+          <div className="px-4 py-3 border-b border-slate-100">
+          {!customerLinked ? (
+            <div className="space-y-2">
+              {!showCustomerInput ? (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomerInput(true)}
+                    className="flex-1 rounded-xl bg-slate-100 px-4 py-3 text-base font-medium text-slate-700 transition hover:bg-slate-200 active:bg-slate-300 flex items-center justify-center gap-1.5"
+                  >
+                    👤 Добавить клиента
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScanningQR(true)}
+                    className="rounded-xl bg-slate-100 px-4 py-3 text-xl transition hover:bg-slate-200 active:bg-slate-300"
+                    title="Сканировать QR"
+                  >
+                    📷
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2 bg-white rounded-xl p-3 border border-slate-200">
+                  <div className="relative">
+                    <input
+                      type="tel"
+                      placeholder="+7 (___) ___-__-__"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:ring-1 focus:ring-slate-500 focus:outline-none"
+                      autoFocus
+                    />
+                    {loadingBonus && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <div className="w-4 h-4 border-2 border-slate-600 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {customerPhone.length >= 10 && !loadingBonus && (
+                    <div className={`rounded-lg px-3 py-2 text-xs ${
+                      bonusError ? 'bg-red-50 text-red-600 border border-red-200' : customerBonus > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500 border border-slate-200'
+                    }`}>
+                      {bonusError ? `⚠️ ${bonusError}` : customerBonus > 0 ? `✓ ${customerName || 'Найден'} — 🎁 ${customerBonus} ₸` : 'ℹ️ Новый клиент'}
+                    </div>
+                  )}
+                  
+                  <input
+                    type="text"
+                    placeholder="Имя (опционально)"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:border-slate-500 focus:ring-1 focus:ring-slate-500 focus:outline-none"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { if (customerPhone.trim()) setCustomerLinked(true); }}
+                      disabled={!customerPhone.trim()}
+                      className="flex-1 rounded-lg bg-slate-900 px-4 py-3 text-base font-semibold text-white transition hover:bg-slate-800 disabled:opacity-40"
+                    >
+                      ✓ Привязать
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowCustomerInput(false); setCustomerPhone(''); setCustomerName(''); }}
+                      className="rounded-lg bg-white px-4 py-3 text-base font-medium text-slate-600 transition hover:bg-slate-100 border border-slate-200"
+                    >
+                      Отмена
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {/* Linked customer card */}
+              <div className="flex items-center gap-3 rounded-xl bg-emerald-50 px-3 py-2.5 border border-emerald-200">
+                <div className="flex-shrink-0 w-9 h-9 rounded-full bg-emerald-200 flex items-center justify-center text-emerald-700 font-bold text-sm">
+                  {(customerName || 'К')[0].toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-emerald-900 truncate">{customerName || 'Клиент'}</div>
+                  <div className="flex items-center gap-2 text-xs text-emerald-700">
+                    {customerPhone && <span>{customerPhone}</span>}
+                    {customerBonus > 0 && <span className="font-semibold text-amber-700">🎁 {customerBonus} ₸</span>}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setCustomerLinked(false); setCustomerPhone(''); setCustomerName(''); setCustomerBonus(0); setUseBonuses(false); setTargetUid(null); }}
+                  className="flex-shrink-0 p-1 rounded-lg hover:bg-emerald-100 transition"
+                >
+                  <XMarkIcon className="w-4 h-4 text-emerald-600" />
+                </button>
+              </div>
+              
+              {/* Bonus controls */}
+              {loadingBonus ? (
+                <div className="rounded-lg bg-white px-3 py-2 text-xs text-slate-500 text-center border border-slate-100">
+                  Загрузка бонусов...
+                </div>
+              ) : customerBonus > 0 ? (
+                <div className="space-y-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setUseBonuses(!useBonuses)}
+                    className={`w-full rounded-xl px-4 py-3.5 text-base font-semibold transition-all flex items-center justify-between ${
+                      useBonuses
+                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200'
+                        : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
+                    }`}
+                  >
+                    <span>{useBonuses ? '✓ Бонусы списаны' : `🎁 Списать ${customerBonus} ₸`}</span>
+                    {useBonuses && <span className="text-emerald-200 text-xs">−{customerBonus} ₸</span>}
+                  </button>
+                  {useBonuses && (
+                    <div className="text-center text-xs text-slate-500">
+                      К оплате: <span className="font-bold text-emerald-700">{Math.max(0, total - customerBonus).toLocaleString('ru')} ₸</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-lg bg-white px-3 py-2 text-xs text-slate-500 border border-slate-100 text-center">
+                  🎁 Бонусы начислятся после заказа
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        </div>{/* end BLOCK 1 (fixed top) */}
+
+        {/* ═══ BLOCK 2 (SCROLLABLE MIDDLE): Cart items only ═══ */}
+        <div className="flex-1 overflow-y-auto min-h-0 scrollbar-invisible">
+        <div className="px-4 py-3">
+          {cartItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center text-slate-300 py-8">
+              <ShoppingCartIcon className="w-10 h-10 mb-2" />
+              <p className="text-sm font-medium">Корзина пуста</p>
+              <p className="text-xs mt-1">Нажмите на товар для добавления</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {cartItems.map((item) => (
+                <div key={item.id} className="bg-white rounded-xl p-2.5 border border-slate-100">
+                  <div className="flex gap-2.5">
+                    {item.image ? (
+                      <img src={item.image} alt={item.name} className="h-11 w-11 flex-shrink-0 rounded-lg object-cover" />
+                    ) : (
+                      <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-slate-200 text-slate-400">
+                        <span className="text-lg">☕</span>
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-1">
+                        <h4 className="font-semibold text-slate-900 text-sm leading-tight line-clamp-1">{item.name}</h4>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFromCart(item.id)}
+                          className="flex-shrink-0 p-1.5 rounded-lg hover:bg-red-100 active:bg-red-200 transition"
+                          title="Удалить"
+                        >
+                          <TrashIcon className="w-5 h-5 text-red-400 hover:text-red-600" />
+                        </button>
+                      </div>
+                      {(item.sizeKey || (item.milkKey && item.milkKey !== 'regular') || (item.syrupKey && item.syrupKey !== '')) && (
+                        <div className="flex flex-wrap gap-1 mt-0.5">
+                          {item.sizeKey && (
+                            <span className="text-[10px] bg-white text-slate-500 px-1.5 py-0.5 rounded border border-slate-200">{item.sizeKey.toUpperCase()}</span>
+                          )}
+                          {item.milkKey && item.milkKey !== 'regular' && (
+                            <span className="text-[10px] bg-white text-slate-500 px-1.5 py-0.5 rounded border border-slate-200">{getMilkLabel(item.milkKey)}</span>
+                          )}
+                          {item.syrupKey && item.syrupKey !== '' && (
+                            <span className="text-[10px] bg-white text-slate-500 px-1.5 py-0.5 rounded border border-slate-200">
+                              {item.syrupKey.split('+').map(s => s.replace(/_/g, ' ')).join(', ')}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {/* Quantity + price row */}
+                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200/60">
+                    <div className="flex items-center gap-1 bg-white rounded-xl border border-slate-200 overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => handleQuantityChange(item.id, -1)}
+                        className="w-10 h-10 flex items-center justify-center hover:bg-slate-100 active:bg-slate-200 transition text-slate-600"
+                      >
+                        <MinusIcon className="w-5 h-5" />
+                      </button>
+                      <span className="w-8 text-center text-base font-bold text-slate-900">{item.quantity}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleQuantityChange(item.id, 1)}
+                        className="w-10 h-10 flex items-center justify-center hover:bg-slate-100 active:bg-slate-200 transition text-slate-600"
+                      >
+                        <PlusIcon className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <span className="text-base font-bold text-slate-900">{(item.price * item.quantity).toLocaleString('ru')} ₸</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        </div>{/* end BLOCK 2 (scrollable middle) */}
+
+        {/* ═══ BLOCK 3 (FIXED BOTTOM): Total + Checkout — ALWAYS visible ═══ */}
+        <div className="flex-shrink-0 border-t-2 border-slate-200 bg-white px-4 py-3 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-slate-500">Итого</span>
+            <div className="text-right">
+              {useBonuses && customerBonus > 0 ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-400 line-through">{total.toLocaleString('ru')} ₸</span>
+                  <span className="text-xl font-bold text-emerald-600">{Math.max(0, total - customerBonus).toLocaleString('ru')} ₸</span>
+                </div>
+              ) : (
+                <span className="text-xl font-bold text-slate-900">{total.toLocaleString('ru')} ₸</span>
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => { handleCheckout(); setMobileCartOpen(false); }}
+            disabled={cartItems.length === 0}
+            className="w-full rounded-2xl bg-orange-500 px-4 py-5 text-xl font-bold text-white transition-all hover:bg-orange-600 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-orange-500/30"
+          >
+            {cartItems.length === 0 ? 'Корзина пуста' : `Оформить заказ · ${(useBonuses ? Math.max(0, total - customerBonus) : total).toLocaleString('ru')} ₸`}
+          </button>
+        </div>
+      </div>
+    );
+  }
 }

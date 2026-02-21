@@ -1,5 +1,5 @@
-// Service Worker для SunfoodApp - версия с улучшенной обработкой ошибок
-const CACHE_VERSION = 'v7';
+// Service Worker для SunfoodApp — v12: MIME-safe, stale chunk detection
+const CACHE_VERSION = 'v12';
 const CACHE_NAME = `sunfood-cache-${CACHE_VERSION}`;
 
 // Ресурсы для кэширования
@@ -10,9 +10,18 @@ const STATIC_CACHE_URLS = [
   '/manifest.json'
 ];
 
-// Паттерны URL, которые нужно пропускать
+// Паттерны URL, которые нужно пропускать (не кэшировать и не перехватывать)
 const SKIP_CACHE_PATTERNS = [
   '/api/',
+  '/workshop/',
+  '/workshop',
+  '/admin/',
+  '/admin',
+  '/superowner/',
+  '/superowner',
+  '/owner/',
+  '/barista/',
+  '/courier/',
   'localhost:3000',
   '127.0.0.1:3000',
   'firebase',
@@ -62,12 +71,27 @@ self.addEventListener('activate', (event) => {
     caches.keys()
       .then((cacheNames) => {
         return Promise.all(
-          cacheNames.map((cacheName) => {
-            if (cacheName !== CACHE_NAME) {
+          cacheNames
+            .filter((cacheName) => cacheName !== CACHE_NAME)
+            .map((cacheName) => {
               console.log('SW: Deleting old cache:', cacheName);
               return caches.delete(cacheName);
-            }
-          })
+            })
+        );
+      })
+      .then(() => {
+        // Also purge stale hashed assets from current cache
+        return caches.open(CACHE_NAME).then((cache) =>
+          cache.keys().then((requests) =>
+            Promise.all(
+              requests
+                .filter((req) => /\/assets\/.*\.[a-f0-9]{6,}\.(js|css)(\?|$)/i.test(req.url))
+                .map((req) => {
+                  console.log('SW: Purging old hashed asset:', req.url);
+                  return cache.delete(req);
+                })
+            )
+          )
         );
       })
       .catch((error) => {
@@ -211,10 +235,57 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
+  // Determine if this is a hashed asset (JS/CSS chunks) — always network-first
+  const isHashedAsset = /\/assets\/.*\.[a-f0-9]{6,}\.(js|css)(\?|$)/i.test(requestUrl);
+
   event.respondWith(
     (async () => {
       try {
-        // Проверяем кэш
+        if (isHashedAsset) {
+          // Network-first for hashed JS/CSS chunks to avoid stale cache after deploy
+          try {
+            const networkResponse = await safeFetch(event.request);
+
+            // CRITICAL: detect stale chunk — server returned HTML instead of JS/CSS
+            // This happens when Firebase Hosting rewrites a missing asset to index.html
+            const contentType = networkResponse.headers.get('content-type') || '';
+            const isJsRequest = requestUrl.endsWith('.js');
+            const isCssRequest = requestUrl.endsWith('.css');
+            const gotHtml = contentType.includes('text/html');
+
+            if (gotHtml && (isJsRequest || isCssRequest)) {
+              // The chunk no longer exists on the server (new deploy).
+              // Signal ALL clients to hard-reload so they pick up the new index.html
+              // which references the new chunk hashes.
+              console.warn('SW: Stale chunk detected (HTML instead of JS/CSS):', requestUrl);
+              const clients = await self.clients.matchAll({ type: 'window' });
+              for (const client of clients) {
+                client.postMessage({ type: 'STALE_CHUNK', url: requestUrl });
+              }
+              // Return a 404 so the browser import fails cleanly
+              // (the client-side listener will reload the page)
+              return new Response('/* chunk outdated — reloading */', {
+                status: 404,
+                statusText: 'Chunk Outdated',
+                headers: { 'Content-Type': isJsRequest ? 'application/javascript' : 'text/css' }
+              });
+            }
+
+            // Only cache if we got actual JS/CSS, not something unexpected
+            if (networkResponse.ok && networkResponse.type === 'basic' && !gotHtml) {
+              const cache = await caches.open(CACHE_NAME);
+              await cache.put(event.request, networkResponse.clone());
+            }
+            return networkResponse;
+          } catch (err) {
+            // Fallback to cache only if network fails
+            const cached = await caches.match(event.request);
+            if (cached) return cached;
+            throw err;
+          }
+        }
+
+        // Cache-first for everything else (images, fonts, etc.)
         const cachedResponse = await caches.match(event.request);
         if (cachedResponse) {
           console.log('SW: Serving from cache:', requestUrl);
@@ -242,17 +313,28 @@ self.addEventListener('fetch', (event) => {
       } catch (error) {
         console.error('SW: Request completely failed:', requestUrl, error.message);
         
-        // Последняя попытка получить что-то из кэша
-        try {
-          const fallbackResponse = await caches.match('/index.html') || 
-                                  await caches.match('/');
-          
-          if (fallbackResponse) {
-            console.log('SW: Serving fallback from cache');
-            return fallbackResponse;
+        // Не отдаём fallback для sub-apps — у них свои index.html
+        const url = new URL(requestUrl);
+        const isSubApp = url.pathname.startsWith('/workshop') ||
+                         url.pathname.startsWith('/admin') ||
+                         url.pathname.startsWith('/superowner') ||
+                         url.pathname.startsWith('/owner') ||
+                         url.pathname.startsWith('/barista') ||
+                         url.pathname.startsWith('/courier');
+        
+        if (!isSubApp) {
+          // Последняя попытка получить что-то из кэша для основного приложения
+          try {
+            const fallbackResponse = await caches.match('/index.html') || 
+                                    await caches.match('/');
+            
+            if (fallbackResponse) {
+              console.log('SW: Serving fallback from cache');
+              return fallbackResponse;
+            }
+          } catch (cacheError) {
+            console.error('SW: Cache fallback failed:', cacheError.message);
           }
-        } catch (cacheError) {
-          console.error('SW: Cache fallback failed:', cacheError.message);
         }
         
         // Если ничего не помогло, возвращаем минимальную ошибку

@@ -3,9 +3,9 @@
   "private": true,
   "engines": { "node": "20" },
   "type": "commonjs",
-  "main": "index.js",
+  "main": "lib/index.js",
   "scripts": {
-    "build": "echo skip",
+    "build": "tsc",
     "serve": "firebase emulators:start",
     "deploy": "firebase deploy --only functions",
     "lint": "echo skip"
@@ -21,6 +21,7 @@
   "devDependencies": {
     "typescript": "^5.0.0",
     "@types/express": "^4.17.0",
-    "@types/cors": "^2.8.0"
+    "@types/cors": "^2.8.0",
+    "@types/bcryptjs": "^2.4.0"
   }
 }

@@ -4,13 +4,36 @@
  */
 
 /**
+ * Safely converts any date-like value (Date, string, Firestore Timestamp) to a JS Date
+ */
+interface FirestoreTimestamp {
+  toDate(): Date;
+  seconds: number;
+  nanoseconds: number;
+}
+
+const isFirestoreTimestamp = (d: unknown): d is FirestoreTimestamp =>
+  typeof d === 'object' && d !== null && typeof (d as FirestoreTimestamp).toDate === 'function';
+
+const hasSeconds = (d: unknown): d is { seconds: number } =>
+  typeof d === 'object' && d !== null && typeof (d as { seconds: number }).seconds === 'number';
+
+const toDate = (d: unknown): Date => {
+  if (!d) return new Date();
+  if (d instanceof Date) return d;
+  if (typeof d === 'string') return new Date(d);
+  if (isFirestoreTimestamp(d)) return d.toDate();
+  if (hasSeconds(d)) return new Date(d.seconds * 1000);
+  return new Date(String(d));
+};
+
+/**
  * Конвертирует дату в ISO строку формата YYYY-MM-DD для input[type="date"]
- * @param d - Date объект, строка или null/undefined
+ * @param d - Date объект, строка, Firestore Timestamp или null/undefined
  * @returns Строка в формате YYYY-MM-DD
  */
 export const toISODate = (d: Date | string | null | undefined): string => {
-  if (!d) return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-  const dd = typeof d === 'string' ? new Date(d) : d;
+  const dd = toDate(d);
   if (Number.isNaN(dd.getTime())) return new Date().toISOString().slice(0, 10);
   return dd.toISOString().slice(0, 10);
 };
@@ -32,8 +55,7 @@ export const fromISODate = (s: string | null | undefined): Date => {
  * @returns Строка в формате YYYY-MM-DDTHH:mm
  */
 export const toISODateTime = (d: Date | string | null | undefined): string => {
-  if (!d) return new Date().toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm
-  const dd = typeof d === 'string' ? new Date(d) : d;
+  const dd = toDate(d);
   if (Number.isNaN(dd.getTime())) return new Date().toISOString().slice(0, 16);
   return dd.toISOString().slice(0, 16);
 };

@@ -16,8 +16,10 @@ interface BonusData {
     level: string;
     nextLevel: string;
     ordersToNextLevel: number;
+    spentToNextLevel: number;
     totalOrders: number;
-    multiplier: number;
+    totalSpent: number;
+    cashbackPercent: number;
     earnedThisMonth: number;
     spentThisMonth: number;
     history: Array<{
@@ -43,11 +45,13 @@ interface Reward {
 const BonusSystemNew: React.FC = () => {
     const [bonusData, setBonusData] = useState<BonusData>({
         balance: 350,
-        level: 'Любитель',
-        nextLevel: 'Эксперт',
-        ordersToNextLevel: 15,
+        level: 'Бронза',
+        nextLevel: 'Серебро',
+        ordersToNextLevel: 5000,
+        spentToNextLevel: 5000,
         totalOrders: 35,
-        multiplier: 1.2,
+        totalSpent: 0,
+        cashbackPercent: 10,
         earnedThisMonth: 120,
         spentThisMonth: 50,
         history: [
@@ -143,17 +147,18 @@ const BonusSystemNew: React.FC = () => {
     };
 
     const getLevelProgress = () => {
-        const levelOrder = ['Новичок', 'Любитель', 'Эксперт', 'VIP'];
+        const levelOrder = ['Бронза', 'Серебро', 'Золото', 'Платинум'];
         const currentIndex = levelOrder.indexOf(bonusData.level);
         const nextIndex = levelOrder.indexOf(bonusData.nextLevel);
         
         if (nextIndex === -1) return 100; // Максимальный уровень
         
-        const baseOrders = [0, 10, 50, 100]; // Минимальные заказы для каждого уровня
-        const currentMin = baseOrders[currentIndex] || 0;
-        const nextMin = baseOrders[nextIndex] || 100;
+        const baseSpent = [0, 5000, 15000, 25000]; // Минимальные суммы для каждого уровня (₸)
+        const currentMin = baseSpent[currentIndex] || 0;
+        const nextMin = baseSpent[nextIndex] || 25000;
+        const spent = bonusData.totalSpent || 0;
         
-        return ((bonusData.totalOrders - currentMin) / (nextMin - currentMin)) * 100;
+        return Math.min(((spent - currentMin) / (nextMin - currentMin)) * 100, 100);
     };
 
     return (
@@ -213,8 +218,8 @@ const BonusSystemNew: React.FC = () => {
                             <div className="bg-green-100 rounded-full p-4 w-20 h-20 mx-auto mb-3 flex items-center justify-center">
                                 <CurrencyDollarIcon className="w-10 h-10 text-green-600" />
                             </div>
-                            <p className="text-2xl font-bold text-gray-900">x{bonusData.multiplier}</p>
-                            <p className="text-gray-600">Множитель бонусов</p>
+                            <p className="text-2xl font-bold text-gray-900">{bonusData.cashbackPercent}%</p>
+                            <p className="text-gray-600">Кешбэк</p>
                         </div>
                     </div>
                 </div>

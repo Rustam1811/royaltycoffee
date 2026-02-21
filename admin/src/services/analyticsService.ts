@@ -19,6 +19,7 @@ export interface Order {
   status: string;
   userId?: string;
   bonusEarned?: number;
+  locationId?: string; // ID точки для мульти-локационной фильтрации
 }
 
 export interface TopProduct {
@@ -113,6 +114,7 @@ export async function getOrders(from: Date, to: Date): Promise<Order[]> {
       status: String(orderData.status || "completed"),
       userId: orderData.userId ? String(orderData.userId) : undefined,
       bonusEarned: safeParseNumber(orderData.bonusEarned, 0),
+      locationId: orderData.locationId ? String(orderData.locationId) : undefined,
     } satisfies Order;
   });
   

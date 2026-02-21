@@ -7,6 +7,9 @@ import { doc, getDoc } from 'firebase/firestore';
 
 type StoryWithProgress = Story & { viewed: boolean };
 
+/* ─── Global CSS class to hide bottom nav when stories are open ─── */
+const STORY_OPEN_CLASS = 'stories-viewer-open';
+
 interface StoriesRingProps {
   story: StoryWithProgress;
   onOpen: () => void;
@@ -106,13 +109,34 @@ const StoriesRing: React.FC<StoriesRingProps> = ({ story, onOpen }) => {
 
   const isCloseFriends = story.audience === "close-friends";
 
+  // Prefetch media on pointer-enter so it's in browser cache when viewer opens
+  const prefetch = useCallback(() => {
+    if (!story.mediaUrl) return;
+    const isImg = story.contentType?.startsWith('image/') || story.contentType === 'image';
+    const isVid = story.contentType?.startsWith('video/') || story.contentType === 'video';
+    if (isImg) {
+      const img = new Image();
+      img.src = story.mediaUrl;
+    } else if (isVid) {
+      const link = document.createElement('link');
+      link.rel = 'prefetch';
+      link.as = 'video';
+      link.href = story.mediaUrl;
+      if (!document.head.querySelector(`link[href="${story.mediaUrl}"]`)) {
+        document.head.appendChild(link);
+      }
+    }
+  }, [story.mediaUrl, story.contentType]);
+
   return (
     <button
       type="button"
       onClick={onOpen}
+      onPointerEnter={prefetch}
+      onTouchStart={prefetch}
       aria-label={`Open stories by ${story.author || "Anonymous"}`}
-      className={`group flex-shrink-0 rounded-full active:scale-95 transition ${
-        story.viewed ? "opacity-60" : "opacity-100"
+      className={`group flex-shrink-0 rounded-full active:scale-95 transition-all duration-200 ${
+        story.viewed ? "opacity-60" : "opacity-100 drop-shadow-[0_4px_12px_rgba(0,0,0,0.3)]"
       }`}
     >
       <span
@@ -146,7 +170,7 @@ const StoriesRing: React.FC<StoriesRingProps> = ({ story, onOpen }) => {
         </span>
       </span>
 
-      <p className="text-[11px] text-center mt-1 truncate w-[84px] text-slate-800">
+      <p className="text-[11px] text-center mt-1 truncate w-[84px] text-white/90 drop-shadow-sm font-medium">
         {story.author || "Anonymous"}
       </p>
     </button>
@@ -173,16 +197,21 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   const [progress, setProgress] = useState(0);
   const [paused, setPaused] = useState(false);
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
-  const [isMuted, setIsMuted] = useState(false); // ЗВУК ВКЛЮЧЁН ПО УМОЛЧАНИЮ
+  const [isMuted, setIsMuted] = useState(false);
+  const [mediaReady, setMediaReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
 
   const current = stories[currentIndex];
 
+  // Lock scroll + hide bottom nav instantly
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    document.documentElement.classList.add(STORY_OPEN_CLASS);
     return () => {
       document.body.style.overflow = prev;
+      document.documentElement.classList.remove(STORY_OPEN_CLASS);
     };
   }, []);
 
@@ -204,7 +233,11 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
       return () => video.removeEventListener('timeupdate', updateProgress);
     }
     
-    // Для изображений и текста используем таймер
+    // Для изображений — ждём пока картинка загрузится, потом стартуем таймер
+    const isImg = current.contentType?.startsWith('image/') || current.contentType === 'image';
+    if (isImg && !mediaReady) return; // don't tick until image loads
+
+    // Для текстовых сторис и загруженных изображений — таймер
     const dur = (current.duration || 5) * 1000;
     const step = 50;
     const inc = (step / dur) * 100;
@@ -219,12 +252,20 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
       });
     }, step);
     return () => clearInterval(t);
-  }, [current, paused, onNext]);
+  }, [current, paused, onNext, mediaReady]);
 
   useEffect(() => {
     if (!current) return;
     setProgress(0);
+    setMediaReady(false);
     onStoryView(current.id);
+
+    // Text stories have no media to load → mark ready immediately
+    const isText = current.contentType === 'text/plain';
+    const hasNoMedia = !current.mediaUrl;
+    if (isText || hasNoMedia) {
+      setMediaReady(true);
+    }
     
     // Автоплей видео при смене сторис
     const playVideo = async () => {
@@ -336,22 +377,26 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   const content =
     isImage && current.mediaUrl ? (
       <img 
+        ref={imgRef}
         src={current.mediaUrl} 
         alt="" 
-        className="w-full h-full object-cover" 
+        className={`w-full h-full object-cover transition-opacity duration-150 ${mediaReady ? 'opacity-100' : 'opacity-0'}`}
         loading="eager"
+        decoding="async"
+        onLoad={() => setMediaReady(true)}
       />
     ) : isVideo && current.mediaUrl ? (
       <div className="relative w-full h-full">
         <video 
           ref={videoRef}
           src={current.mediaUrl} 
-          className="w-full h-full object-cover" 
+          className={`w-full h-full object-cover transition-opacity duration-150 ${mediaReady ? 'opacity-100' : 'opacity-0'}`}
           autoPlay
           muted={isMuted}
           playsInline
           loop={false}
           preload="auto"
+          onCanPlay={() => setMediaReady(true)}
           onEnded={onNext}
           onVolumeChange={(e) => {
             // Синхронизируем состояние isMuted с реальным состоянием видео
@@ -412,19 +457,20 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
 
   return (
     <motion.div
-      className="fixed inset-0 z-[60] flex flex-col"
+      className="fixed inset-0 z-[99999] flex flex-col bg-black"
       role="dialog"
       aria-modal="true"
       aria-label="Stories viewer"
-      initial={{ opacity: 0 }}
+      initial={{ opacity: 1 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      exit={{ opacity: 0, transition: { duration: 0.15 } }}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
       onMouseDown={onMouseDown}
       onMouseUp={onMouseUp}
+      style={{ WebkitTapHighlightColor: 'transparent' }}
     >
-      <div className="absolute inset-0 bg-transparent" />
+      {/* Progress bars */}
       <div className="absolute top-4 left-4 right-4 z-10 flex gap-1">
         {stories.map((_, i) => (
           <div key={i} className="flex-1 h-1.5 bg-white/25 rounded-full overflow-hidden">
@@ -663,24 +709,8 @@ export const InstagramStoriesNew: React.FC = () => {
   }
 
   return (
-    <div className="py-2 bg-[#F6F7FB]">
-      {/* Убрали надпись Stories - оставили только ленту */}
-      
-      {/* Кнопка обновления статуса и stories */}
-      <div className="flex justify-end mb-2 px-4">
-        <button
-          onClick={() => {
-            console.log('🔄 Принудительное обновление stories и статуса');
-            window.location.reload();
-          }}
-          className="text-xs text-slate-500 hover:text-slate-800 active:scale-95 transition"
-          aria-label="Обновить stories"
-        >
-          ⟳ Обновить
-        </button>
-      </div>
-
-      <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar bg-[#F6F7FB]">
+    <div className="py-2">
+      <div className="flex gap-4 overflow-x-auto pb-3 px-4 no-scrollbar">
         {authors.map((author, i) => {
           const arr = groups[author];
           const anyUnviewed = arr.some((s) => !s.viewed);

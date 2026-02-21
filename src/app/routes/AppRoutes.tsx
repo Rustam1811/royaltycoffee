@@ -2,7 +2,7 @@ import React, { Suspense, lazy, useEffect } from 'react';
 import { Switch, Route, Redirect, useLocation } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import PrivateRoute from '@/routes/PrivateRoute';
-import { HomeSkeleton } from '@/components/Skeleton';
+import { RoyalLoader } from '@/components/RoyalLoader';
 import { useAuth } from '@/auth/AuthContext';
 import { pageVariants } from '@/ui/motion';
 import BottomNavBar from '@/app/navigation/BottomNav';
@@ -91,14 +91,13 @@ const AppRoutes: React.FC = () => {
   return (
     <>
       <main className="pb-24 overflow-hidden min-h-screen">
-        <Suspense fallback={<HomeSkeleton />}>
-          <Switch location={location} key={location.pathname}>
+        <Suspense fallback={<RoyalLoader />}>
+          <Switch location={location}>
             <Route
               exact
               path="/login"
               render={() => (
                 <motion.div
-                  key={location.pathname}
                   variants={pageVariants(!!prefersReduced)}
                   initial="initial"
                   animate="enter"

@@ -15,7 +15,7 @@ export default defineConfig({
     port: 5174,
     proxy: {
       '/api': {
-        target: 'http://localhost:5001/coffeeaddict-c9d70/us-central1/app',
+        target: 'http://localhost:5001/royal-coffee-b1ce9/us-central1/app',
         changeOrigin: true,
         rewrite: (path) => path
       }

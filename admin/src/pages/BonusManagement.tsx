@@ -34,8 +34,8 @@ interface BonusSettings {
     }>;
     levels: Array<{
         name: string;
-        minOrders: number;
-        bonusMultiplier: number;
+        minSpent: number;
+        cashbackPercent: number;
         benefits: string[];
     }>;
 }
@@ -78,28 +78,28 @@ const BonusManagement: React.FC = () => {
         ],
         levels: [
             {
-                name: 'Новичок',
-                minOrders: 0,
-                bonusMultiplier: 1.0,
-                benefits: ['Базовые бонусы']
+                name: 'Бронза',
+                minSpent: 0,
+                cashbackPercent: 5,
+                benefits: ['5% кешбэк с каждого заказа']
             },
             {
-                name: 'Любитель',
-                minOrders: 10,
-                bonusMultiplier: 1.2,
-                benefits: ['+20% к бонусам', 'Персональные предложения']
+                name: 'Серебро',
+                minSpent: 5000,
+                cashbackPercent: 10,
+                benefits: ['10% кешбэк', 'Персональные предложения']
             },
             {
-                name: 'Эксперт',
-                minOrders: 50,
-                bonusMultiplier: 1.5,
-                benefits: ['+50% к бонусам', 'Раннее уведомление о новинках', 'Бесплатная доставка']
+                name: 'Золото',
+                minSpent: 15000,
+                cashbackPercent: 15,
+                benefits: ['15% кешбэк', 'Раннее уведомление о новинках', 'Бесплатная доставка']
             },
             {
-                name: 'VIP',
-                minOrders: 100,
-                bonusMultiplier: 2.0,
-                benefits: ['+100% к бонусам', 'Персональный менеджер', 'Эксклюзивные предложения']
+                name: 'Платинум',
+                minSpent: 25000,
+                cashbackPercent: 20,
+                benefits: ['20% кешбэк', 'Персональный менеджер', 'Эксклюзивные предложения']
             }
         ]
     });
@@ -192,9 +192,9 @@ const BonusManagement: React.FC = () => {
                 levels: settings.levels.map((l, idx) => ({
                     level: idx + 1,
                     name: l.name,
-                    minPoints: l.minOrders,
+                    minSpent: l.minSpent,
                     benefits: l.benefits.join(', '),
-                    bonusMultiplier: l.bonusMultiplier
+                    cashbackPercent: l.cashbackPercent
                 }))
             };
 
@@ -499,22 +499,24 @@ const BonusManagement: React.FC = () => {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium mb-2 text-slate-600">Мин. заказов</label>
+                                        <label className="block text-sm font-medium mb-2 text-slate-600">Мин. сумма покупок (₸)</label>
                                         <input
                                             type="number"
-                                            value={String(level.minOrders || '')}
-                                            onChange={(e) => setSettings(prev => ({ ...prev, levels: prev.levels.map((l, i) => i === index ? { ...l, minOrders: Number(e.target.value) } : l) }))}
+                                            value={String(level.minSpent || '')}
+                                            onChange={(e) => setSettings(prev => ({ ...prev, levels: prev.levels.map((l, i) => i === index ? { ...l, minSpent: Number(e.target.value) } : l) }))}
                                             className="w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium mb-2 text-slate-600">Множитель бонусов</label>
+                                        <label className="block text-sm font-medium mb-2 text-slate-600">Кешбэк (%)</label>
                                         <input
                                             type="number"
-                                            value={String(level.bonusMultiplier || '')}
-                                            onChange={(e) => setSettings(prev => ({ ...prev, levels: prev.levels.map((l, i) => i === index ? { ...l, bonusMultiplier: Number(e.target.value) } : l) }))}
+                                            value={String(level.cashbackPercent || '')}
+                                            onChange={(e) => setSettings(prev => ({ ...prev, levels: prev.levels.map((l, i) => i === index ? { ...l, cashbackPercent: Number(e.target.value) } : l) }))}
                                             className="w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900"
-                                            step="0.1"
+                                            step="1"
+                                            min="1"
+                                            max="50"
                                         />
                                     </div>
                                     <div>

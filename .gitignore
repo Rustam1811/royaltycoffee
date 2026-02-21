@@ -52,6 +52,8 @@ service-account.json
 service-account.json.json
 api-server/firebase-service-account.json
 *service-account*.json
+serviceAccountKey.json
+*-firebase-adminsdk-*.json
 
 # All private keys
 *.key
@@ -72,3 +74,7 @@ dist/
 
 !admin/postcss.config.js
 !admin/tailwind.config.js
+
+# Generated reports (contain local paths)
+reports/
+scripts/inventory.json

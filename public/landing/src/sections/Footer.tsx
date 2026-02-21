@@ -30,7 +30,17 @@ export function Footer() {
             </a>
           ))}
         </nav>
-        <p className="text-xs text-white/40">{t.footer.copyright}</p>
+        <div className="flex flex-col items-center lg:items-end gap-2">
+          <p className="text-xs text-white/40">{t.footer.copyright}</p>
+          <a 
+            href="https://vantero.group" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-xs text-white/30 hover:text-[#C68B59] transition-colors"
+          >
+            Made by Vantero Group
+          </a>
+        </div>
       </Container>
     </footer>
   );

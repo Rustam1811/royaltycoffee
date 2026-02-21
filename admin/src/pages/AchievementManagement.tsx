@@ -12,18 +12,51 @@ import { api } from '@/services/api';
 import { useImageUpload } from '../hooks/useImageUpload';
 import { ImageUploader } from '../components/ImageUploader';
 
+interface AchievementCondition {
+    type: string;
+    count?: number;
+    amount?: number;
+    days?: number;
+    before?: string;
+    value?: number;
+}
+
 interface Achievement {
     id: string;
     title: string;
     description: string;
     icon: string;
     image?: string;
-    condition: string;
+    condition: string | AchievementCondition;
     reward: number;
     category: string;
     isActive: boolean;
     createdAt?: string;
 }
+
+/** Safely convert condition (object or string) to a display string */
+const conditionToString = (c: string | AchievementCondition | undefined): string => {
+    if (!c) return '—';
+    if (typeof c === 'string') return c;
+    if (typeof c === 'object') {
+        const parts: string[] = [c.type];
+        if (c.count != null) parts.push(`count: ${c.count}`);
+        if (c.amount != null) parts.push(`amount: ${c.amount}`);
+        if (c.days != null) parts.push(`days: ${c.days}`);
+        if (c.before) parts.push(`before: ${c.before}`);
+        if (c.value != null) parts.push(`value: ${c.value}`);
+        return parts.join(', ');
+    }
+    return String(c);
+};
+
+/** Extract a simple string key from condition (for select dropdown) */
+const conditionToKey = (c: string | AchievementCondition | undefined): string => {
+    if (!c) return '';
+    if (typeof c === 'string') return c;
+    if (typeof c === 'object') return c.type || '';
+    return String(c);
+};
 
 const AchievementManagement: React.FC = () => {
     const [achievements, setAchievements] = useState<Achievement[]>([]);
@@ -168,8 +201,8 @@ const AchievementManagement: React.FC = () => {
             description: achievement.description,
             icon: achievement.icon,
             image: achievement.image || '',
-            condition: achievement.condition,
-            reward: achievement.reward,
+            condition: conditionToKey(achievement.condition),
+            reward: typeof achievement.reward === 'number' ? achievement.reward : 0,
             category: achievement.category,
             isActive: achievement.isActive
         });
@@ -246,7 +279,7 @@ const AchievementManagement: React.FC = () => {
                                 </div>
                             </div>
                             <div className="mt-3 pt-3 border-t border-slate-200">
-                                <span className="text-xs text-slate-600">Условие: {achievement.condition}</span>
+                                <span className="text-xs text-slate-600">Условие: {conditionToString(achievement.condition)}</span>
                             </div>
                         </motion.div>
                     ))}

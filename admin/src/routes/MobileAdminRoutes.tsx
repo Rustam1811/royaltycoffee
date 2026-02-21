@@ -25,25 +25,26 @@ const MobileAdminRoutes: React.FC = () => {
    * Рендер текущей страницы
    */
   const renderCurrentPage = () => {
+    const hasAccess = ['admin', 'owner'].includes(userRole);
     switch (currentRoute) {
       case 'dashboard':
         return <Dashboard />;
       case 'orders':
         return <OrderManagement />;
       case 'analytics':
-        return userRole === 'admin' ? <Analytics /> : <div>Нет доступа</div>;
+        return hasAccess ? <Analytics /> : <div>Нет доступа</div>;
       case 'menu':
-        return userRole === 'admin' ? <MenuPage /> : <div>Нет доступа</div>;
+        return hasAccess ? <MenuPage /> : <div>Нет доступа</div>;
       case 'bonuses':
-        return userRole === 'admin' ? <BonusManagement /> : <div>Нет доступа</div>;
+        return hasAccess ? <BonusManagement /> : <div>Нет доступа</div>;
       case 'achievements':
-        return userRole === 'admin' ? <AchievementManagement /> : <div>Нет доступа</div>;
+        return hasAccess ? <AchievementManagement /> : <div>Нет доступа</div>;
       case 'promotions':
-        return userRole === 'admin' ? <PromotionManagement /> : <div>Нет доступа</div>;
+        return hasAccess ? <PromotionManagement /> : <div>Нет доступа</div>;
       case 'stories':
-        return userRole === 'admin' ? <StoryManagement /> : <div>Нет доступа</div>;
+        return hasAccess ? <StoryManagement /> : <div>Нет доступа</div>;
       case 'users':
-        return userRole === 'admin' ? <div>Управление пользователями (в разработке)</div> : <div>Нет доступа</div>;
+        return hasAccess ? <div>Управление пользователями (в разработке)</div> : <div>Нет доступа</div>;
       default:
         return <OrderManagement />;
     }

@@ -6,7 +6,7 @@ import { apiUrl } from '../config/api';
 const CardPage: React.FC = () => {
   const { user } = useAuth();
   const [balance, setBalance] = useState<number>(0);
-  const [level, setLevel] = useState<string>('Новичок');
+  const [level, setLevel] = useState<string>('Бронза');
   const [totalOrders, setTotalOrders] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +27,7 @@ const CardPage: React.FC = () => {
       if (response.ok) {
         const bonusData = await response.json();
         setBalance(bonusData.balance || 0);
-        setLevel(bonusData.level || 'Новичок');
+        setLevel(bonusData.level || 'Бронза');
         setTotalOrders(bonusData.totalOrders || 0);
       } else {
         console.error('Failed to fetch bonus data:', response.status, await response.text());

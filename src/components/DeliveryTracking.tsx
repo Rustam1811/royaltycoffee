@@ -157,8 +157,8 @@ const DeliveryTracking: React.FC<DeliveryTrackingProps> = ({
             lastUpdated: Date.now(),
           },
           shopLocation: {
-            lat: 43.238949,
-            lng: 76.889709,
+            lat: 51.1694,
+            lng: 71.4491,
           },
           isActive: true,
           lastUpdated: Date.now(),

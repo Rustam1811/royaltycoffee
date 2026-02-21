@@ -1,8 +1,8 @@
-import React, { Suspense } from 'react';
+import React from 'react';
 import { Route, Redirect, useLocation } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useAuth } from '../../auth/AuthContext';
-import { HomeSkeleton } from '../../components/Skeleton';
+import { RoyalLoader } from '../../components/RoyalLoader';
 import { pageVariants } from '../../ui/motion';
 
 interface PrivateRouteProps {
@@ -24,7 +24,7 @@ export const PrivateRoute: React.FC<PrivateRouteProps> = ({
       {...rest}
       render={(props) => {
         if (loading) {
-          return <HomeSkeleton />;
+          return <RoyalLoader />;
         }
 
         if (!user) {
@@ -39,18 +39,15 @@ export const PrivateRoute: React.FC<PrivateRouteProps> = ({
         }
 
         return (
-          <Suspense fallback={<HomeSkeleton />}>
-            <motion.div
-              key={location.pathname}
-              variants={pageVariants(!!prefersReduced)}
-              initial="initial"
-              animate="enter"
-              exit="exit"
-              className="w-full min-h-screen"
-            >
-              <Component {...props} />
-            </motion.div>
-          </Suspense>
+          <motion.div
+            variants={pageVariants(!!prefersReduced)}
+            initial="initial"
+            animate="enter"
+            exit="exit"
+            className="w-full min-h-screen"
+          >
+            <Component {...props} />
+          </motion.div>
         );
       }}
     />

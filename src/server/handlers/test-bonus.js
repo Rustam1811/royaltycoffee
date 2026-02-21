@@ -12,8 +12,8 @@ async function handleTestBonus(req, res) {
       message: "Test bonus data",
       bonus: {
         balance: 150,
-        level: "Любитель",
-        multiplier: 1.2
+        level: "Серебро",
+        cashbackPercent: 10
       }
     };
 

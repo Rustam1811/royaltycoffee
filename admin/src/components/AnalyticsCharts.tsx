@@ -86,7 +86,7 @@ export function OrdersLineChart({ data, periodLabel }: { data: ChartDataItem[] |
           }} 
           labelStyle={{ color: '#374151' }}
           formatter={(value: number, name: string) => [
-            name === 'orders' ? `${value} заказов` : `${(value as number).toLocaleString()} ₽`,
+            name === 'orders' ? `${value} заказов` : `${(value as number).toLocaleString()} ₸`,
             name === 'orders' ? 'Заказы' : 'Доход'
           ]}
           labelFormatter={(label) => `${periodLabel || 'Период'}: ${label}`}

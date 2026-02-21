@@ -1,18 +1,18 @@
 :root {
-  /* Neutral Light Theme */
-  --color-bg-base: #F5F6F7; /* page background */
-  --color-bg-alt: #ECEEF0;  /* subtle strips / separators */
-  --color-bg-elev-1: #FFFFFF; /* cards */
-  --color-bg-elev-2: #FAFAFB; /* secondary surfaces */
-  --color-bg-glass: rgba(255,255,255,0.55);
-  --color-brand-amber: #F39A27;
-  --color-brand-amber-rgb: 243 154 39;
-  --color-text-primary: #1C1E21;
-  --color-text-secondary: #5A6067;
-  --color-text-tertiary: #8C939B;
-  --color-text-invert: #FFFFFF;
-  --color-border: #E2E4E7;
-  --color-border-strong: #C9CDD2;
+  /* Royalty Coffee Burgundy Theme */
+  --color-bg-base: #5C0E0E; /* burgundy page background */
+  --color-bg-alt: #4A0B0B;  /* darker burgundy strips */
+  --color-bg-elev-1: #6B1212; /* cards - slightly lighter burgundy */
+  --color-bg-elev-2: #7A1515; /* secondary surfaces */
+  --color-bg-glass: rgba(92,14,14,0.75);
+  --color-brand-amber: #D4A574; /* gold/cream accent */
+  --color-brand-amber-rgb: 212 165 116;
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #E8D5C4;
+  --color-text-tertiary: #C4A88A;
+  --color-text-invert: #5C0E0E;
+  --color-border: #7A1515;
+  --color-border-strong: #8B1A1A;
   --color-focus: #1C1E21;
   --color-danger: #E54848;
   --color-warning: #FFC53D;

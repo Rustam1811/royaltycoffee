@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Switch, Route } from "react-router-dom";
-import ResponsiveAdminRoutes from "@/routes/ResponsiveAdminRoutes";
-import RequireAuth from "@/routes/RequireAuth";
+import RoleBasedRouter from "@/routes/RoleBasedRouter";
 import LoginPage from "@/pages/LoginPage";
 import DevOverlay from "@/components/DevOverlay";
 import { api } from "@/services/api";
 import { CartProvider } from "../../src/contexts/CartContext";
+import { LocationProvider } from "./contexts/LocationContext";
 import { initializeFCM } from "@/services/messaging";
 import { createPWAUpdater } from "@/pwa/pwa-updater";
 import { auth } from "@/lib/firebase";
@@ -75,28 +75,28 @@ const AdminApp: React.FC = () => {
 
   return (
     <CartProvider>
-      <div className="min-h-screen bg-[var(--color-bg-base)] text-[var(--color-text-primary)] font-['Manrope']">
-        <DevOverlay 
-          apiStatus={apiStatus}
-          lastFetch={lastFetch}
-          apiError={apiError || undefined}
-        />
-        
-        {apiError && (
-          <div className="bg-red-500 text-white p-3 text-center font-semibold">
-            ⚠️ {apiError}
-          </div>
-        )}
-        <Switch>
-          <Route exact path="/login" component={LoginPage} />
-          <Route exact path="/admin/login" component={LoginPage} />
-          <Route path="/">
-            <RequireAuth>
-              <ResponsiveAdminRoutes />
-            </RequireAuth>
-          </Route>
-        </Switch>
-      </div>
+      <LocationProvider>
+        <div className="min-h-screen bg-[var(--color-bg-base)] text-[var(--color-text-primary)] font-['Manrope']">
+          <DevOverlay 
+            apiStatus={apiStatus}
+            lastFetch={lastFetch}
+            apiError={apiError || undefined}
+          />
+          
+          {apiError && (
+            <div className="bg-red-500 text-white p-3 text-center font-semibold">
+              ⚠️ {apiError}
+            </div>
+          )}
+          <Switch>
+            <Route exact path="/login" component={LoginPage} />
+            <Route exact path="/admin/login" component={LoginPage} />
+            <Route path="/">
+              <RoleBasedRouter />
+            </Route>
+          </Switch>
+        </div>
+      </LocationProvider>
     </CartProvider>
   );
 };

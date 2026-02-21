@@ -1,87 +1,91 @@
 import { useCallback, useRef, useState } from 'react';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { storage } from '@/lib/firebase';
 
 export interface StoryUploadResult {
   url: string; path: string; contentType: string;
 }
 export interface UseStoryUploadState {
   uploading: boolean;
-  progress: number; // 0..100 (best effort; uploadBytes has no incremental progress so stays 0/100)
+  progress: number; // 0..100
   error: string | null;
 }
 
-// New: lightweight progress event shape to support optional callbacks
 export type UploadProgress = { state: 'running'|'success'|'error'|'canceled'; percent: number };
 
-// Optional callbacks config
 type UseStoryUploadOptions = {
   onProgress?: (p: UploadProgress) => void;
 };
 
 export function useStoryUpload(options?: UseStoryUploadOptions) {
-  const [state, setState] = useState<UseStoryUploadState>({ uploading:false, progress:0, error:null });
-  const abortRef = useRef<() => void>(()=>{}); // placeholder (uploadBytes not abortable)
+  const [state, setState] = useState<UseStoryUploadState>({ uploading: false, progress: 0, error: null });
+  const taskRef = useRef<ReturnType<typeof uploadBytesResumable> | null>(null);
 
-  const upload = useCallback(async (file: File, _kind: string) => {
-    setState({ uploading:true, progress:0, error:null });
+  const upload = useCallback(async (file: File, _kind: string): Promise<StoryUploadResult> => {
+    setState({ uploading: true, progress: 0, error: null });
     options?.onProgress?.({ state: 'running', percent: 0 });
+
     try {
-      // Конвертируем файл в base64
-      const fileData = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          const base64 = result.split(',')[1]; // Убираем data:mime/type;base64,
-          resolve(base64);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      // Генерируем уникальный путь
+      const timestamp = Date.now();
+      const sanitizedName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
+      const storagePath = `stories/${timestamp}_${sanitizedName}`;
+      const contentType = file.type || 'image/jpeg';
 
-      setState({ uploading: true, progress: 50, error: null });
-      options?.onProgress?.({ state: 'running', percent: 50 });
-
-      // Загружаем через API endpoint (обходит CORS)
-      const response = await fetch('/api/upload-story', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileData,
-          fileName: file.name,
-          mimeType: file.type,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Upload failed: ${response.status}`);
-      }
-
-      const result = await response.json();
+      const storageRef = ref(storage, storagePath);
       
-      if (!result.success) {
-        throw new Error(result.error || 'Upload failed');
-      }
+      // Загружаем напрямую через Firebase Client SDK с progress tracking
+      const uploadTask = uploadBytesResumable(storageRef, file, {
+        contentType,
+        customMetadata: { uploadedAt: new Date().toISOString() },
+      });
+      taskRef.current = uploadTask;
 
-      setState({ uploading:false, progress:100, error:null });
+      // Ждём завершения с реальным progress
+      const url = await new Promise<string>((resolve, reject) => {
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            const percent = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+            setState({ uploading: true, progress: percent, error: null });
+            options?.onProgress?.({ state: 'running', percent });
+          },
+          (error) => {
+            console.error('Upload error:', error);
+            reject(error);
+          },
+          async () => {
+            try {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              resolve(downloadURL);
+            } catch (err) {
+              reject(err);
+            }
+          }
+        );
+      });
+
+      taskRef.current = null;
+      setState({ uploading: false, progress: 100, error: null });
       options?.onProgress?.({ state: 'success', percent: 100 });
-      return { 
-        url: result.url, 
-        path: result.path, 
-        contentType: result.contentType || file.type 
-      };
+
+      return { url, path: storagePath, contentType };
     } catch (e) {
+      taskRef.current = null;
       const msg = e instanceof Error ? e.message : 'upload_failed';
-      setState({ uploading:false, progress:0, error: msg });
+      setState({ uploading: false, progress: 0, error: msg });
       options?.onProgress?.({ state: 'error', percent: 0 });
       throw e;
     }
   }, [options]);
 
   const cancel = useCallback(() => {
-    // No true cancel support with uploadBytes; emit canceled state for UI
+    if (taskRef.current) {
+      taskRef.current.cancel();
+      taskRef.current = null;
+    }
     setState(prev => ({ ...prev, uploading: false }));
     options?.onProgress?.({ state: 'canceled', percent: state.progress || 0 });
-    abortRef.current?.();
   }, [options, state.progress]);
 
   return { upload, state, cancel };

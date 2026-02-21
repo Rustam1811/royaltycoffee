@@ -14,6 +14,7 @@ import {
 } from "@heroicons/react/24/solid";
 import { SparklesIcon } from "@heroicons/react/24/outline";
 import { useCart, CartItem } from "../contexts/CartContext";
+import { useLocation } from "../contexts/LocationContext";
 import QRCode from "../components/QRCode";
 import OrderStatusBadge from "../components/OrderStatusBadge";
 import DeliveryAddressForm from "../components/DeliveryAddressForm";
@@ -147,11 +148,12 @@ const Order: React.FC = () => {
   const history = useHistory();
   const { items, dispatch } = useCart();
   const { user, showPhoneInput } = useAuth();
+  const { selectedLocation } = useLocation();
   
   const [bonusData, setBonusData] = useState({
     balance: 0,
-    level: "Новичок",
-    multiplier: 1.0,
+    level: "Бронза",
+    cashbackPercent: 5,
   });
   const [bonusToUse, setBonusToUse] = useState(0);
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
@@ -193,8 +195,8 @@ const Order: React.FC = () => {
       history.replace("/order", {});
     }
   }, [history, dispatch]);
-  // Бонусы начисляются сервером: 1% от суммы заказа (без учёта использованных бонусов)
-  const bonusEarned = Math.floor(amount * 0.01);
+  // Бонусы начисляются сервером: кешбэк % от суммы заказа (без учёта использованных бонусов)
+  const bonusEarned = Math.floor(amount * (bonusData.cashbackPercent / 100));
 
   const getUserId = () => {
     if (user?.uid) return user.uid;
@@ -274,7 +276,7 @@ const Order: React.FC = () => {
       }
 
       if (result.data) {
-        setBonusData(result.data as { balance: number; level: string; multiplier: number });
+        setBonusData(result.data as { balance: number; level: string; cashbackPercent: number });
       }
     } catch (error) {
       console.error("Критическая ошибка загрузки бонусных данных:", error);
@@ -371,6 +373,8 @@ const Order: React.FC = () => {
         clientRequestId,
         customerName: user?.name || 'Клиент',
         customerPhone: user?.phone,
+        locationId: selectedLocation?.id || null, // Точка, в которую сделан заказ
+        locationName: selectedLocation?.name || null,
         deliveryType: delivery.type, // 'pickup' или 'delivery'
         deliveryInfo, // Full delivery details
         items: items.map((item) => ({
@@ -587,7 +591,7 @@ const Order: React.FC = () => {
                     <span>Бонусы к начислению</span>
                     <span className="font-semibold text-emerald-600 flex items-center gap-1">
                       <SparklesIcon className="w-4 h-4" />
-                      +{bonusEarned} (x{bonusData.multiplier})
+                      +{bonusEarned} ({bonusData.cashbackPercent}% кешбэк)
                     </span>
                   </div>
                   {bonusToUse > 0 && (
@@ -610,6 +614,22 @@ const Order: React.FC = () => {
 
                 {/* ПЕРЕКЛЮЧАТЕЛЬ ДОСТАВКИ/САМОВЫВОЗА */}
                 <div className="elev-card rounded-2xl p-4">
+                  {/* Выбранная кофейня */}
+                  {selectedLocation && (
+                    <div className="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
+                      <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xl">📍</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-slate-500">Кофейня</div>
+                        <div className="font-semibold text-slate-800 truncate">{selectedLocation.name}</div>
+                        {selectedLocation.address && (
+                          <div className="text-xs text-slate-400 truncate">{selectedLocation.address}</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="text-sm font-bold text-slate-700 mb-3">Способ получения:</div>
                   <div className="grid grid-cols-2 gap-3">
                     <button

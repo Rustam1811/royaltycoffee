@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "coffeeaddict-c9d70"
-  }
+    "default": "royal-coffee-b1ce9"
+  },
+  "targets": {},
+  "etags": {}
 }

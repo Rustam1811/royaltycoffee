@@ -76,11 +76,11 @@ async function handleOrders(req, res) {
       const bonusSettingsDoc = await db.collection('settings').doc('bonusSettings').get();
       let bonusSettings = {
         basePercentage: 5,
-        levelMultipliers: {
-          'Новичок': 1.0,
-          'Любитель': 1.2,
-          'Эксперт': 1.5,
-          'VIP': 2.0
+        levelCashback: {
+          'Бронза': 5,
+          'Серебро': 10,
+          'Золото': 15,
+          'Платинум': 20
         }
       };
 
@@ -97,22 +97,27 @@ async function handleOrders(req, res) {
         userData = { ...userData, ...userDoc.data() };
       }
 
-      // Подсчитываем количество заказов для определения уровня
+      // Подсчитываем количество заказов и общую сумму для определения уровня
       const ordersSnapshot = await db.collection('orders')
         .where('userId', '==', userId)
         .get();
       const totalOrders = ordersSnapshot.size + 1; // +1 для текущего заказа
+      let totalSpent = amount; // текущий заказ
+      ordersSnapshot.docs.forEach(d => {
+        const o = d.data();
+        totalSpent += (o.amount || o.totalAmount || 0);
+      });
 
-      // Определяем уровень
-      let level = 'Новичок';
-      if (totalOrders >= 100) level = 'VIP';
-      else if (totalOrders >= 50) level = 'Эксперт';
-      else if (totalOrders >= 10) level = 'Любитель';
+      // Определяем уровень по сумме потраченных ₸
+      let level = 'Бронза';
+      if (totalSpent >= 25000) level = 'Платинум';
+      else if (totalSpent >= 15000) level = 'Золото';
+      else if (totalSpent >= 5000) level = 'Серебро';
 
-      const multiplier = bonusSettings.levelMultipliers[level] || 1.0;
-      const bonusEarned = Math.floor(amount * (bonusSettings.basePercentage / 100) * multiplier);
+      const cashbackPercent = bonusSettings.levelCashback[level] || 5;
+      const bonusEarned = Math.floor(amount * (cashbackPercent / 100));
 
-      console.log('🔥 Расчет бонусов:', { level, multiplier, amount, bonusEarned });
+      console.log('🔥 Расчет бонусов:', { level, cashbackPercent, amount, bonusEarned });
 
       // Начинаем транзакцию
       await db.runTransaction(async (transaction) => {
@@ -214,35 +219,38 @@ async function handleOrders(req, res) {
         const userDoc = await userRef.get();
         let userData = userDoc.exists ? userDoc.data() : { bonusBalance: 0 };
 
-        // Получаем количество заказов пользователя для определения уровня
+        // Получаем заказы пользователя и подсчитываем общую сумму для определения уровня
         const userOrdersSnap = await db.collection('orders')
           .where('userId', '==', orderData.userId)
-          .where('status', '==', 'completed')
           .get();
 
-        const completedOrders = userOrdersSnap.size;
+        let totalSpentByUser = 0;
+        userOrdersSnap.docs.forEach(d => {
+          const o = d.data();
+          totalSpentByUser += (o.amount || o.totalAmount || 0);
+        });
 
-        // Определяем уровень и множитель
-        let level = 'Новичок';
-        let multiplier = 1.0;
+        // Определяем уровень по сумме потраченных ₸ и кешбэк
+        let level = 'Бронза';
+        let cashbackPercent = 5;
 
-        if (completedOrders >= 100) {
-          level = 'VIP';
-          multiplier = 2.0;
-        } else if (completedOrders >= 50) {
-          level = 'Эксперт';
-          multiplier = 1.5;
-        } else if (completedOrders >= 10) {
-          level = 'Любитель';
-          multiplier = 1.2;
+        if (totalSpentByUser >= 25000) {
+          level = 'Платинум';
+          cashbackPercent = 20;
+        } else if (totalSpentByUser >= 15000) {
+          level = 'Золото';
+          cashbackPercent = 15;
+        } else if (totalSpentByUser >= 5000) {
+          level = 'Серебро';
+          cashbackPercent = 10;
         }
 
         // Рассчитываем бонусы (если еще не были рассчитаны)
         let bonusEarned = orderData.bonusEarned || 0;
 
         if (bonusEarned === 0) {
-          bonusEarned = Math.floor(orderData.amount * (bonusSettings.basePercentage / 100) * multiplier);
-          console.log('🔥 Расчет новых бонусов:', { level, multiplier, amount: orderData.amount, bonusEarned });
+          bonusEarned = Math.floor(orderData.amount * (cashbackPercent / 100));
+          console.log('🔥 Расчет новых бонусов:', { level, cashbackPercent, amount: orderData.amount, bonusEarned });
         } else {
           console.log('🔥 Бонусы уже рассчитаны:', bonusEarned);
         }

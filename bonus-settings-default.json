@@ -46,31 +46,31 @@
   "levels": [
     { 
       "level": 1, 
-      "name": "Новичок", 
-      "minPoints": 0, 
-      "benefits": "Базовые бонусы",
-      "bonusMultiplier": 1.0
+      "name": "Бронза", 
+      "minSpent": 0, 
+      "benefits": "5% кешбэк с каждого заказа",
+      "cashbackPercent": 5
     },
     { 
       "level": 2, 
-      "name": "Любитель", 
-      "minPoints": 500, 
-      "benefits": "x1.2 бонусы",
-      "bonusMultiplier": 1.2
+      "name": "Серебро", 
+      "minSpent": 5000, 
+      "benefits": "10% кешбэк с каждого заказа",
+      "cashbackPercent": 10
     },
     { 
       "level": 3, 
-      "name": "Эксперт", 
-      "minPoints": 1500, 
-      "benefits": "x1.5 бонусы + раннее уведомление",
-      "bonusMultiplier": 1.5
+      "name": "Золото", 
+      "minSpent": 15000, 
+      "benefits": "15% кешбэк + раннее уведомление",
+      "cashbackPercent": 15
     },
     { 
       "level": 4, 
-      "name": "VIP", 
-      "minPoints": 2000, 
-      "benefits": "x2 бонусы + приоритет",
-      "bonusMultiplier": 2.0
+      "name": "Платинум", 
+      "minSpent": 25000, 
+      "benefits": "20% кешбэк + приоритет + эксклюзив",
+      "cashbackPercent": 20
     }
   ]
 }

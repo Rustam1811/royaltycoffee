@@ -1,22 +1,22 @@
 const { initFirebaseAdmin } = require('../firebaseAdmin');
 
-// Функция для расчета уровня пользователя
-const calculateUserLevel = (totalOrders) => {
-  if (totalOrders >= 100) return { level: 'VIP', next: null, ordersToNext: 0 };
-  if (totalOrders >= 50) return { level: 'Эксперт', next: 'VIP', ordersToNext: 100 - totalOrders };
-  if (totalOrders >= 10) return { level: 'Любитель', next: 'Эксперт', ordersToNext: 50 - totalOrders };
-  return { level: 'Новичок', next: 'Любитель', ordersToNext: 10 - totalOrders };
+// Функция для расчета уровня пользователя по сумме потраченных ₸
+const calculateUserLevel = (totalSpent) => {
+  if (totalSpent >= 25000) return { level: 'Платинум', next: null, spentToNext: 0, cashbackPercent: 20 };
+  if (totalSpent >= 15000) return { level: 'Золото', next: 'Платинум', spentToNext: 25000 - totalSpent, cashbackPercent: 15 };
+  if (totalSpent >= 5000) return { level: 'Серебро', next: 'Золото', spentToNext: 15000 - totalSpent, cashbackPercent: 10 };
+  return { level: 'Бронза', next: 'Серебро', spentToNext: 5000 - totalSpent, cashbackPercent: 5 };
 };
 
-// Функция для расчета множителя бонусов
-const getMultiplier = (level) => {
-  const multipliers = {
-    'Новичок': 1.0,
-    'Любитель': 1.2,
-    'Эксперт': 1.5,
-    'VIP': 2.0
+// Функция для расчета кешбэк-процента
+const getCashbackPercent = (level) => {
+  const cashback = {
+    'Бронза': 5,
+    'Серебро': 10,
+    'Золото': 15,
+    'Платинум': 20
   };
-  return multipliers[level] || 1.0;
+  return cashback[level] || 5;
 };
 
 async function handleUserBonus(req, res) {
@@ -75,8 +75,13 @@ async function handleUserBonus(req, res) {
     console.log('🔥 Баланс из заказов:', calculatedBalanceFromOrders);
 
     const totalOrders = orders.length;
-    const levelInfo = calculateUserLevel(totalOrders);
-    const multiplier = getMultiplier(levelInfo.level);
+    // Подсчитываем общую сумму потраченных денег
+    let totalSpent = 0;
+    orders.forEach(order => {
+      totalSpent += (order.amount || order.totalAmount || 0);
+    });
+    const levelInfo = calculateUserLevel(totalSpent);
+    const cashbackPercent = getCashbackPercent(levelInfo.level);
 
     // Получаем историю бонусных операций
     console.log('🔥 Ищем историю бонусов для userId:', userId);
@@ -153,9 +158,12 @@ async function handleUserBonus(req, res) {
       balance: userData.bonusBalance || 0,
       level: levelInfo.level,
       nextLevel: levelInfo.next,
-      ordersToNextLevel: levelInfo.ordersToNext,
+      ordersToNextLevel: levelInfo.spentToNext, // обратная совместимость
+      spentToNextLevel: levelInfo.spentToNext,
       totalOrders,
-      multiplier,
+      totalSpent,
+      cashbackPercent,
+      multiplier: cashbackPercent / 100, // обратная совместимость
       earnedThisMonth,
       spentThisMonth,
       history: history.map(item => ({

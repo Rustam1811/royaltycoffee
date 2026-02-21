@@ -8,12 +8,12 @@
 import type { DeliveryZone, DeliveryTimeSlot } from '../types/delivery';
 
 /**
- * Coffee shop center coordinates (Almaty example)
+ * Coffee shop center coordinates (Astana)
  * Replace with actual coordinates
  */
 export const SHOP_COORDINATES = {
-  lat: 43.238949,
-  lng: 76.889709,
+  lat: 51.1694,
+  lng: 71.4491,
 };
 
 /**

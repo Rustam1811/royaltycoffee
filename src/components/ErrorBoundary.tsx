@@ -29,7 +29,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   private handleReset = () => {
     this.setState({ hasError: false, error: null });
-    window.location.href = '/';
+    window.location.href = '/app/home';
   };
 
   public render() {
@@ -39,42 +39,28 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-          <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg
-                className="w-8 h-8 text-red-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Что-то пошло не так
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1A0A10] via-[#2D0F1A] to-[#4A1A2C] px-4">
+          <div className="max-w-md w-full bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl p-8 text-center">
+            <div className="text-5xl mb-4">☕</div>
+            <h2 className="text-2xl font-black text-white mb-2" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
+              ROYALTY COFFEE
             </h2>
-            <p className="text-gray-600 mb-6">
-              Произошла непредвиденная ошибка. Мы уже работаем над её исправлением.
+            <p className="text-amber-200/70 mb-6 text-sm">
+              Произошла ошибка. Попробуйте вернуться на главную.
             </p>
             {import.meta.env.DEV && this.state.error && (
-              <details className="text-left mb-6 bg-gray-50 rounded-lg p-4">
-                <summary className="cursor-pointer font-medium text-gray-700 mb-2">
+              <details className="text-left mb-6 bg-black/30 rounded-xl p-4 border border-white/10">
+                <summary className="cursor-pointer font-medium text-amber-200/80 mb-2 text-sm">
                   Детали ошибки
                 </summary>
-                <pre className="text-xs text-red-600 overflow-auto">
+                <pre className="text-xs text-red-400 overflow-auto">
                   {this.state.error.toString()}
                 </pre>
               </details>
             )}
             <button
               onClick={this.handleReset}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+              className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-black font-bold py-3 px-6 rounded-2xl transition-all shadow-lg shadow-amber-500/30"
             >
               Вернуться на главную
             </button>

@@ -120,13 +120,39 @@ export const PremiumMenu: React.FC<Props> = ({ items, categories, type = 'drinks
   const isFood = type === 'food';
   const SIZES = isFood ? FOOD_SIZES : DRINK_SIZES;
 
-  const openItem = useMemo(()=> items.find(i=>i.id===openId) || null, [openId, items]);
-  const basePrice = openItem?.price || 0;
-  const sizeMult = SIZES.find(s=>s.key===size)?.multiplier || 1;
+  const openItem = useMemo(()=> {
+    const item = items.find(i=>i.id===openId) || null;
+    if (item) {
+      console.log('Opening item:', item.name, 'sizes:', item.sizes);
+    }
+    return item;
+  }, [openId, items]);
+  
+  // Получаем доступные размеры из данных напитка
+  const itemSizes = useMemo(() => {
+    if (!openItem?.sizes || openItem.sizes.length === 0) return null;
+    return openItem.sizes;
+  }, [openItem]);
+  
+  // Вычисляем цену из размера или базовую цену
+  const sizePrice = useMemo(() => {
+    if (!openItem) return 0;
+    // Если есть размеры, ищем выбранный размер
+    if (itemSizes && itemSizes.length > 0) {
+      const selectedSize = itemSizes.find(s => s.key.toLowerCase() === size.toLowerCase());
+      if (selectedSize) return selectedSize.price;
+      // Если не нашли - берем цену первого доступного размера
+      return itemSizes[0].price;
+    }
+    // Иначе используем базовую цену с множителем
+    const sizeMult = SIZES.find(s=>s.key===size)?.multiplier || 1;
+    return Math.round(openItem.price * sizeMult);
+  }, [openItem, itemSizes, size, SIZES]);
+
   const milkPrice = MILKS.find(m=>m.key===milkKey)?.price || 0;
   const syrupPrice = syrupKeys.reduce((sum,k)=> sum + (SYRUPS.find(s=>s.key===k)?.price||0), 0);
   const toppingPrice = toppingKeys.reduce((sum,k)=> sum + (TOPPINGS.find(t=>t.key===k)?.price||0), 0);
-  const total = Math.round((basePrice * sizeMult + milkPrice + syrupPrice + toppingPrice) * qty);
+  const total = Math.round((sizePrice + milkPrice + syrupPrice + toppingPrice) * qty);
 
   const cartRef = useRef<HTMLDivElement|null>(null);
   const { items: flyItems, trigger: triggerFly } = useFlyToCart();
@@ -140,6 +166,7 @@ export const PremiumMenu: React.FC<Props> = ({ items, categories, type = 'drinks
   }, [openItem, milkKey, syrupKeys, toppingKeys, size]);
 
   const openWith = (id: string|number) => {
+    const item = items.find(i => i.id === id);
     const prev = selectionsRef.current[id];
     if (prev) {
       setMilkKey(prev.milk);
@@ -147,7 +174,15 @@ export const PremiumMenu: React.FC<Props> = ({ items, categories, type = 'drinks
       setToppingKeys(prev.tops? prev.tops.split(',').filter(Boolean):[]);
       setSize(prev.size);
     } else {
-      resetState();
+      // Установить первый доступный размер из данных напитка
+      if (item?.sizes && item.sizes.length > 0) {
+        setSize(item.sizes[0].key.toLowerCase());
+      } else {
+        resetState();
+      }
+      setMilkKey('regular');
+      setSyrupKeys([]);
+      setToppingKeys([]);
     }
     setOpenId(id);
     // Always start with panels closed
@@ -220,7 +255,12 @@ export const PremiumMenu: React.FC<Props> = ({ items, categories, type = 'drinks
   const diff = total - prevTotalRef.current;
   if(diff!==0) prevTotalRef.current = total;
 
-  const visibleItems = useMemo(()=> categories && activeCat ? items.filter(i=> String(i.categoryId) === activeCat) : items, [items, categories, activeCat]);
+  // Для категории "all" показываем все позиции, иначе фильтруем по categoryId
+  const visibleItems = useMemo(()=> {
+    if (!categories) return items;
+    if (activeCat === 'all') return items; // "Все" показывает все позиции
+    return items.filter(i => String(i.categoryId) === activeCat);
+  }, [items, categories, activeCat]);
 
   // Swipe navigation for categories
   const handleSwipe = useCallback((direction: 'left' | 'right') => {
@@ -290,7 +330,7 @@ export const PremiumMenu: React.FC<Props> = ({ items, categories, type = 'drinks
               <div
                 key={cat.key}
                 className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                  cat.key === activeCat ? 'bg-black w-4' : 'bg-gray-300'
+                  cat.key === activeCat ? 'bg-[#D4A574] w-4' : 'bg-white/40'
                 }`}
               />
             ))}
@@ -298,13 +338,20 @@ export const PremiumMenu: React.FC<Props> = ({ items, categories, type = 'drinks
         </div>
         {categories && categories.length>0 && (
           <div className="sticky top-[68px] z-10 px-4 pb-4 pt-1 bg-[var(--color-bg-base)]/90 backdrop-blur supports-[backdrop-filter]:backdrop-blur-md">
-            <nav className="flex gap-4 overflow-x-auto no-scrollbar [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]">
+            <nav className="flex gap-2 overflow-x-auto no-scrollbar scroll-smooth overscroll-x-none touch-pan-x" style={{ WebkitOverflowScrolling: 'touch' }}>
               {categories.map(c=>{
                 const active = c.key === activeCat;
                 return (
-                  <button key={c.key} onClick={()=>setActiveCat(c.key)} className={`relative pb-2 text-[13px] font-medium tracking-tight transition-colors ${active? 'text-[var(--color-text-primary)]' : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'}`}>
-                    <span className="px-1 py-1.5">{c.label}</span>
-                    {active && <motion.span layoutId="pmenu-cat-underline" className="absolute left-0 right-0 -bottom-px h-[2px] rounded-full bg-[var(--color-text-primary)]" transition={{type:'spring', stiffness: 520, damping: 34}} />}
+                  <button 
+                    key={c.key} 
+                    onClick={()=>setActiveCat(c.key)} 
+                    className={`relative flex-shrink-0 px-4 py-2 rounded-full text-[13px] font-semibold transition-all touch-manipulation select-none
+                      ${active 
+                        ? 'bg-[#D4A574] text-[#5C0E0E] shadow-md' 
+                        : 'bg-black/10 text-gray-700 active:bg-black/20 dark:bg-white/20 dark:text-white/90 dark:active:bg-white/30'
+                      }`}
+                  >
+                    {c.label}
                   </button>
                 );
               })}
@@ -352,16 +399,34 @@ export const PremiumMenu: React.FC<Props> = ({ items, categories, type = 'drinks
                 </div>
                 
                 <div className="px-4 pt-0 pb-4 relative">
-                  {/* hero */}
+                  {/* Hero Media - Video or Image like Drinkit */}
                   <div className="flex flex-col items-center text-center">
-                    <img
-                      src={openItem.image}
-                      alt={openItem.name}
-                      loading="eager"
-                      width={240}
-                      height={320}
-                      className="w-[58%] max-w-[240px] drop-shadow-[0_18px_36px_rgba(0,0,0,0.22)]"
-                    />
+                    {openItem.video ? (
+                      <div className="relative w-[70%] max-w-[280px] aspect-[3/4] rounded-3xl overflow-hidden bg-gradient-to-br from-amber-50 to-orange-50 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)]">
+                        <video
+                          key={openItem.video}
+                          src={openItem.video}
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          preload="auto"
+                          className="absolute inset-0 w-full h-full object-cover"
+                          style={{ objectPosition: 'center' }}
+                        />
+                        {/* Subtle overlay gradient */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent pointer-events-none" />
+                      </div>
+                    ) : (
+                      <img
+                        src={openItem.image}
+                        alt={openItem.name}
+                        loading="eager"
+                        width={240}
+                        height={320}
+                        className="w-[58%] max-w-[240px] drop-shadow-[0_18px_36px_rgba(0,0,0,0.22)]"
+                      />
+                    )}
                   </div>
                   <h2 className="text-[22px] font-semibold tracking-tight text-center leading-tight">
                     {openItem.name}
@@ -487,7 +552,7 @@ export const PremiumMenu: React.FC<Props> = ({ items, categories, type = 'drinks
             <div className="flex gap-3 items-center" ref={cartRef}>
               {/* Size selector - wider */}
               <div className="flex-1">
-                <SizeSelector value={size} onChange={setSize} />
+                <SizeSelector value={size} onChange={setSize} sizes={itemSizes || undefined} />
               </div>
               
               {/* Add button - narrower */}
@@ -506,7 +571,7 @@ export const PremiumMenu: React.FC<Props> = ({ items, categories, type = 'drinks
 
             {openItem && (
               <div className="mt-2.5 text-[10px] font-medium text-gray-500 px-1 flex flex-wrap gap-x-3 gap-y-0.5 justify-center">
-                <span>База: {Math.round(basePrice * sizeMult)}₸</span>
+                <span>База: {sizePrice}₸</span>
                 {milkPrice > 0 && <span>Молоко +{milkPrice}₸</span>}
                 {syrupPrice > 0 && <span>Сиропы +{syrupPrice}₸</span>}
                 {toppingPrice > 0 && <span>Топпинги +{toppingPrice}₸</span>}

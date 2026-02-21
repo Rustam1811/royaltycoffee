@@ -3,6 +3,7 @@ export function parseLoyaltyPayload(raw: string): { uid?: string; cardId?: strin
   const s = raw.trim();
   if (!s) return null;
 
+  // Format: loyalty:uid=XXXX&v=1
   if (s.startsWith('loyalty:')) {
     const query = s.slice('loyalty:'.length);
     try {
@@ -14,6 +15,21 @@ export function parseLoyaltyPayload(raw: string): { uid?: string; cardId?: strin
       return null;
     } catch {
       return null;
+    }
+  }
+
+  // Legacy JSON format: {"uid":"...","name":"...","phone":"..."}
+  if (s.startsWith('{')) {
+    try {
+      const obj = JSON.parse(s);
+      if (obj && typeof obj.uid === 'string' && obj.uid) {
+        return { uid: obj.uid };
+      }
+      if (obj && typeof obj.cardId === 'string' && obj.cardId) {
+        return { cardId: obj.cardId.toUpperCase() };
+      }
+    } catch {
+      // Not valid JSON, continue to other patterns
     }
   }
 

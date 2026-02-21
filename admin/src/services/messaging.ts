@@ -113,10 +113,10 @@ export const setupForegroundMessaging = (): (() => void) | null => {
 
     if (!notification) return;
 
-    const title = notification.title || 'Coffee Addict';
+    const title = notification.title || 'Brewly';
     const body = notification.body || '';
     const icon = notification.icon || '/icon-192x192.png';
-    const badge = '/icon-96x96.png';
+    const badge = '/coffeeaddict.jpg';
     const tag = data?.tag || 'default';
     const requireInteraction = true;
 

@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { UserGroupIcon, ArrowPathIcon, TrophyIcon, HeartIcon } from '@heroicons/react/24/outline';
+import { UserGroupIcon, ArrowPathIcon, TrophyIcon, HeartIcon, MagnifyingGlassIcon, FunnelIcon, EnvelopeIcon, PhoneIcon, ArrowTrendingUpIcon, ShoppingBagIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import BottomSheet from '@/components/BottomSheet';
 import { api } from '../services/api';
@@ -26,10 +26,25 @@ interface UserOrder { id: string; amount?: number; totalAmount?: number; items?:
 interface UserAchievement { id: string; achievementId?: string; createdAt?: string; }
 
 const levelColors: Record<string, string> = {
-  'Новичок': 'bg-slate-100 text-slate-700',
+  'Бронза': 'bg-amber-100 text-amber-800',
+  'Серебро': 'bg-slate-100 text-slate-700',
+  'Золото': 'bg-yellow-100 text-yellow-800',
+  'Платинум': 'bg-indigo-100 text-indigo-700',
+  'Новичок': 'bg-slate-100 text-slate-600',
   'Любитель': 'bg-emerald-100 text-emerald-700',
   'Эксперт': 'bg-indigo-100 text-indigo-700',
   'VIP': 'bg-amber-100 text-amber-700',
+};
+
+type SortOption = 'newest' | 'oldest' | 'most_spent' | 'least_spent' | 'most_orders' | 'most_bonus';
+
+const sortLabels: Record<SortOption, string> = {
+  newest: 'Новые',
+  oldest: 'Старые',
+  most_spent: 'Больше потратили',
+  least_spent: 'Меньше потратили',
+  most_orders: 'Больше заказов',
+  most_bonus: 'Больше бонусов',
 };
 
 const UsersPage: React.FC = () => {
@@ -45,6 +60,7 @@ const UsersPage: React.FC = () => {
   // Оптимизация: пагинация и поиск
   const [hasMore, setHasMore] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<SortOption>('most_spent');
   const [totalUsers, setTotalUsers] = useState(0);
   const USERS_PER_PAGE = 20;
 
@@ -130,15 +146,39 @@ const UsersPage: React.FC = () => {
   /**
    * Фильтрация пользователей по поисковому запросу
    */
-  const filteredUsers = users.filter(u => {
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      u.name?.toLowerCase().includes(query) ||
-      u.email?.toLowerCase().includes(query) ||
-      u.phone?.includes(query)
-    );
-  });
+  const filteredUsers = useMemo(() => {
+    let result = users.filter(u => {
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        u.name?.toLowerCase().includes(q) ||
+        u.email?.toLowerCase().includes(q) ||
+        u.phone?.includes(q)
+      );
+    });
+
+    // Сортировка
+    result = [...result].sort((a, b) => {
+      switch (sortBy) {
+        case 'newest':
+          return (b.lastOrderDate || '').localeCompare(a.lastOrderDate || '');
+        case 'oldest':
+          return (a.lastOrderDate || '').localeCompare(b.lastOrderDate || '');
+        case 'most_spent':
+          return (b.totalSpent || 0) - (a.totalSpent || 0);
+        case 'least_spent':
+          return (a.totalSpent || 0) - (b.totalSpent || 0);
+        case 'most_orders':
+          return (b.ordersCount || 0) - (a.ordersCount || 0);
+        case 'most_bonus':
+          return (b.bonusBalance || 0) - (a.bonusBalance || 0);
+        default:
+          return 0;
+      }
+    });
+
+    return result;
+  }, [users, searchQuery, sortBy]);
 
   async function openUser(u: ListedUser) {
     setActiveUser(u);
@@ -223,19 +263,40 @@ const UsersPage: React.FC = () => {
         </div>
 
         {/* Поиск */}
-        <div className="mb-6">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Поиск по имени, email или телефону..."
-            className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10 outline-none transition"
-          />
+        <div className="mb-4">
+          <div className="relative">
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Поиск по имени, email или телефону..."
+              className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-200 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10 outline-none transition"
+            />
+          </div>
           {searchQuery && (
             <p className="text-sm text-slate-500 mt-2">
               Найдено: {filteredUsers.length} из {users.length}
             </p>
           )}
+        </div>
+
+        {/* Сортировка */}
+        <div className="mb-6 flex items-center gap-2 flex-wrap">
+          <FunnelIcon className="w-4 h-4 text-slate-400 flex-shrink-0" />
+          {(Object.keys(sortLabels) as SortOption[]).map(key => (
+            <button
+              key={key}
+              onClick={() => setSortBy(key)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition ${
+                sortBy === key
+                  ? 'bg-slate-900 text-white'
+                  : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-400'
+              }`}
+            >
+              {sortLabels[key]}
+            </button>
+          ))}
         </div>
 
         {error && (
@@ -304,36 +365,36 @@ const UsersPage: React.FC = () => {
                       
                       {/* Email */}
                       {u.email && (
-                        <p className="text-xs text-slate-600 truncate mb-1">
-                          📧 {u.email}
+                        <p className="text-xs text-slate-600 truncate mb-1 flex items-center gap-1">
+                          <EnvelopeIcon className="w-3.5 h-3.5 flex-shrink-0" /> {u.email}
                         </p>
                       )}
                       
                       {/* Телефон */}
                       {u.phone && (
-                        <p className="text-xs text-slate-600 truncate">
-                          📱 {u.phone}
+                        <p className="text-xs text-slate-600 truncate flex items-center gap-1">
+                          <PhoneIcon className="w-3.5 h-3.5 flex-shrink-0" /> {u.phone}
                         </p>
                       )}
                     </div>
                   </div>
                   
                   {/* Статистика */}
-                  <div className="text-xs text-slate-600 space-y-1 border-t border-slate-200 pt-3">
-                    <div className="flex justify-between">
-                      <span>Заказов:</span>
+                  <div className="text-xs text-slate-600 space-y-1.5 border-t border-slate-200 pt-3">
+                    <div className="flex justify-between items-center">
+                      <span className="flex items-center gap-1"><ArrowTrendingUpIcon className="w-3.5 h-3.5 text-emerald-500" /> Потрачено:</span>
+                      <span className="font-bold text-emerald-600 text-sm">{(u.totalSpent || 0).toLocaleString('ru-RU')} ₸</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="flex items-center gap-1"><ShoppingBagIcon className="w-3.5 h-3.5 text-slate-400" /> Заказов:</span>
                       <span className="font-semibold text-slate-900">{u.ordersCount}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>Бонусов:</span>
-                      <span className="font-semibold text-amber-600">{u.bonusBalance || 0} ₸</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Потрачено:</span>
-                      <span className="font-semibold text-emerald-600">{u.totalSpent || 0} ₸</span>
+                    <div className="flex justify-between items-center">
+                      <span className="flex items-center gap-1"><CurrencyDollarIcon className="w-3.5 h-3.5 text-amber-500" /> Бонусов:</span>
+                      <span className="font-semibold text-amber-600">{u.bonusBalance || 0}</span>
                     </div>
                     {u.lastOrderDate && (
-                      <div className="text-[10px] text-slate-600 mt-2">
+                      <div className="text-[10px] text-slate-500 mt-2">
                         Последний заказ: {new Date(u.lastOrderDate).toLocaleDateString('ru-RU')} {new Date(u.lastOrderDate).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}
                       </div>
                     )}

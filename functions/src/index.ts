@@ -10,9 +10,31 @@ const corsHandler = cors({ origin: true });
 
 // Инициализация Firebase Admin
 if (!admin.apps.length) {
-  admin.initializeApp();
+  admin.initializeApp({
+    storageBucket: 'royal-coffee-b1ce9.firebasestorage.app',
+  });
 }
 const db = admin.firestore();
+
+/**
+ * Recursively convert Firestore Timestamps to ISO strings in plain objects
+ */
+function sanitizeFirestoreData(obj: unknown): unknown {
+  if (obj === null || obj === undefined) return obj;
+  if (obj instanceof admin.firestore.Timestamp) return obj.toDate().toISOString();
+  if (typeof obj === 'object' && obj !== null && typeof (obj as { toDate?: () => Date }).toDate === 'function') {
+    return (obj as { toDate: () => Date }).toDate().toISOString();
+  }
+  if (Array.isArray(obj)) return obj.map(sanitizeFirestoreData);
+  if (typeof obj === 'object' && obj !== null) {
+    const result: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(obj)) {
+      result[key] = sanitizeFirestoreData(val);
+    }
+    return result;
+  }
+  return obj;
+}
 
 /**
  * Получение бонусов пользователя
@@ -511,6 +533,15 @@ const httpApp = express();
 httpApp.use(cors({ origin: true }));
 httpApp.use(express.json());
 
+// Health check endpoints
+httpApp.get('/api/ping', (_req: Request, res: Response) => {
+  res.json({ ok: true });
+});
+
+httpApp.get('/api/health', (_req: Request, res: Response) => {
+  res.json({ ok: true, status: 'ok', ts: Date.now() });
+});
+
 function sendErr(res: Response, code: string, message: string, status = 400) {
   return res.status(status).json({ error: code, message });
 }
@@ -602,6 +633,280 @@ httpApp.get('/api/debug-version', async (req: Request, res: Response) => {
   });
 });
 
+// Locations API endpoint
+httpApp.all('/api/locations', async (req: Request, res: Response) => {
+  try {
+    const { action, id } = req.query;
+    const MAX_LOCATIONS = 10;
+
+    switch (action) {
+      case 'list': {
+        const snapshot = await db.collection('locations').get();
+        const locations = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate() || new Date(),
+          updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+        }));
+        return res.json({ success: true, data: locations });
+      }
+
+      case 'get': {
+        if (!id) return res.status(400).json({ success: false, error: 'Location ID required' });
+        const doc = await db.collection('locations').doc(String(id)).get();
+        if (!doc.exists) return res.status(404).json({ success: false, error: 'Location not found' });
+        return res.json({
+          success: true,
+          data: {
+            id: doc.id,
+            ...doc.data(),
+            createdAt: doc.data()?.createdAt?.toDate() || new Date(),
+            updatedAt: doc.data()?.updatedAt?.toDate() || new Date(),
+          }
+        });
+      }
+
+      case 'create': {
+        if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' });
+        
+        const snapshot = await db.collection('locations').get();
+        if (snapshot.size >= MAX_LOCATIONS) {
+          return res.status(400).json({ success: false, error: `Maximum ${MAX_LOCATIONS} locations allowed` });
+        }
+
+        const docRef = await db.collection('locations').add({
+          ...req.body,
+          isActive: req.body.isActive !== false,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        const newDoc = await db.collection('locations').doc(docRef.id).get();
+        return res.status(201).json({
+          success: true,
+          data: { id: docRef.id, ...newDoc.data() }
+        });
+      }
+
+      case 'update': {
+        if (req.method !== 'PUT') return res.status(405).json({ success: false, error: 'Method not allowed' });
+        if (!id) return res.status(400).json({ success: false, error: 'Location ID required' });
+        
+        await db.collection('locations').doc(String(id)).update({
+          ...req.body,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        const updatedDoc = await db.collection('locations').doc(String(id)).get();
+        return res.json({
+          success: true,
+          data: { id: updatedDoc.id, ...updatedDoc.data() }
+        });
+      }
+
+      case 'delete': {
+        if (req.method !== 'DELETE') return res.status(405).json({ success: false, error: 'Method not allowed' });
+        if (!id) return res.status(400).json({ success: false, error: 'Location ID required' });
+        
+        await db.collection('locations').doc(String(id)).delete();
+        return res.json({ success: true });
+      }
+
+      case 'stats': {
+        if (!id) return res.status(400).json({ success: false, error: 'Location ID required' });
+        
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+        const [currentSnapshot, previousSnapshot] = await Promise.all([
+          db.collection('orders')
+            .where('locationId', '==', String(id))
+            .where('createdAt', '>=', admin.firestore.Timestamp.fromDate(thirtyDaysAgo))
+            .get(),
+          db.collection('orders')
+            .where('locationId', '==', String(id))
+            .where('createdAt', '>=', admin.firestore.Timestamp.fromDate(sixtyDaysAgo))
+            .where('createdAt', '<', admin.firestore.Timestamp.fromDate(thirtyDaysAgo))
+            .get()
+        ]);
+
+        const currentRevenue = currentSnapshot.docs.reduce((sum, doc) => sum + (doc.data().total || doc.data().amount || 0), 0);
+        const previousRevenue = previousSnapshot.docs.reduce((sum, doc) => sum + (doc.data().total || doc.data().amount || 0), 0);
+        const growth = previousRevenue > 0 ? ((currentRevenue - previousRevenue) / previousRevenue) * 100 : 0;
+
+        return res.json({
+          success: true,
+          data: {
+            locationId: String(id),
+            revenue: currentRevenue,
+            orders: currentSnapshot.size,
+            averageCheck: currentSnapshot.size > 0 ? currentRevenue / currentSnapshot.size : 0,
+            growth: Math.round(growth * 10) / 10,
+          }
+        });
+      }
+
+      case 'analytics': {
+        const locationsSnapshot = await db.collection('locations').get();
+        const locations = locationsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        const analyticsPromises = locations.map(async (location: any) => {
+          const now = new Date();
+          const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+          const [currentSnapshot, previousSnapshot] = await Promise.all([
+            db.collection('orders')
+              .where('locationId', '==', location.id)
+              .where('createdAt', '>=', admin.firestore.Timestamp.fromDate(thirtyDaysAgo))
+              .get(),
+            db.collection('orders')
+              .where('locationId', '==', location.id)
+              .where('createdAt', '>=', admin.firestore.Timestamp.fromDate(sixtyDaysAgo))
+              .where('createdAt', '<', admin.firestore.Timestamp.fromDate(thirtyDaysAgo))
+              .get()
+          ]);
+
+          const currentRevenue = currentSnapshot.docs.reduce((sum, doc) => sum + (doc.data().total || doc.data().amount || 0), 0);
+          const previousRevenue = previousSnapshot.docs.reduce((sum, doc) => sum + (doc.data().total || doc.data().amount || 0), 0);
+          const growth = previousRevenue > 0 ? ((currentRevenue - previousRevenue) / previousRevenue) * 100 : 0;
+
+          return {
+            ...location,
+            createdAt: location.createdAt?.toDate?.() || new Date(),
+            updatedAt: location.updatedAt?.toDate?.() || new Date(),
+            stats: {
+              locationId: location.id,
+              revenue: currentRevenue,
+              orders: currentSnapshot.size,
+              averageCheck: currentSnapshot.size > 0 ? currentRevenue / currentSnapshot.size : 0,
+              growth: Math.round(growth * 10) / 10,
+            }
+          };
+        });
+
+        const analytics = await Promise.all(analyticsPromises);
+        return res.json({ success: true, data: analytics });
+      }
+
+      case 'staff': {
+        // Get staff for a specific location
+        if (!id) return res.status(400).json({ success: false, error: 'Location ID required' });
+        
+        const staffSnapshot = await db.collection('staff')
+          .where('locationId', '==', String(id))
+          .where('isActive', '==', true)
+          .get();
+        
+        const staff = staffSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate() || new Date(),
+        }));
+        
+        return res.json({ success: true, data: staff });
+      }
+
+      case 'saveStaff': {
+        // Save/update staff for a location
+        if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' });
+        if (!id) return res.status(400).json({ success: false, error: 'Location ID required' });
+        
+        const { staff } = req.body;
+        if (!Array.isArray(staff)) {
+          return res.status(400).json({ success: false, error: 'Staff array required' });
+        }
+
+        const locationId = String(id);
+        const batch = db.batch();
+
+        // First, deactivate all existing staff for this location
+        const existingStaffSnapshot = await db.collection('staff')
+          .where('locationId', '==', locationId)
+          .get();
+        
+        existingStaffSnapshot.docs.forEach(doc => {
+          batch.update(doc.ref, { isActive: false, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        });
+
+        // Then add/update new staff
+        for (const member of staff) {
+          const { email, name, role } = member;
+          if (!email || !name || !role) continue;
+
+          const normalizedEmail = email.trim().toLowerCase();
+          
+          // Check if staff with this email already exists
+          const existingSnapshot = await db.collection('staff')
+            .where('email', '==', normalizedEmail)
+            .limit(1)
+            .get();
+
+          if (!existingSnapshot.empty) {
+            // Update existing staff
+            const existingDoc = existingSnapshot.docs[0];
+            batch.update(existingDoc.ref, {
+              name,
+              role,
+              locationId,
+              isActive: true,
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          } else {
+            // Create new staff
+            const newStaffRef = db.collection('staff').doc();
+            batch.set(newStaffRef, {
+              email: normalizedEmail,
+              name,
+              role,
+              locationId,
+              isActive: true,
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          }
+        }
+
+        await batch.commit();
+        return res.json({ success: true });
+      }
+
+      case 'staffByEmail': {
+        // Get staff member's location by email
+        const { email } = req.query;
+        if (!email) return res.status(400).json({ success: false, error: 'Email required' });
+
+        const normalizedEmail = String(email).trim().toLowerCase();
+        const staffSnapshot = await db.collection('staff')
+          .where('email', '==', normalizedEmail)
+          .where('isActive', '==', true)
+          .limit(1)
+          .get();
+
+        if (staffSnapshot.empty) {
+          return res.json({ success: false, error: 'Staff not found' });
+        }
+
+        const staffDoc = staffSnapshot.docs[0].data();
+        return res.json({
+          success: true,
+          data: {
+            locationId: staffDoc.locationId,
+            role: staffDoc.role,
+          }
+        });
+      }
+
+      default:
+        return res.status(400).json({ success: false, error: 'Invalid action' });
+    }
+  } catch (error: any) {
+    console.error('[Locations API] Error:', error);
+    return res.status(500).json({ success: false, error: error.message || 'Internal server error' });
+  }
+});
+
 // Добавляем endpoint для orders
 httpApp.get('/api/orders', async (req: Request, res: Response) => {
   try {
@@ -611,34 +916,42 @@ httpApp.get('/api/orders', async (req: Request, res: Response) => {
       console.log('📅 Orders API v2 REAL - Query params:', { userId, isAdmin, from, to });
       
       if (isAdmin === 'true') {
-        // Админ панель - получаем только завершенные заказы
-        console.log('📅 Orders API - Fetching completed orders');
+        // Админ панель - получаем заказы
+        console.log('📅 Orders API - Fetching orders for admin');
         
-        let query: admin.firestore.Query = db.collection("orders")
-          .where('status', '==', 'completed')
+        // Простой запрос без составного индекса - берем последние заказы
+        const snap = await db.collection("orders")
           .orderBy('createdAt', 'desc')
-          .limit(500); // Берем последние 500 завершенных заказов
+          .limit(500)
+          .get();
         
-        const snap = await query.get();
+        console.log('📦 Firestore returned:', snap.docs.length, 'orders');
         
-        console.log('📦 Firestore returned:', snap.docs.length, 'completed orders');
-        
-        const ordersData = snap.docs.map(doc => {
-          const d = doc.data() as any;
-          return {
-            id: doc.id,
-            userId: d.userId,
-            items: d.items,
-            amount: d.amount || d.total || d.totalPrice || 0,
-            totalPrice: d.totalPrice || d.amount || d.total || 0,
-            bonusUsed: d.bonusUsed || 0,
-            bonusEarned: d.bonusEarned || 0,
-            status: d.status || 'pending',
-            date: d.createdAt?.toDate()?.toISOString(),
-            createdAt: d.createdAt?.toDate()?.toISOString() || d.createdAt,
-            timestamp: d.createdAt?.toDate()?.toISOString()
-          };
-        });
+        // Фильтруем completed статусы на сервере
+        const ordersData = snap.docs
+          .map(doc => {
+            const d = doc.data() as Record<string, any>;
+            return {
+              id: doc.id,
+              orderNumber: d.orderNumber || null,
+              orderNumberFormatted: d.orderNumberFormatted || `#${doc.id.slice(-6)}`,
+              customerName: d.customerName || null,
+              customerPhone: d.customerPhone || null,
+              userId: d.userId,
+              items: d.items,
+              amount: d.amount || d.total || d.totalPrice || 0,
+              totalPrice: d.totalPrice || d.amount || d.total || 0,
+              bonusUsed: d.bonusUsed || 0,
+              bonusEarned: d.bonusEarned || 0,
+              status: d.status || 'pending',
+              locationId: d.locationId,
+              locationName: d.locationName || null,
+              date: d.createdAt?.toDate?.()?.toISOString(),
+              createdAt: d.createdAt?.toDate?.()?.toISOString() || d.createdAt,
+              timestamp: d.createdAt?.toDate?.()?.toISOString()
+            };
+          })
+          .filter(o => o.status === 'completed'); // Фильтруем completed
         
         // Фильтруем по датам на сервере (после получения из Firestore)
         let filtered = ordersData;
@@ -666,20 +979,37 @@ httpApp.get('/api/orders', async (req: Request, res: Response) => {
       } else {
         // Пользователь - только его заказы
         if (!userId) return sendErr(res, 'BAD_REQUEST', 'userId required', 400);
-        const snap = await db.collection("orders").where("userId", "==", userId).orderBy("createdAt", "desc").limit(10).get();
+        
+        // Простой запрос без составного индекса - сортировка на сервере
+        const snap = await db.collection("orders").where("userId", "==", userId).limit(50).get();
         const ordersData = snap.docs.map(doc => {
           const d = doc.data() as any;
           return {
             id: doc.id,
+            orderNumber: d.orderNumber || null,
+            orderNumberFormatted: d.orderNumberFormatted || `#${doc.id.slice(-6)}`,
+            customerName: d.customerName || null,
+            customerPhone: d.customerPhone || null,
+            locationName: d.locationName || null,
             items: d.items,
-            amount: d.amount,
-            bonusEarned: d.bonusEarned,
-            bonusUsed: d.bonusUsed,
+            amount: d.amount || d.total || d.totalPrice || 0,
+            bonusEarned: d.bonusEarned || 0,
+            bonusUsed: d.bonusUsed || 0,
             status: d.status || 'pending',
-            date: d.createdAt?.toDate()?.toISOString()
+            date: d.createdAt?.toDate?.()?.toISOString() || d.createdAt,
+            createdAt: d.createdAt?.toDate?.()?.toISOString() || d.createdAt
           };
         });
-        return res.status(200).json(ordersData);
+        
+        // Сортируем на сервере по дате (descending)
+        ordersData.sort((a, b) => {
+          const dateA = new Date(a.createdAt || 0).getTime();
+          const dateB = new Date(b.createdAt || 0).getTime();
+          return dateB - dateA;
+        });
+        
+        // Возвращаем последние 10
+        return res.status(200).json(ordersData.slice(0, 10));
       }
     }
     
@@ -690,10 +1020,141 @@ httpApp.get('/api/orders', async (req: Request, res: Response) => {
   }
 });
 
+// ─── /api/placeOrder ─────────────────────────────────────────────
+httpApp.post('/api/placeOrder', async (req: Request, res: Response) => {
+  try {
+    const { 
+      userId, 
+      locationId, 
+      locationName,
+      items, 
+      amount, 
+      bonusToUse, 
+      customerName,
+      customerPhone,
+      deliveryType,
+      deliveryInfo,
+      customerInfo 
+    } = req.body || {};
+    
+    if (!userId || !items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ ok: false, error: 'userId and items are required' });
+    }
+    
+    // ─── Генерируем ежедневный номер заказа ───
+    const today = new Date();
+    const dateKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    
+    // Используем транзакцию для атомарного инкремента счётчика
+    const counterRef = db.collection('counters').doc(`orders_${dateKey}`);
+    let orderNumber: number;
+    
+    await db.runTransaction(async (transaction) => {
+      const counterDoc = await transaction.get(counterRef);
+      if (counterDoc.exists) {
+        orderNumber = (counterDoc.data()?.count || 0) + 1;
+      } else {
+        orderNumber = 1;
+      }
+      transaction.set(counterRef, { count: orderNumber, date: dateKey }, { merge: true });
+    });
+    
+    // Форматируем номер: #001, #002, etc.
+    const orderNumberFormatted = String(orderNumber!).padStart(3, '0');
+    
+    // Рассчитываем итоговую сумму
+    const totalAmount = amount || items.reduce((sum: number, item: any) => sum + (item.price * (item.quantity || 1)), 0);
+    const bonusUsed = Math.min(bonusToUse || 0, totalAmount);
+    const finalAmount = Math.max(0, totalAmount - bonusUsed);
+    
+    // Если используются бонусы - проверяем баланс
+    if (bonusUsed > 0) {
+      const bonusDoc = await db.collection('bonuses').doc(userId).get();
+      const currentBalance = bonusDoc.exists ? (bonusDoc.data()?.balance || 0) : 0;
+      
+      if (currentBalance < bonusUsed) {
+        return res.status(400).json({ ok: false, error: 'Insufficient bonus balance', available: currentBalance });
+      }
+    }
+    
+    // Создаем заказ с номером и данными клиента
+    const orderData = {
+      userId,
+      orderNumber: orderNumber!,
+      orderNumberFormatted: `#${orderNumberFormatted}`,
+      orderDate: dateKey,
+      locationId: locationId || null,
+      locationName: locationName || null,
+      // Данные клиента
+      customerName: customerName || 'Клиент',
+      customerPhone: customerPhone || null,
+      // Тип доставки
+      deliveryType: deliveryType || 'pickup',
+      deliveryInfo: deliveryInfo || null,
+      // Товары и суммы
+      items,
+      amount: finalAmount,
+      totalPrice: totalAmount,
+      bonusUsed,
+      bonusEarned: 0,
+      status: 'pending',
+      customerInfo: customerInfo || {},
+      createdAt: admin.firestore.Timestamp.now(),
+      updatedAt: admin.firestore.Timestamp.now()
+    };
+    
+    const orderRef = await db.collection('orders').add(orderData);
+    const orderId = orderRef.id;
+    
+    // Списываем бонусы если использовались
+    if (bonusUsed > 0) {
+      const bonusDoc = await db.collection('bonuses').doc(userId).get();
+      const currentBalance = bonusDoc.exists ? (bonusDoc.data()?.balance || 0) : 0;
+      const newBalance = currentBalance - bonusUsed;
+      
+      await db.collection('bonuses').doc(userId).set({
+        balance: newBalance,
+        totalUsed: (bonusDoc.data()?.totalUsed || 0) + bonusUsed,
+        updatedAt: admin.firestore.Timestamp.now()
+      }, { merge: true });
+      
+      // Записываем историю списания бонусов
+      await db.collection('bonusHistory').add({
+        userId,
+        type: 'used',
+        amount: bonusUsed,
+        balance: newBalance,
+        orderId,
+        description: `Списано за заказ #${orderNumberFormatted}`,
+        createdAt: admin.firestore.Timestamp.now()
+      });
+    }
+    
+    console.log(`[PlaceOrder] Created order #${orderNumberFormatted} (${orderId}) for ${customerName} (${customerPhone})`);
+    
+    return res.status(201).json({
+      ok: true,
+      orderId,
+      orderNumber: orderNumber!,
+      orderNumberFormatted: `#${orderNumberFormatted}`,
+      order: {
+        id: orderId,
+        ...orderData,
+        createdAt: new Date().toISOString()
+      },
+      message: `Заказ #${orderNumberFormatted} принят!`
+    });
+  } catch (error: unknown) {
+    console.error('[PlaceOrder] Error:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return res.status(500).json({ ok: false, error: message });
+  }
+});
+
 // Endpoint для поиска пользователей по телефону (для POS системы)
 httpApp.get('/api/users', async (req: Request, res: Response) => {
   try {
-    const { action, phone } = req.query;
+    const { action, phone, page, limit } = req.query;
     
     // Get user by phone - FAST endpoint for POS
     if (action === 'getByPhone' && phone) {
@@ -737,10 +1198,131 @@ httpApp.get('/api/users', async (req: Request, res: Response) => {
       });
     }
     
+    // Список пользователей для админ-панели
+    if (action === 'list') {
+      const pageNum = Math.max(1, parseInt(page as string) || 1);
+      const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 20));
+      const offset = (pageNum - 1) * limitNum;
+      
+      console.log(`[Users list] page=${pageNum}, limit=${limitNum}, offset=${offset}`);
+      
+      // Получаем общее количество пользователей
+      const countSnapshot = await db.collection('users').count().get();
+      const totalCount = countSnapshot.data().count;
+      
+      // Получаем пользователей с пагинацией
+      let query = db.collection('users')
+        .orderBy('createdAt', 'desc')
+        .limit(limitNum);
+      
+      // Для offset используем startAfter если не первая страница
+      if (offset > 0) {
+        // Получаем документ для startAfter
+        const skipSnapshot = await db.collection('users')
+          .orderBy('createdAt', 'desc')
+          .limit(offset)
+          .get();
+        
+        if (!skipSnapshot.empty) {
+          const lastDoc = skipSnapshot.docs[skipSnapshot.docs.length - 1];
+          query = db.collection('users')
+            .orderBy('createdAt', 'desc')
+            .startAfter(lastDoc)
+            .limit(limitNum);
+        }
+      }
+      
+      const usersSnapshot = await query.get();
+      
+      // Fetch bonus balances and order counts in parallel for all users
+      const userIds = usersSnapshot.docs.map(d => d.id);
+      
+      // Batch fetch bonuses
+      const bonusPromises = userIds.map(id => db.collection('bonuses').doc(id).get());
+      const bonusDocs = await Promise.all(bonusPromises);
+      const bonusMap = new Map<string, number>();
+      bonusDocs.forEach((bDoc, i) => {
+        bonusMap.set(userIds[i], bDoc.exists ? (bDoc.data()?.balance || 0) : 0);
+      });
+      
+      // Batch fetch order counts and totalSpent
+      const orderPromises = userIds.map(id =>
+        db.collection('orders').where('userId', '==', id).get()
+      );
+      const orderSnapshots = await Promise.all(orderPromises);
+      const ordersCountMap = new Map<string, number>();
+      const totalSpentMap = new Map<string, number>();
+      const lastOrderMap = new Map<string, string | null>();
+      orderSnapshots.forEach((snap, i) => {
+        ordersCountMap.set(userIds[i], snap.size);
+        let spent = 0;
+        let lastDate: Date | null = null;
+        snap.docs.forEach(oDoc => {
+          const od = oDoc.data();
+          spent += od.amount || od.totalPrice || 0;
+          const rawTs = od.createdAt;
+          const ts: Date | null = rawTs?.toDate ? rawTs.toDate() : (rawTs ? new Date(String(rawTs)) : null);
+          if (ts && (!lastDate || ts.getTime() > lastDate.getTime())) lastDate = ts;
+        });
+        totalSpentMap.set(userIds[i], spent);
+        lastOrderMap.set(userIds[i], lastDate ? (lastDate as Date).toISOString() : null);
+      });
+      
+      const users = usersSnapshot.docs.map(doc => {
+        const data = doc.data();
+        const totalOrders = ordersCountMap.get(doc.id) || 0;
+        const totalSpent = totalSpentMap.get(doc.id) || 0;
+        
+        // Determine level based on total spent amount
+        let level = 'Бронза';
+        let levelRank = 0;
+        if (totalSpent >= 25000) { level = 'Платинум'; levelRank = 3; }
+        else if (totalSpent >= 15000) { level = 'Золото'; levelRank = 2; }
+        else if (totalSpent >= 5000) { level = 'Серебро'; levelRank = 1; }
+        
+        return {
+          id: doc.id,
+          uid: doc.id,
+          phone: data.phone || null,
+          email: data.email || null,
+          displayName: data.displayName || data.name || null,
+          name: data.name || data.displayName || null,
+          avatar: data.avatar || null,
+          role: data.role || 'user',
+          isActive: data.isActive !== false,
+          isCloseFriend: data.isCloseFriend || false,
+          bonusBalance: bonusMap.get(doc.id) || 0,
+          ordersCount: totalOrders,
+          totalOrders,
+          totalSpent: totalSpentMap.get(doc.id) || 0,
+          lastOrderDate: lastOrderMap.get(doc.id) || null,
+          level,
+          levelRank,
+          primaryLocationId: data.primaryLocationId || null,
+          createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt || null,
+          lastLogin: data.lastLogin?.toDate?.()?.toISOString() || data.lastLogin || null
+        };
+      });
+      
+      return res.json({
+        ok: true,
+        users,
+        total: totalCount,
+        hasMore: users.length === limitNum,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total: totalCount,
+          totalPages: Math.ceil(totalCount / limitNum)
+        }
+      });
+    }
+    
     return res.status(400).json({ ok: false, error: 'Invalid action or missing parameters' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[Users] Error:', error);
-    return res.status(500).json({ ok: false, error: error.message || 'Internal server error' });
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return res.status(500).json({ ok: false, error: message });
   }
 });
 
@@ -760,41 +1342,1038 @@ httpApp.post('/api/upload-story', async (req: Request, res: Response) => {
     const timestamp = Date.now();
     const sanitizedName = fileName.replace(/[^a-zA-Z0-9.]/g, '_');
     const storagePath = `stories/${timestamp}_${sanitizedName}`;
+    const contentType = mimeType || 'image/jpeg';
     
-    // Загружаем в Storage через Admin SDK
+    // Генерируем download-токен (Firebase формат)
+    const downloadToken = crypto.randomUUID();
+    
+    // Используем default bucket из initializeApp (storageBucket)
     const bucket = admin.storage().bucket();
     const file = bucket.file(storagePath);
     
     await file.save(buffer, {
       metadata: {
-        contentType: mimeType || 'image/jpeg',
+        contentType,
         metadata: {
-          firebaseStorageDownloadTokens: crypto.randomUUID(),
-        }
+          firebaseStorageDownloadTokens: downloadToken,
+        },
       },
-      public: true,
     });
 
-    // Получаем публичный URL
-    const [url] = await file.getSignedUrl({
-      action: 'read',
-      expires: '01-01-2500', // Бессрочный URL
-    });
+    // Формируем Firebase Download URL с токеном
+    // Формат: https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{path}?alt=media&token={token}
+    const bucketName = bucket.name;
+    const encodedPath = encodeURIComponent(storagePath);
+    const url = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media&token=${downloadToken}`;
 
     return res.json({
       success: true,
       url,
       path: storagePath,
-      contentType: mimeType || 'image/jpeg'
+      contentType,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Upload error:', error);
+    const message = error instanceof Error ? error.message : 'Upload failed';
     return res.status(500).json({ 
       success: false, 
-      error: error.message || 'Upload failed' 
+      error: message 
     });
   }
 });
+
+// ─── /api/bonus ─────────────────────────────────────────────
+httpApp.get('/api/bonus', async (req: Request, res: Response) => {
+  try {
+    const { action, userId } = req.query;
+    
+    // Получение настроек бонусной системы
+    if (action === 'settings') {
+      const settingsDoc = await db.collection('bonusSettings').doc('default').get();
+      const settings = settingsDoc.exists ? settingsDoc.data() : null;
+      
+      // Возвращаем настройки или значения по умолчанию
+      return res.json({
+        ok: true,
+        pointsPerRuble: settings?.pointsPerRuble ?? 1,
+        minOrderForBonus: settings?.minOrderForBonus ?? 200,
+        multipliers: settings?.multipliers ?? {
+          weekend: 2,
+          morning: 1.5,
+          vip: 3
+        },
+        categories: settings?.categories ?? {
+          coffee: { multiplier: 1.2, name: 'Кофе' },
+          desserts: { multiplier: 1.1, name: 'Десерты' },
+          breakfast: { multiplier: 1.3, name: 'Завтраки' }
+        },
+        rewards: settings?.rewards ?? [
+          { id: 'coffee_free', points: 100, reward: 'Бесплатный кофе', isActive: true },
+          { id: 'discount_10', points: 500, reward: 'Скидка 10%', isActive: true },
+          { id: 'dessert_free', points: 1000, reward: 'Бесплатный десерт', isActive: true }
+        ],
+        levels: settings?.levels ?? [
+          { level: 1, name: 'Бронза', minSpent: 0, benefits: '5% кешбэк с каждого заказа', cashbackPercent: 5 },
+          { level: 2, name: 'Серебро', minSpent: 5000, benefits: '10% кешбэк с каждого заказа', cashbackPercent: 10 },
+          { level: 3, name: 'Золото', minSpent: 15000, benefits: '15% кешбэк + раннее уведомление', cashbackPercent: 15 },
+          { level: 4, name: 'Платинум', minSpent: 25000, benefits: '20% кешбэк + приоритет + эксклюзив', cashbackPercent: 20 }
+        ]
+      });
+    }
+    
+    // Получение бонусов конкретного пользователя
+    if (userId) {
+      const bonusDoc = await db.collection('bonuses').doc(userId as string).get();
+      const bonusData = bonusDoc.exists ? bonusDoc.data() : {};
+      
+      // Получаем заказы пользователя
+      const ordersSnapshot = await db.collection('orders')
+        .where('userId', '==', userId)
+        .get();
+      const totalOrders = ordersSnapshot.size;
+      
+      // Считаем общую сумму потраченных денег
+      let totalSpent = 0;
+      ordersSnapshot.forEach(doc => {
+        const d = doc.data();
+        totalSpent += d.amount || d.totalAmount || 0;
+      });
+      
+      // Загружаем настройки для определения уровня
+      const settingsDoc = await db.collection('bonusSettings').doc('default').get();
+      const settings = settingsDoc.exists ? settingsDoc.data() : null;
+      
+      let level = 'Бронза';
+      let nextLevel = 'Серебро';
+      let spentToNextLevel = 5000;
+      let cashbackPercent = 5;
+      
+      interface LevelConfig {
+        minSpent?: number;
+        minPoints?: number;
+        name: string;
+        cashbackPercent?: number;
+        bonusMultiplier?: number;
+      }
+      
+      if (settings?.levels) {
+        const sortedLevels = [...settings.levels].sort((a: LevelConfig, b: LevelConfig) => 
+          (b.minSpent ?? b.minPoints ?? 0) - (a.minSpent ?? a.minPoints ?? 0)
+        );
+        for (let i = 0; i < sortedLevels.length; i++) {
+          const lvl = sortedLevels[i];
+          const threshold = lvl.minSpent ?? lvl.minPoints ?? 0;
+          if (totalSpent >= threshold) {
+            level = lvl.name;
+            cashbackPercent = lvl.cashbackPercent || 5;
+            if (i > 0) {
+              nextLevel = sortedLevels[i - 1].name;
+              const nextThreshold = sortedLevels[i - 1].minSpent ?? sortedLevels[i - 1].minPoints ?? 0;
+              spentToNextLevel = nextThreshold - totalSpent;
+            } else {
+              nextLevel = lvl.name;
+              spentToNextLevel = 0;
+            }
+            break;
+          }
+        }
+      } else {
+        // Fallback логика — по сумме потраченных денег
+        if (totalSpent >= 25000) {
+          level = 'Платинум'; nextLevel = 'Платинум'; spentToNextLevel = 0; cashbackPercent = 20;
+        } else if (totalSpent >= 15000) {
+          level = 'Золото'; nextLevel = 'Платинум'; spentToNextLevel = 25000 - totalSpent; cashbackPercent = 15;
+        } else if (totalSpent >= 5000) {
+          level = 'Серебро'; nextLevel = 'Золото'; spentToNextLevel = 15000 - totalSpent; cashbackPercent = 10;
+        } else {
+          level = 'Бронза'; nextLevel = 'Серебро'; spentToNextLevel = 5000 - totalSpent; cashbackPercent = 5;
+        }
+      }
+      
+      return res.json({
+        ok: true,
+        balance: bonusData?.balance || 0,
+        level,
+        cashbackPercent,
+        multiplier: cashbackPercent / 100, // обратная совместимость
+        totalOrders,
+        totalSpent,
+        nextLevel,
+        spentToNextLevel,
+        ordersToNextLevel: spentToNextLevel, // обратная совместимость
+        earnedThisMonth: bonusData?.totalEarned || 0,
+        totalEarned: bonusData?.totalEarned || 0,
+        totalUsed: bonusData?.totalUsed || 0
+      });
+    }
+    
+    return res.status(400).json({ ok: false, error: 'Missing action or userId parameter' });
+  } catch (error: unknown) {
+    console.error('[Bonus] Error:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return res.status(500).json({ ok: false, error: message });
+  }
+});
+
+// ─── /api/promo ─────────────────────────────────────────────
+httpApp.get('/api/promo', async (req: Request, res: Response) => {
+  try {
+    const { action, userId } = req.query;
+    
+    // Получение списка промоакций
+    if (action === 'promotions') {
+      const promotionsRef = await db.collection('promotions').get();
+      const promotions: Record<string, unknown>[] = [];
+      promotionsRef.forEach(doc => {
+        promotions.push(sanitizeFirestoreData({ id: doc.id, ...doc.data() }) as Record<string, unknown>);
+      });
+      
+      // Если пустая коллекция, возвращаем mock данные
+      if (promotions.length === 0) {
+        return res.json({
+          ok: true,
+          promotions: [
+            {
+              id: 'promo_001',
+              title: 'Happy Hour',
+              description: 'Скидка 20% с 15:00 до 17:00',
+              discountType: 'percentage',
+              discountValue: 20,
+              isActive: true,
+              startDate: '2025-01-01',
+              endDate: '2026-12-31',
+              category: 'all',
+              minOrderAmount: 100,
+              targetAudience: 'all_users'
+            },
+            {
+              id: 'promo_002',
+              title: 'Бонус выходного дня',
+              description: 'Двойные бонусы по выходным',
+              discountType: 'percentage',
+              discountValue: 0,
+              isActive: true,
+              startDate: '2025-01-01',
+              endDate: '2026-12-31',
+              category: 'all',
+              minOrderAmount: 0,
+              targetAudience: 'all_users'
+            }
+          ]
+        });
+      }
+      
+      return res.json({ ok: true, promotions });
+    }
+    
+    // Получение достижений
+    if (action === 'achievements') {
+      if (userId) {
+        // Достижения конкретного пользователя
+        const userAchievementsRef = await db.collection('userAchievements')
+          .where('userId', '==', userId)
+          .get();
+        const userAchievements: Record<string, unknown>[] = [];
+        userAchievementsRef.forEach(doc => {
+          userAchievements.push(sanitizeFirestoreData({ id: doc.id, ...doc.data() }) as Record<string, unknown>);
+        });
+        return res.json({ ok: true, userAchievements });
+      }
+      
+      // Все достижения
+      const achievementsRef = await db.collection('achievements').get();
+      const achievements: Record<string, unknown>[] = [];
+      achievementsRef.forEach(doc => {
+        achievements.push(sanitizeFirestoreData({ id: doc.id, ...doc.data() }) as Record<string, unknown>);
+      });
+      
+      if (achievements.length === 0) {
+        return res.json({
+          ok: true,
+          achievements: [
+            {
+              id: 'ach_001',
+              title: 'Первый заказ',
+              description: 'Сделайте свой первый заказ',
+              reward: 100,
+              icon: '🎯',
+              condition: 'first_order',
+              category: 'orders',
+              isActive: true
+            },
+            {
+              id: 'ach_002',
+              title: 'Кофейный гурман',
+              description: 'Закажите 10 разных напитков',
+              reward: 500,
+              icon: '☕',
+              condition: 'orders_count_10',
+              category: 'orders',
+              isActive: true
+            }
+          ]
+        });
+      }
+      
+      return res.json({ ok: true, achievements });
+    }
+    
+    // Получение промокодов
+    if (action === 'codes') {
+      if (userId) {
+        const userCodesRef = await db.collection('userPromoCodes')
+          .where('userId', '==', userId)
+          .get();
+        const userCodes: Record<string, unknown>[] = [];
+        userCodesRef.forEach(doc => {
+          const data = doc.data();
+          userCodes.push({
+            id: doc.id,
+            ...data,
+            expiresAt: data.expiresAt?.toDate?.() || data.expiresAt
+          });
+        });
+        return res.json({ ok: true, codes: userCodes });
+      }
+      
+      const codesRef = await db.collection('promoCodes')
+        .where('isActive', '==', true)
+        .get();
+      const codes: Record<string, unknown>[] = [];
+      codesRef.forEach(doc => {
+        const data = doc.data();
+        codes.push({
+          id: doc.id,
+          ...data,
+          expiresAt: data.expiresAt?.toDate?.() || data.expiresAt
+        });
+      });
+      return res.json({ ok: true, codes });
+    }
+    
+    return res.status(400).json({ ok: false, error: 'Unknown action' });
+  } catch (error: unknown) {
+    console.error('[Promo] Error:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return res.status(500).json({ ok: false, error: message });
+  }
+});
+
+httpApp.post('/api/promo', async (req: Request, res: Response) => {
+  try {
+    const { action } = req.query;
+    const body = req.body || {};
+    
+    // Создание промоакции
+    if (action === 'promotions') {
+      const { title, description, image, discountType, discountValue, startDate, endDate, category, minOrderAmount, targetAudience, isActive } = body;
+      
+      if (!title || !description || discountValue === undefined) {
+        return res.status(400).json({ ok: false, error: 'Missing required fields: title, description, discountValue' });
+      }
+      
+      const newPromotion = {
+        title,
+        description,
+        image: image || '',
+        discountType: discountType || 'percentage',
+        discountValue: parseInt(discountValue),
+        startDate: startDate || new Date().toISOString().split('T')[0],
+        endDate: endDate || '2026-12-31',
+        category: category || 'all',
+        minOrderAmount: parseInt(minOrderAmount) || 0,
+        targetAudience: targetAudience || 'all_users',
+        isActive: isActive !== false,
+        usageCount: 0,
+        createdAt: new Date().toISOString()
+      };
+      
+      const docRef = await db.collection('promotions').add(newPromotion);
+      return res.json({ ok: true, message: 'Promotion created successfully', promotion: { id: docRef.id, ...newPromotion } });
+    }
+    
+    // Создание достижения
+    if (action === 'achievements') {
+      const { title, description, reward, icon, condition, category, isActive } = body;
+      
+      if (!title || !description || reward === undefined) {
+        return res.status(400).json({ ok: false, error: 'Missing required fields: title, description, reward' });
+      }
+      
+      const newAchievement = {
+        title,
+        description,
+        reward: parseInt(reward),
+        icon: icon || '🏆',
+        condition: condition || 'custom',
+        category: category || 'general',
+        isActive: isActive !== false,
+        createdAt: new Date().toISOString()
+      };
+      
+      const docRef = await db.collection('achievements').add(newAchievement);
+      return res.json({ ok: true, message: 'Achievement created successfully', achievement: { id: docRef.id, ...newAchievement } });
+    }
+    
+    return res.status(400).json({ ok: false, error: 'Unknown action' });
+  } catch (error: unknown) {
+    console.error('[Promo POST] Error:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return res.status(500).json({ ok: false, error: message });
+  }
+});
+
+// ─── PUT /api/promo — update promotions / achievements ──────────
+httpApp.put('/api/promo', async (req: Request, res: Response) => {
+  try {
+    const { action, id } = req.query;
+    const body = req.body || {};
+
+    if (action === 'promotions' && id) {
+      const docRef = db.collection('promotions').doc(id as string);
+      const existing = await docRef.get();
+      if (!existing.exists) {
+        return res.status(404).json({ ok: false, error: 'Promotion not found' });
+      }
+
+      const { title, description, image, discountType, discountValue, startDate, endDate, category, minOrderAmount, targetAudience, isActive } = body;
+      const updatedPromotion: Record<string, unknown> = {
+        ...(title !== undefined && { title }),
+        ...(description !== undefined && { description }),
+        ...(image !== undefined && { image }),
+        ...(discountType !== undefined && { discountType }),
+        ...(discountValue !== undefined && { discountValue: Number(discountValue) }),
+        ...(startDate !== undefined && { startDate }),
+        ...(endDate !== undefined && { endDate }),
+        ...(category !== undefined && { category }),
+        ...(minOrderAmount !== undefined && { minOrderAmount: Number(minOrderAmount) }),
+        ...(targetAudience !== undefined && { targetAudience }),
+        ...(isActive !== undefined && { isActive }),
+        updatedAt: new Date().toISOString()
+      };
+
+      await docRef.update(updatedPromotion);
+      return res.json({ ok: true, message: 'Promotion updated successfully' });
+    }
+
+    if (action === 'achievements' && id) {
+      const docRef = db.collection('achievements').doc(id as string);
+      const existing = await docRef.get();
+      if (!existing.exists) {
+        return res.status(404).json({ ok: false, error: 'Achievement not found' });
+      }
+
+      const { title, description, reward, icon, condition, category, isActive } = body;
+      const updatedAchievement: Record<string, unknown> = {
+        ...(title !== undefined && { title }),
+        ...(description !== undefined && { description }),
+        ...(reward !== undefined && { reward: Number(reward) }),
+        ...(icon !== undefined && { icon }),
+        ...(condition !== undefined && { condition }),
+        ...(category !== undefined && { category }),
+        ...(isActive !== undefined && { isActive }),
+        updatedAt: new Date().toISOString()
+      };
+
+      await docRef.update(updatedAchievement);
+      return res.json({ ok: true, message: 'Achievement updated successfully' });
+    }
+
+    return res.status(400).json({ ok: false, error: 'Unknown action or missing id' });
+  } catch (error: unknown) {
+    console.error('[Promo PUT] Error:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return res.status(500).json({ ok: false, error: message });
+  }
+});
+
+// ─── DELETE /api/promo — delete promotions / achievements ───────
+httpApp.delete('/api/promo', async (req: Request, res: Response) => {
+  try {
+    const { action, id } = req.query;
+
+    if (action === 'promotions' && id) {
+      const docRef = db.collection('promotions').doc(id as string);
+      const existing = await docRef.get();
+      if (!existing.exists) {
+        return res.status(404).json({ ok: false, error: 'Promotion not found' });
+      }
+      await docRef.delete();
+      return res.json({ ok: true, message: 'Promotion deleted successfully' });
+    }
+
+    if (action === 'achievements' && id) {
+      const docRef = db.collection('achievements').doc(id as string);
+      const existing = await docRef.get();
+      if (!existing.exists) {
+        return res.status(404).json({ ok: false, error: 'Achievement not found' });
+      }
+      await docRef.delete();
+      return res.json({ ok: true, message: 'Achievement deleted successfully' });
+    }
+
+    return res.status(400).json({ ok: false, error: 'Unknown action or missing id' });
+  } catch (error: unknown) {
+    console.error('[Promo DELETE] Error:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return res.status(500).json({ ok: false, error: message });
+  }
+});
+
+// ─── Leaderboard API ─────────────────────────────────────────────
+httpApp.get('/api/leaderboard', async (req: Request, res: Response) => {
+  try {
+    const { limit: limitParam, userId } = req.query;
+    const limitNum = Math.min(50, Math.max(1, parseInt(limitParam as string) || 10));
+    
+    // Получаем топ пользователей по количеству заказов
+    const usersSnapshot = await db.collection('users')
+      .orderBy('ordersCount', 'desc')
+      .limit(limitNum)
+      .get();
+    
+    const leaders = usersSnapshot.docs.map((doc, index) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        name: data.displayName || data.name || 'Пользователь',
+        ordersCount: data.ordersCount || 0,
+        position: index + 1,
+        level: data.level || 'Бронза'
+      };
+    });
+    
+    // Если запрошен конкретный пользователь и его нет в топе
+    let currentUser = null;
+    if (userId) {
+      const userInList = leaders.find(l => l.id === userId);
+      if (!userInList) {
+        // Получаем данные пользователя
+        const userDoc = await db.collection('users').doc(userId as string).get();
+        if (userDoc.exists) {
+          const userData = userDoc.data()!;
+          // Считаем позицию
+          const higherCount = await db.collection('users')
+            .where('ordersCount', '>', userData.ordersCount || 0)
+            .count()
+            .get();
+          
+          currentUser = {
+            id: userDoc.id,
+            name: userData.displayName || userData.name || 'Вы',
+            ordersCount: userData.ordersCount || 0,
+            position: higherCount.data().count + 1,
+            level: userData.level || 'Бронза'
+          };
+        }
+      } else {
+        currentUser = userInList;
+      }
+    }
+    
+    return res.json({
+      ok: true,
+      leaders,
+      currentUser,
+      total: usersSnapshot.size
+    });
+  } catch (error: unknown) {
+    console.error('[Leaderboard] Error:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return res.status(500).json({ ok: false, error: message });
+  }
+});
+
+// ─── Extended Analytics API ─────────────────────────────────────────────
+httpApp.get('/api/analytics/extended', async (req: Request, res: Response) => {
+  try {
+    const { locationId, period } = req.query;
+    
+    // Определяем период
+    const now = new Date();
+    let startDate: Date;
+    switch (period) {
+      case 'week':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'month':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case 'year':
+        startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
+    
+    // Простой запрос по дате (без составного индекса)
+    // Фильтруем status и locationId на сервере
+    const ordersQuery = db.collection('orders')
+      .where('createdAt', '>=', admin.firestore.Timestamp.fromDate(startDate));
+    
+    const ordersSnapshot = await ordersQuery.get();
+    
+    // Фильтруем completed + locationId на сервере
+    const filteredDocs = ordersSnapshot.docs.filter(doc => {
+      const data = doc.data();
+      if (data.status !== 'completed') return false;
+      if (locationId && data.locationId !== locationId) return false;
+      return true;
+    });
+    
+    // Анализируем пиковые часы
+    const hourlyStats: Record<number, { count: number; revenue: number }> = {};
+    for (let i = 0; i < 24; i++) {
+      hourlyStats[i] = { count: 0, revenue: 0 };
+    }
+    
+    // Анализируем популярные продукты
+    const productStats: Record<string, { name: string; count: number; revenue: number }> = {};
+    
+    // Анализируем по дням недели
+    const dayStats: Record<number, { count: number; revenue: number }> = {};
+    for (let i = 0; i < 7; i++) {
+      dayStats[i] = { count: 0, revenue: 0 };
+    }
+    
+    let totalRevenue = 0;
+    let totalOrders = 0;
+    
+    filteredDocs.forEach(doc => {
+      const order = doc.data();
+      const orderDate = order.createdAt?.toDate?.() || new Date(order.createdAt);
+      const hour = orderDate.getHours();
+      const dayOfWeek = orderDate.getDay();
+      const amount = order.amount || order.totalPrice || 0;
+      
+      // Часовая статистика
+      hourlyStats[hour].count++;
+      hourlyStats[hour].revenue += amount;
+      
+      // Дневная статистика
+      dayStats[dayOfWeek].count++;
+      dayStats[dayOfWeek].revenue += amount;
+      
+      // Статистика по продуктам
+      if (order.items && Array.isArray(order.items)) {
+        order.items.forEach((item: { name?: string; id?: string; price?: number; quantity?: number }) => {
+          const productKey = item.name || item.id || 'Unknown';
+          if (!productStats[productKey]) {
+            productStats[productKey] = { name: productKey, count: 0, revenue: 0 };
+          }
+          productStats[productKey].count += item.quantity || 1;
+          productStats[productKey].revenue += (item.price || 0) * (item.quantity || 1);
+        });
+      }
+      
+      totalRevenue += amount;
+      totalOrders++;
+    });
+    
+    // Находим пиковые часы
+    const peakHours = Object.entries(hourlyStats)
+      .map(([hour, stats]) => ({ hour: parseInt(hour), ...stats }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+    
+    // Находим популярные продукты
+    const popularProducts = Object.values(productStats)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+    
+    // Находим лучшие дни
+    const dayNames = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+    const bestDays = Object.entries(dayStats)
+      .map(([day, stats]) => ({ day: dayNames[parseInt(day)], dayIndex: parseInt(day), ...stats }))
+      .sort((a, b) => b.count - a.count);
+    
+    return res.json({
+      ok: true,
+      analytics: {
+        period: period || 'month',
+        locationId: locationId || 'all',
+        summary: {
+          totalOrders,
+          totalRevenue,
+          averageCheck: totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0
+        },
+        peakHours: peakHours.map(h => ({
+          hour: `${h.hour}:00 - ${h.hour + 1}:00`,
+          orders: h.count,
+          revenue: h.revenue
+        })),
+        popularProducts,
+        bestDays,
+        hourlyDistribution: Object.entries(hourlyStats).map(([hour, stats]) => ({
+          hour: parseInt(hour),
+          label: `${hour}:00`,
+          orders: stats.count,
+          revenue: stats.revenue
+        }))
+      }
+    });
+  } catch (error: unknown) {
+    console.error('[Analytics Extended] Error:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return res.status(500).json({ ok: false, error: message });
+  }
+});
+
+// ─── Push Notifications API ─────────────────────────────────────────────
+httpApp.post('/api/notifications/send', async (req: Request, res: Response) => {
+  try {
+    const { title, body, targetLevel, targetAll, data } = req.body;
+    
+    if (!title || !body) {
+      return res.status(400).json({ ok: false, error: 'Missing title or body' });
+    }
+    
+    // Получаем токены пользователей
+    let usersQuery = db.collection('users').where('fcmToken', '!=', null);
+    
+    // Фильтруем по уровню если указан
+    if (targetLevel && !targetAll) {
+      usersQuery = usersQuery.where('level', '==', targetLevel);
+    }
+    
+    const usersSnapshot = await usersQuery.limit(500).get();
+    
+    const tokens: string[] = [];
+    usersSnapshot.docs.forEach(doc => {
+      const userData = doc.data();
+      if (userData.fcmToken) {
+        tokens.push(userData.fcmToken);
+      }
+    });
+    
+    if (tokens.length === 0) {
+      return res.json({ ok: true, sent: 0, message: 'No users with FCM tokens found' });
+    }
+    
+    // Отправляем уведомления батчами по 500
+    const messaging = admin.messaging();
+    const batchSize = 500;
+    let successCount = 0;
+    let failureCount = 0;
+    
+    for (let i = 0; i < tokens.length; i += batchSize) {
+      const batch = tokens.slice(i, i + batchSize);
+      
+      const message = {
+        notification: { title, body },
+        data: data || {},
+        tokens: batch
+      };
+      
+      try {
+        const response = await messaging.sendEachForMulticast(message);
+        successCount += response.successCount;
+        failureCount += response.failureCount;
+      } catch (e) {
+        console.error('Error sending batch:', e);
+        failureCount += batch.length;
+      }
+    }
+    
+    // Логируем отправку
+    await db.collection('notificationLogs').add({
+      title,
+      body,
+      targetLevel: targetLevel || 'all',
+      sentCount: successCount,
+      failedCount: failureCount,
+      createdAt: admin.firestore.Timestamp.now()
+    });
+    
+    return res.json({
+      ok: true,
+      sent: successCount,
+      failed: failureCount,
+      total: tokens.length
+    });
+  } catch (error: unknown) {
+    console.error('[Notifications Send] Error:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return res.status(500).json({ ok: false, error: message });
+  }
+});
+
+// ─── POS API Endpoints ─────────────────────────────────────────────
+// Сканирование QR-кода клиента - идентификация пользователя
+httpApp.post('/api/pos/scan', async (req: Request, res: Response) => {
+  try {
+    const { payload } = req.body;
+    
+    if (!payload) {
+      return res.status(400).json({ ok: false, error: 'Missing payload' });
+    }
+    
+    // Парсим QR данные (может быть JSON строка или просто uid)
+    let userData: { uid?: string; userId?: string; phone?: string; name?: string } = {};
+    
+    try {
+      userData = typeof payload === 'string' ? JSON.parse(payload) : payload;
+    } catch {
+      // Если не JSON, считаем что это просто uid
+      userData = { uid: payload };
+    }
+    
+    const uid = userData.uid || userData.userId;
+    
+    if (!uid) {
+      return res.status(400).json({ ok: false, error: 'Invalid QR code - no user ID' });
+    }
+    
+    // Получаем данные пользователя (Firestore doc or Firebase Auth fallback)
+    let userDoc = await db.collection('users').doc(uid).get();
+    
+    if (!userDoc.exists) {
+      // User doc not in Firestore — try Firebase Auth to get basic profile
+      try {
+        const authUser = await admin.auth().getUser(uid);
+        // Auto-create Firestore user document from Auth profile
+        const autoData = {
+          phone: authUser.phoneNumber || '',
+          name: authUser.displayName || authUser.email?.split('@')[0] || 'Клиент',
+          email: authUser.email || '',
+          avatar: authUser.photoURL || '',
+          role: 'user',
+          createdAt: admin.firestore.Timestamp.now(),
+          updatedAt: admin.firestore.Timestamp.now(),
+        };
+        await db.collection('users').doc(uid).set(autoData, { merge: true });
+        userDoc = await db.collection('users').doc(uid).get();
+        console.log(`[POS Scan] Auto-created user doc for ${uid} from Auth profile`);
+      } catch (_authErr) {
+        console.warn(`[POS Scan] User ${uid} not found in Auth either, creating minimal doc`);
+        // Auto-create minimal Firestore user doc so POS can link the customer
+        const minimalData = {
+          phone: '',
+          name: 'POS Клиент',
+          email: '',
+          avatar: '',
+          role: 'user',
+          createdAt: admin.firestore.Timestamp.now(),
+          updatedAt: admin.firestore.Timestamp.now(),
+        };
+        await db.collection('users').doc(uid).set(minimalData, { merge: true });
+        userDoc = await db.collection('users').doc(uid).get();
+        console.log(`[POS Scan] Auto-created minimal user doc for ${uid}`);
+      }
+    }
+    
+    if (!userDoc.exists) {
+      return res.status(404).json({ ok: false, error: 'User not found' });
+    }
+    
+    const user = userDoc.data()!;
+    
+    // Получаем бонусный баланс
+    const bonusDoc = await db.collection('bonuses').doc(uid).get();
+    const bonusData = bonusDoc.exists ? bonusDoc.data() : { balance: 0 };
+    
+    // Получаем количество заказов
+    const ordersSnapshot = await db.collection('orders')
+      .where('userId', '==', uid)
+      .get();
+    const totalOrders = ordersSnapshot.size;
+    
+    // Получаем ledger (историю транзакций)
+    const ledgerSnapshot = await db.collection('users').doc(uid)
+      .collection('ledger')
+      .orderBy('createdAt', 'desc')
+      .limit(20)
+      .get();
+    
+    const ledger = ledgerSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || doc.data().createdAt
+    }));
+    
+    console.log(`[POS Scan] Found user ${uid}: ${user.displayName || user.name || user.phone}, balance: ${bonusData?.balance || 0}`);
+    
+    return res.json({
+      ok: true,
+      user: {
+        uid,
+        name: user.displayName || user.name || 'Гость',
+        phone: user.phone || null,
+        email: user.email || null
+      },
+      balance: bonusData?.balance || 0,
+      totalOrders,
+      ledger
+    });
+  } catch (error: unknown) {
+    console.error('[POS Scan] Error:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return res.status(500).json({ ok: false, error: message });
+  }
+});
+
+// Начисление бонусов клиенту за покупку
+httpApp.post('/api/pos/accrue', async (req: Request, res: Response) => {
+  try {
+    const { uid, amount, reason } = req.body;
+    
+    if (!uid || typeof amount !== 'number' || amount <= 0) {
+      return res.status(400).json({ ok: false, error: 'Missing uid or invalid amount' });
+    }
+    
+    // Ensure user doc exists (auto-create from Auth if needed)
+    let userDoc = await db.collection('users').doc(uid).get();
+    if (!userDoc.exists) {
+      try {
+        const authUser = await admin.auth().getUser(uid);
+        await db.collection('users').doc(uid).set({
+          phone: authUser.phoneNumber || '',
+          name: authUser.displayName || 'Клиент',
+          email: authUser.email || '',
+          role: 'user',
+          createdAt: admin.firestore.Timestamp.now(),
+          updatedAt: admin.firestore.Timestamp.now(),
+        }, { merge: true });
+        userDoc = await db.collection('users').doc(uid).get();
+      } catch {
+        // Even if user doesn't exist in Auth, still allow bonus accrual with the UID
+        await db.collection('users').doc(uid).set({
+          name: 'POS Клиент',
+          role: 'user',
+          createdAt: admin.firestore.Timestamp.now(),
+          updatedAt: admin.firestore.Timestamp.now(),
+        }, { merge: true });
+      }
+    }
+    
+    const bonusRef = db.collection('bonuses').doc(uid);
+    const bonusDoc = await bonusRef.get();
+    const currentBalance = bonusDoc.exists ? (bonusDoc.data()?.balance || 0) : 0;
+    const newBalance = currentBalance + amount;
+    
+    // Обновляем баланс
+    await bonusRef.set({
+      balance: newBalance,
+      totalEarned: admin.firestore.FieldValue.increment(amount),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    
+    // Записываем в ledger
+    await db.collection('users').doc(uid).collection('ledger').add({
+      type: 'earn',
+      amount: amount,
+      balance: newBalance,
+      reason: reason || 'Покупка в POS',
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    
+    console.log(`[POS Accrue] User ${uid}: +${amount} бонусов, новый баланс: ${newBalance}`);
+    
+    return res.json({
+      ok: true,
+      earned: amount,
+      balance: newBalance,
+      message: `Начислено ${amount} бонусов`
+    });
+  } catch (error: unknown) {
+    console.error('[POS Accrue] Error:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return res.status(500).json({ ok: false, error: message });
+  }
+});
+
+// Списание бонусов при оплате
+httpApp.post('/api/pos/redeem', async (req: Request, res: Response) => {
+  try {
+    const { uid, amount, reason } = req.body;
+    
+    if (!uid || typeof amount !== 'number' || amount <= 0) {
+      return res.status(400).json({ ok: false, error: 'Missing uid or invalid amount' });
+    }
+    
+    // Ensure user doc exists (auto-create from Auth if needed)
+    let userDoc = await db.collection('users').doc(uid).get();
+    if (!userDoc.exists) {
+      try {
+        const authUser = await admin.auth().getUser(uid);
+        await db.collection('users').doc(uid).set({
+          phone: authUser.phoneNumber || '',
+          name: authUser.displayName || 'Клиент',
+          email: authUser.email || '',
+          role: 'user',
+          createdAt: admin.firestore.Timestamp.now(),
+          updatedAt: admin.firestore.Timestamp.now(),
+        }, { merge: true });
+        userDoc = await db.collection('users').doc(uid).get();
+      } catch {
+        return res.status(404).json({ ok: false, error: 'User not found' });
+      }
+    }
+    
+    const bonusRef = db.collection('bonuses').doc(uid);
+    const bonusDoc = await bonusRef.get();
+    const currentBalance = bonusDoc.exists ? (bonusDoc.data()?.balance || 0) : 0;
+    
+    if (currentBalance < amount) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: `Недостаточно бонусов. Доступно: ${currentBalance}, запрошено: ${amount}` 
+      });
+    }
+    
+    const newBalance = currentBalance - amount;
+    
+    // Обновляем баланс
+    await bonusRef.set({
+      balance: newBalance,
+      totalUsed: admin.firestore.FieldValue.increment(amount),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    
+    // Записываем в ledger
+    await db.collection('users').doc(uid).collection('ledger').add({
+      type: 'spend',
+      amount: -amount,
+      balance: newBalance,
+      reason: reason || 'Списание в POS',
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    
+    console.log(`[POS Redeem] User ${uid}: -${amount} бонусов, новый баланс: ${newBalance}`);
+    
+    return res.json({
+      ok: true,
+      redeemed: amount,
+      balance: newBalance,
+      message: `Списано ${amount} бонусов`
+    });
+  } catch (error: unknown) {
+    console.error('[POS Redeem] Error:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return res.status(500).json({ ok: false, error: message });
+  }
+});
+
+// ─── Role management routes (via express app so /api/roles/* works) ───
+import {
+  setRole as setRoleFn,
+  bulkSetRoles as bulkSetRolesFn,
+  getRole as getRoleFn,
+  listStaff as listStaffFn,
+  removeRole as removeRoleFn,
+  createStaffUser as createStaffUserFn,
+  listStaffFull as listStaffFullFn,
+  updateStaffPassword as updateStaffPasswordFn
+} from './roles';
+
+httpApp.post('/api/roles/set', (req, res) => setRoleFn(req, res));
+httpApp.post('/api/roles/bulk', (req, res) => bulkSetRolesFn(req, res));
+httpApp.get('/api/roles/get', (req, res) => getRoleFn(req, res));
+httpApp.get('/api/roles/staff', (req, res) => listStaffFn(req, res));
+httpApp.post('/api/roles/remove', (req, res) => removeRoleFn(req, res));
+httpApp.post('/api/roles/create-staff', (req, res) => createStaffUserFn(req, res));
+httpApp.get('/api/roles/staff-full', (req, res) => listStaffFullFn(req, res));
+httpApp.post('/api/roles/update-password', (req, res) => updateStaffPasswordFn(req, res));
 
 export const app = functions.https.onRequest(httpApp);
 
@@ -813,6 +2392,8 @@ import {
   testReengage
 } from './cron';
 
+// Import role management functions (already imported above as *Fn aliases for express routes)
+
 // Export notification trigger functions
 export {
   onNewOrderForAdmin,
@@ -823,6 +2404,18 @@ export {
   onNewsCreated,
   reengageInactiveUsers,
   testReengage
+};
+
+// Export role management functions (also available via /api/roles/* through express app)
+export {
+  setRoleFn as setRole,
+  bulkSetRolesFn as bulkSetRoles,
+  getRoleFn as getRole,
+  listStaffFn as listStaff,
+  removeRoleFn as removeRole,
+  createStaffUserFn as createStaffUser,
+  listStaffFullFn as listStaffFull,
+  updateStaffPasswordFn as updateStaffPassword
 };
 
 // ─── Существующие экспортируемые функции ниже остаются без изменений ───

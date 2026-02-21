@@ -24,6 +24,7 @@ interface Promotion {
   image: string;
   discountType: 'percentage' | 'fixed';
   discountValue: number;
+  discount?: number; // legacy field name from older promotions
   startDate: string;
   endDate: string;
   category: string;
@@ -42,11 +43,30 @@ const CATEGORIES = [
   { value: 'breakfast', label: 'Завтраки' },
 ];
 
-const fmtDate = (d?: string) => (d ? new Date(d).toLocaleDateString('ru-RU') : '—');
-const nowBetween = (start?: string, end?: string) => {
-  if (!start || !end) return false;
+/** Safely convert any date-like value (string, Date, Firestore Timestamp) to Date */
+interface FirestoreTimestampLike {
+  toDate(): Date;
+  seconds: number;
+}
+const safeDateParse = (d?: unknown): Date | null => {
+  if (!d) return null;
+  if (d instanceof Date) return d;
+  if (typeof d === 'string') { const dt = new Date(d); return isNaN(dt.getTime()) ? null : dt; }
+  if (typeof d === 'object' && d !== null && typeof (d as FirestoreTimestampLike).toDate === 'function') return (d as FirestoreTimestampLike).toDate();
+  if (typeof d === 'object' && d !== null && typeof (d as { seconds: number }).seconds === 'number') return new Date((d as { seconds: number }).seconds * 1000);
+  return null;
+};
+
+const fmtDate = (d?: unknown) => {
+  const dt = safeDateParse(d);
+  return dt ? dt.toLocaleDateString('ru-RU') : '—';
+};
+const nowBetween = (start?: unknown, end?: unknown) => {
+  const s = safeDateParse(start);
+  const e = safeDateParse(end);
+  if (!s || !e) return false;
   const n = Date.now();
-  return n >= new Date(start).getTime() && n <= new Date(end).getTime();
+  return n >= s.getTime() && n <= e.getTime();
 };
 
 const chip = (text: string, tone: 'green' | 'gray' | 'amber' = 'gray') =>
@@ -134,8 +154,8 @@ const PromotionManagement: React.FC = () => {
       title: safeStringValue(p.title, ''),
       description: safeStringValue(p.description, ''),
       image: safeStringValue(p.image, ''),
-      discountType: p.discountType,
-      discountValue: p.discountValue,
+      discountType: p.discountType || 'percentage',
+      discountValue: p.discountValue ?? p.discount ?? 0,
       startDate: toISODate(p.startDate),
       endDate: toISODate(p.endDate),
       category: safeStringValue(p.category, 'all'),
@@ -429,7 +449,9 @@ const PromotionManagement: React.FC = () => {
                       {/* Discount card */}
                       <div className="mt-4 rounded-3xl bg-gradient-to-br from-[var(--color-accent-orange)]/10 via-[var(--color-accent-pink)]/6 to-transparent ring-1 ring-[var(--color-accent-orange)]/20 p-4 text-center">
                         <div className="text-3xl font-bold text-slate-900 font-sans">
-                          {p.discountType === 'percentage' ? `${p.discountValue}%` : `${p.discountValue}₸`}
+                          {p.discountType === 'percentage' 
+                            ? `${p.discountValue ?? p.discount ?? 0}%` 
+                            : `${p.discountValue ?? p.discount ?? 0}₸`}
                         </div>
                         <div className="text-xs text-slate-600 font-sans mt-1">
                           {p.discountType === 'percentage' ? 'скидка' : 'фиксированная скидка'}

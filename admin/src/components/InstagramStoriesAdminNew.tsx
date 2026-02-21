@@ -46,6 +46,8 @@ export const InstagramStoriesAdminNew: React.FC = () => {
   const [previewImages, setPreviewImages] = useState<string[]>([]); // ÃÂ´ÃÂ»Ã‘Â ÃÂ¼ÃÂ½ÃÂ¾ÃÂ¶ÃÂµÃ‘ÂÃ‘â€šÃÂ²ÃÂµÃÂ½ÃÂ½ÃÂ¾ÃÂ³ÃÂ¾ ÃÂ¿Ã‘â‚¬ÃÂµÃÂ²Ã‘Å’Ã‘Å½
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const videoPreviewUrlRef = useRef<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   const { upload, state: uploadState } = useStoryUpload();
 
@@ -355,30 +357,29 @@ export const InstagramStoriesAdminNew: React.FC = () => {
 
   const renderPreview = () => {
     if (formData.type === 'image' && previewImages.length > 0) {
+      if (previewImages.length === 1) {
+        return (
+          <div 
+            className="w-full h-full bg-cover bg-center rounded-2xl"
+            style={{ backgroundImage: `url(${previewImages[0]})` }}
+          />
+        );
+      }
       return (
-        <div className="space-y-4">
-          {previewImages.length === 1 ? (
-            <div 
-              className="w-full h-full bg-cover bg-center rounded-2xl"
-              style={{ backgroundImage: `url(${previewImages[0]})` }}
-            />
-          ) : (
-            <div className="space-y-2">
-              <p className="text-sm text-gray-600 text-center">
-                {previewImages.length} images selected
-              </p>
-              <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto">
-                {previewImages.map((preview, index) => (
-                  <div 
-                    key={index}
-                    className="w-full h-24 bg-cover bg-center rounded-lg border-2 border-gray-200"
-                    style={{ backgroundImage: `url(${preview})` }}
-                    title={`Image ${index + 1}`}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+        <div className="w-full h-full flex flex-col">
+          <p className="text-sm text-gray-600 text-center mb-2">
+            {previewImages.length} изображений выбрано
+          </p>
+          <div className="grid grid-cols-2 gap-2 flex-1 overflow-y-auto">
+            {previewImages.map((preview, index) => (
+              <div 
+                key={index}
+                className="w-full h-24 bg-cover bg-center rounded-lg border-2 border-gray-200"
+                style={{ backgroundImage: `url(${preview})` }}
+                title={`Image ${index + 1}`}
+              />
+            ))}
+          </div>
         </div>
       );
     }
@@ -578,25 +579,38 @@ export const InstagramStoriesAdminNew: React.FC = () => {
 
               {formData.type === 'image' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Upload Image</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Загрузить изображение</label>
                   <input
+                    ref={imageInputRef}
                     type="file"
-                    accept="image/*"
+                    accept=".jpg,.jpeg,.png,.webp,.heic,.heif,.avif,image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif"
                     multiple
                     onChange={handleFileChange}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="hidden"
                   />
-                  <p className="mt-1 text-xs text-gray-500">
-                    JPG, PNG, WEBP, HEIC, AVIF up to {MAX_IMAGE_SIZE_MB}MB
-                  </p>
+                  <button
+                    type="button"
+                    onClick={() => imageInputRef.current?.click()}
+                    className="w-full p-4 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 hover:bg-gray-100 hover:border-purple-400 transition-all flex flex-col items-center gap-2 group"
+                  >
+                    <Upload className="w-8 h-8 text-gray-400 group-hover:text-purple-500 transition-colors" />
+                    <span className="text-sm font-medium text-gray-700">
+                      {previewImages.length > 0
+                        ? `Выбрано: ${previewImages.length} файл(ов) — нажмите чтобы заменить`
+                        : 'Нажмите для выбора изображений'}
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      JPG, PNG, WEBP, HEIC, AVIF до {MAX_IMAGE_SIZE_MB}MB
+                    </span>
+                  </button>
                   {uploadState.uploading && (
                     <div className="mt-2 text-sm text-blue-600">
-                      Uploading... {uploadState.progress}%
+                      Загрузка... {uploadState.progress}%
                     </div>
                   )}
                   {uploadState.error && (
                     <div className="mt-2 text-sm text-red-600">
-                      Error: {uploadState.error}
+                      Ошибка: {uploadState.error}
                     </div>
                   )}
                 </div>
@@ -604,24 +618,37 @@ export const InstagramStoriesAdminNew: React.FC = () => {
 
               {formData.type === 'video' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Upload Video</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Загрузить видео</label>
                   <input
+                    ref={videoInputRef}
                     type="file"
-                    accept={`video/*,${ALLOWED_VIDEO_TYPES.join(',')}`}
+                    accept=".mp4,.mov,.m4v,.webm,.mpeg,.mpg,.3gp,.3g2,video/mp4,video/quicktime,video/webm,video/x-m4v,video/mpeg,video/3gpp"
                     onChange={handleFileChange}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="hidden"
                   />
-                  <p className="mt-1 text-xs text-gray-500">
-                    MP4, MOV, WEBM, M4V, MPEG up to {MAX_VIDEO_SIZE_MB}MB
-                  </p>
+                  <button
+                    type="button"
+                    onClick={() => videoInputRef.current?.click()}
+                    className="w-full p-4 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 hover:bg-gray-100 hover:border-purple-400 transition-all flex flex-col items-center gap-2 group"
+                  >
+                    <Play className="w-8 h-8 text-gray-400 group-hover:text-purple-500 transition-colors" />
+                    <span className="text-sm font-medium text-gray-700">
+                      {videoPreview
+                        ? 'Видео выбрано — нажмите чтобы заменить'
+                        : 'Нажмите для выбора видео'}
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      MP4, MOV, WEBM, M4V, MPEG до {MAX_VIDEO_SIZE_MB}MB
+                    </span>
+                  </button>
                   {uploadState.uploading && (
                     <div className="mt-2 text-sm text-blue-600">
-                      Uploading... {uploadState.progress}%
+                      Загрузка... {uploadState.progress}%
                     </div>
                   )}
                   {uploadState.error && (
                     <div className="mt-2 text-sm text-red-600">
-                      Error: {uploadState.error}
+                      Ошибка: {uploadState.error}
                     </div>
                   )}
                 </div>

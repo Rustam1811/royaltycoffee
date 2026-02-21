@@ -14,6 +14,7 @@ export default function Drinks() {
           name: t(p.name),
           price: p.price,
           image: p.image,
+          video: p.video,
           energy: p.energy,
           protein: p.protein,
           fat: p.fat,

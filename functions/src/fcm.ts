@@ -161,11 +161,11 @@ export async function sendMulticast(
     },
     webpush: {
       notification: {
-        icon: '/icon-192x192.png',
-        badge: '/icon-96x96.png',
+        icon: '/coffeeaddict.jpg',
+        badge: '/coffeeaddict.jpg',
         requireInteraction: true,
-        vibrate: [200, 100, 200], // Vibration pattern
-        tag: payload.type, // Group notifications by type
+        vibrate: [200, 100, 200],
+        tag: payload.type,
         renotify: true
       },
       fcmOptions: {

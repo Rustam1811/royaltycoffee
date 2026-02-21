@@ -1,0 +1,114 @@
+/**
+ * Cleanup dist folder after build
+ * - Removes any accidentally copied node_modules and source files
+ * - Removes duplicate large folders from root (drinks, images already in app/)
+ * - Verifies critical files exist
+ * - Reports final dist size
+ */
+import { rmSync, existsSync, statSync, readdirSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const ROOT = join(__dirname, '..');
+const DIST_DIR = join(ROOT, 'dist');
+
+// Paths to always remove from dist
+const REMOVE_PATHS = [
+  // Landing build artifacts
+  'landing/node_modules',
+  'landing/src',
+  'landing/.env',
+  'landing/.env.local',
+  'landing/package.json',
+  'landing/package-lock.json',
+  'landing/tsconfig.json',
+  'landing/vite.config.ts',
+  'landing/tailwind.config.ts',
+  'landing/postcss.config.js',
+  'landing/eslint.config.js',
+  // App landing duplicates
+  'app/landing/node_modules',
+  'app/landing/src',
+  // НЕ удаляем drinks/images/uploads - они нужны для /drinks/ путей
+];
+
+// Critical files that must exist after build
+const REQUIRED_FILES = [
+  'sw.js',
+  'manifest.json',
+  'firebase-messaging-sw.js',
+  'coffeeaddict.jpg',
+  'app/index.html',
+  'landing/index.html',
+  'admin/index.html',
+  'workshop/index.html',
+];
+
+function getDirSize(dirPath) {
+  let size = 0;
+  
+  function walk(dir) {
+    try {
+      const entries = readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(fullPath);
+        } else {
+          size += statSync(fullPath).size;
+        }
+      }
+    } catch (e) {
+      // Skip inaccessible dirs
+    }
+  }
+  
+  walk(dirPath);
+  return size;
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+console.log('🧹 Cleaning up dist folder...');
+
+// Remove unwanted paths
+for (const relPath of REMOVE_PATHS) {
+  const fullPath = join(DIST_DIR, relPath);
+  if (existsSync(fullPath)) {
+    console.log(`  🗑️  Removing: ${relPath}`);
+    rmSync(fullPath, { recursive: true, force: true });
+  }
+}
+
+// Verify required files
+console.log('\n✅ Verifying required files:');
+let allPresent = true;
+for (const relPath of REQUIRED_FILES) {
+  const fullPath = join(DIST_DIR, relPath);
+  const exists = existsSync(fullPath);
+  console.log(`  ${exists ? '✅' : '❌'} ${relPath}`);
+  if (!exists) allPresent = false;
+}
+
+// Calculate and report final size
+const totalSize = getDirSize(DIST_DIR);
+console.log(`\n📊 Total dist size: ${formatSize(totalSize)}`);
+
+// 100MB is reasonable for app with images
+if (totalSize > 100 * 1024 * 1024) {
+  console.warn('⚠️  WARNING: dist size > 100MB! Consider optimizing images.');
+} else {
+  console.log('✅ Dist size is acceptable');
+}
+
+if (!allPresent) {
+  console.error('\n❌ Some required files are missing! Build may be incomplete.');
+  process.exit(1);
+}
+
+console.log('\n🎉 Dist cleanup complete!');

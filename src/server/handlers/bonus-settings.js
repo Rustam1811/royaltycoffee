@@ -40,16 +40,28 @@ async function handleBonusSettings(req, res) {
           ],
           levels: [
             {
-              name: 'Новичок',
-              minOrders: 0,
-              bonusMultiplier: 1.0,
-              benefits: ['Базовые бонусы']
+              name: 'Бронза',
+              minSpent: 0,
+              cashbackPercent: 5,
+              benefits: ['5% кешбэк с каждого заказа']
             },
             {
-              name: 'Любитель',
-              minOrders: 10,
-              bonusMultiplier: 1.2,
-              benefits: ['+20% к бонусам', 'Персональные предложения']
+              name: 'Серебро',
+              minSpent: 5000,
+              cashbackPercent: 10,
+              benefits: ['10% кешбэк', 'Персональные предложения']
+            },
+            {
+              name: 'Золото',
+              minSpent: 15000,
+              cashbackPercent: 15,
+              benefits: ['15% кешбэк', 'Раннее уведомление', 'Бесплатная доставка']
+            },
+            {
+              name: 'Платинум',
+              minSpent: 25000,
+              cashbackPercent: 20,
+              benefits: ['20% кешбэк', 'Персональный менеджер', 'Эксклюзивные предложения']
             }
           ]
         };

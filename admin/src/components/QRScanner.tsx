@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
+import React, { useEffect, useRef, useState } from 'react';
+import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
 interface QRScannerProps {
@@ -9,70 +9,70 @@ interface QRScannerProps {
 }
 
 export const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose, isOpen }) => {
-  const scannerRef = useRef<Html5Qrcode | null>(null);
-  const [isScanning, setIsScanning] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const controlsRef = useRef<IScannerControls | null>(null);
+  const hasScannedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleClose = useCallback(() => {
-    if (scannerRef.current && isScanning) {
-      scannerRef.current.stop().then(() => {
-        scannerRef.current?.clear();
-        setIsScanning(false);
-        onClose();
-      }).catch((err) => {
-        console.error('Error stopping scanner:', err);
-        onClose();
-      });
-    } else {
-      onClose();
-    }
-  }, [isScanning, onClose]);
+  // Stable refs for callbacks
+  const onScanRef = useRef(onScan);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onScanRef.current = onScan; }, [onScan]);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+
+  const stopScanner = () => {
+    controlsRef.current?.stop();
+    controlsRef.current = null;
+  };
+
+  const handleClose = () => {
+    stopScanner();
+    onCloseRef.current();
+  };
 
   useEffect(() => {
     if (!isOpen) {
-      if (scannerRef.current && isScanning) {
-        scannerRef.current.stop().then(() => {
-          scannerRef.current?.clear();
-          setIsScanning(false);
-        }).catch(console.error);
-      }
+      stopScanner();
+      hasScannedRef.current = false;
       return;
     }
 
-    const scanner = new Html5Qrcode('qr-reader');
-    scannerRef.current = scanner;
+    // Wait for video element to mount
+    const timeout = setTimeout(() => {
+      if (!videoRef.current) return;
+      hasScannedRef.current = false;
 
-    const config = {
-      fps: 10,
-      qrbox: { width: 250, height: 250 },
-      aspectRatio: 1.0
-    };
+      const reader = new BrowserMultiFormatReader();
 
-    scanner.start(
-      { facingMode: 'environment' },
-      config,
-      (decodedText) => {
-        console.log('✅ QR scanned:', decodedText);
-        onScan(decodedText);
-        handleClose();
-      },
-      () => {
-        // Ignore "no QR found" errors
-      }
-    ).then(() => {
-      setIsScanning(true);
-      setError(null);
-    }).catch((err) => {
-      console.error('Camera error:', err);
-      setError('Не удалось запустить камеру');
-    });
+      reader.decodeFromVideoDevice(
+        undefined, // use default camera
+        videoRef.current,
+        (result, _error, controls) => {
+          if (!controlsRef.current) controlsRef.current = controls;
+
+          if (result && !hasScannedRef.current) {
+            hasScannedRef.current = true;
+            const text = result.getText();
+            console.log('✅ QR scanned:', text);
+            controls.stop();
+            controlsRef.current = null;
+            onScanRef.current(text);
+            onCloseRef.current();
+          }
+        }
+      ).then(() => {
+        setError(null);
+      }).catch((err) => {
+        console.error('Camera error:', err);
+        setError('Не удалось запустить камеру. Разрешите доступ.');
+      });
+    }, 200);
 
     return () => {
-      if (scannerRef.current) {
-        scannerRef.current.stop().catch(console.error);
-      }
+      clearTimeout(timeout);
+      stopScanner();
     };
-  }, [isOpen, onScan, handleClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -89,7 +89,7 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose, isOpen })
           </button>
         </div>
 
-        <div className="bg-white p-6">
+        <div className="bg-white p-4">
           {error ? (
             <div className="text-center py-8">
               <div className="text-4xl mb-4">⚠️</div>
@@ -103,12 +103,17 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose, isOpen })
             </div>
           ) : (
             <>
-              <div id="qr-reader" className="rounded-2xl overflow-hidden" />
+              <video
+                ref={videoRef}
+                className="w-full h-[320px] object-cover rounded-2xl bg-black"
+                muted
+                playsInline
+              />
               <div className="mt-4 text-center">
                 <p className="text-sm text-slate-600 font-medium">
                   📱 Наведите на QR-код клиента
                 </p>
-                <p className="text-xs text-slate-400 mt-2">
+                <p className="text-xs text-slate-400 mt-1">
                   Сканирование автоматическое
                 </p>
               </div>

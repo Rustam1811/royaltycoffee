@@ -1,78 +1,15 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 
 export default defineConfig(() => {
   return {
+    base: '/app/',
     plugins: [
       react(),
-      VitePWA({
-        registerType: 'autoUpdate',
-        workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-          cleanupOutdatedCaches: true,
-          clientsClaim: true,
-          skipWaiting: true,
-          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-          runtimeCaching: [
-            {
-              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'google-fonts-cache',
-                expiration: {
-                  maxEntries: 10,
-                  maxAgeSeconds: 60 * 60 * 24 * 365
-                },
-                cacheableResponse: {
-                  statuses: [0, 200]
-                }
-              }
-            },
-            {
-              urlPattern: /^https:\/\/firebasestorage\.googleapis\.com\/.*/i,
-              handler: 'CacheFirst',
-              options: {
-                cacheName: 'firebase-storage-cache',
-                expiration: {
-                  maxEntries: 50,
-                  maxAgeSeconds: 60 * 60 * 24 * 30
-                }
-              }
-            }
-          ]
-        },
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icon-192x192.png', 'icon-512x512.png'],
-        manifest: {
-          name: 'Coffee Addict',
-          short_name: 'Coffee',
-          description: 'Coffee Addict - Premium Coffee Experience',
-          theme_color: '#1f2937',
-          background_color: '#ffffff',
-          display: 'standalone',
-          orientation: 'portrait',
-          scope: '/',
-          start_url: '/',
-          icons: [
-            {
-              src: '/icon-192x192.png',
-              sizes: '192x192',
-              type: 'image/png'
-            },
-            {
-              src: '/icon-512x512.png',
-              sizes: '512x512',
-              type: 'image/png'
-            }
-          ]
-        },
-        devOptions: {
-          enabled: false
-        }
-      })
+      // PWA: используем ручной public/sw.js и public/manifest.json
+      // VitePWA отключён - конфликтует с ручным SW
     ],
-    base: '/',
     // Vite автоматически подхватывает VITE_* переменные из .env файлов
     define: {
       __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '1.0.0'),
@@ -100,7 +37,7 @@ export default defineConfig(() => {
           ws: false
         },
         '/firebase-api': {
-          target: 'https://us-central1-coffeeaddict-c9d70.cloudfunctions.net',
+          target: 'https://us-central1-royal-coffee-b1ce9.cloudfunctions.net',
           changeOrigin: true,
           secure: true,
           ws: false,
@@ -121,12 +58,11 @@ export default defineConfig(() => {
       }
     },
     build: {
-      outDir: "dist",
+      outDir: "dist/app",
       emptyOutDir: true,
       rollupOptions: {
         output: {
           manualChunks: {
-            // Разделяем vendor код
             'react-vendor': ['react', 'react-dom', 'react-router-dom'],
             'firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
             'ui-vendor': ['framer-motion', '@heroicons/react'],
@@ -134,15 +70,15 @@ export default defineConfig(() => {
           },
         },
       },
-      // Оптимизация chunk size
       chunkSizeWarningLimit: 1000,
-      // Минимизация CSS
       cssCodeSplit: true,
-      // Source maps только для production debugging
       sourcemap: false,
-      // Минификация
       minify: 'esbuild',
       target: 'es2015',
+    },
+    // Production: удаляем console.log и debugger
+    esbuild: {
+      drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : [],
     },
     // Оптимизация dev сервера
     optimizeDeps: {

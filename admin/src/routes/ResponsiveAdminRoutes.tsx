@@ -18,6 +18,8 @@ import DeliveryManagement from '@/pages/DeliveryManagement';
 import CourierManagement from '@/pages/CourierManagement';
 import CourierDashboard from '@/pages/CourierDashboard';
 import CourierDocumentsPage from '@/pages/CourierDocumentsPage';
+import { LocationsManagementPage } from '@/pages/LocationsManagementPage';
+import MenuEditorPageNew from '@/pages/MenuEditorPageNew';
 
 // Новая респонсивная навигация
 import ResponsiveAdminNavigation from '@/components/ResponsiveAdminNavigation';
@@ -66,18 +68,18 @@ const ResponsiveAdminRoutes: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex">
+    <div className="fixed inset-0 flex bg-slate-100">
       {/* Респонсивная навигация */}
       <ResponsiveAdminNavigation 
         currentRoute={currentRoute}
         onRouteChange={handleRouteChange}
       />
 
-      {/* Основной контент */}
-      <div className="flex-1 flex flex-col">
+      {/* Основной контент — занимает всё оставшееся пространство */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-0">
         {/* Шапка (только на мобильных, на десктопе информация в сайдбаре) */}
-        <header className="md:hidden bg-white shadow-md border-b border-slate-200 sticky top-0 z-30 ml-0">
-          <div className="px-4 py-3 pl-16"> {/* pl-16 для места под кнопку гамбургер */}
+        <header className="md:hidden bg-white shadow-md border-b border-slate-200 z-30">
+          <div className="px-4 py-3 pl-16">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-xl font-bold text-slate-900">☕ Админ-панель</h1>
@@ -92,87 +94,105 @@ const ResponsiveAdminRoutes: React.FC = () => {
           </div>
         </header>
 
-        {/* Контентная область */}
-        <main className="flex-1 bg-slate-100 p-6 overflow-auto">
-          <div className="w-full max-w-7xl mx-auto">
-            <Switch>
-              <Route exact path="/admin/dashboard">
-                <div className="bg-white rounded-lg shadow p-6">
-                  <Dashboard />
+        {/* Контентная область — flex-1 берёт оставшуюся высоту */}
+        <main className="flex-1 min-h-0 relative">
+          <Switch>
+            {/* POS-меню — заполняет всю main через absolute */}
+            <Route exact path="/admin/menu">
+              <PosMenuPage />
+            </Route>
+
+            {/* Все остальные страницы — скроллящаяся область */}
+            <Route>
+              <div className="absolute inset-0 overflow-auto bg-slate-100">
+                <div className="max-w-7xl mx-auto">
+                  <Switch>
+                    <Route exact path="/admin/dashboard">
+                      <div className="bg-white rounded-lg shadow p-6 m-6">
+                        <Dashboard />
+                      </div>
+                    </Route>
+                    <Route exact path="/admin/courier-dashboard">
+                      <div className="bg-white rounded-lg shadow p-6 m-6">
+                        {userRole === 'courier' ? <CourierDashboard /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
+                      </div>
+                    </Route>
+                    <Route exact path="/admin/courier-documents">
+                      <div className="bg-white rounded-lg shadow p-6 m-6">
+                        {userRole === 'courier' ? <CourierDocumentsPage /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
+                      </div>
+                    </Route>
+                    <Route exact path="/admin/orders">
+                      <div className="bg-white rounded-lg shadow p-6 m-6">
+                        <OrderManagement />
+                      </div>
+                    </Route>
+                    <Route exact path="/admin/analytics">
+                      <div className="bg-white rounded-lg shadow p-6 m-6">
+                        {userRole === 'admin' ? <Analytics /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
+                      </div>
+                    </Route>
+                    <Route exact path="/admin/menu-editor">
+                      <div className="bg-white rounded-lg shadow p-6 m-6">
+                        {userRole === 'admin' || userRole === 'owner' ? <MenuEditorPageNew /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
+                      </div>
+                    </Route>
+                    <Route exact path="/admin/locations">
+                      <div className="bg-white rounded-lg shadow p-6 m-6">
+                        {userRole === 'owner' ? <LocationsManagementPage /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
+                      </div>
+                    </Route>
+                    <Route exact path="/admin/bonuses">
+                      <div className="bg-white rounded-lg shadow p-6 m-6">
+                        {userRole === 'admin' ? <BonusManagement /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
+                      </div>
+                    </Route>
+                    <Route exact path="/admin/achievements">
+                      <div className="bg-white rounded-lg shadow p-6 m-6">
+                        {userRole === 'admin' ? <AchievementManagement /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
+                      </div>
+                    </Route>
+                    <Route exact path="/admin/promotions">
+                      <div className="bg-white rounded-lg shadow p-6 m-6">
+                        {userRole === 'admin' ? <PromotionManagement /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
+                      </div>
+                    </Route>
+                    <Route exact path="/admin/stories">
+                      <div className="bg-white rounded-lg shadow p-6 m-6">
+                        {userRole === 'admin' ? <InstagramStoriesAdminPageNew /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
+                      </div>
+                    </Route>
+                    <Route exact path="/admin/pos">
+                      <div className="bg-white rounded-lg shadow p-6 m-6">
+                        <PosPage />
+                      </div>
+                    </Route>
+                    <Route exact path="/admin/users">
+                      <div className="bg-white rounded-lg shadow p-6 m-6">
+                        {userRole === 'admin' ? <UsersPage /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
+                      </div>
+                    </Route>
+                    <Route exact path="/admin/delivery">
+                      <div className="bg-white rounded-lg shadow p-6 m-6">
+                        {userRole === 'admin' ? <DeliveryManagement /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
+                      </div>
+                    </Route>
+                    <Route exact path="/admin/couriers">
+                      <div className="bg-white rounded-lg shadow p-6 m-6">
+                        {userRole === 'admin' ? <CourierManagement /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
+                      </div>
+                    </Route>
+                    <Redirect from="/admin" exact to={
+                      userRole === 'courier' ? "/admin/courier-dashboard" : "/admin/dashboard"
+                    } />
+                    <Redirect from="/" exact to={
+                      userRole === 'courier' ? "/admin/courier-dashboard" : "/admin/dashboard"
+                    } />
+                  </Switch>
                 </div>
-              </Route>
-              <Route exact path="/admin/courier-dashboard">
-                <div className="bg-white rounded-lg shadow p-6">
-                  {userRole === 'courier' ? <CourierDashboard /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
-                </div>
-              </Route>
-              <Route exact path="/admin/courier-documents">
-                <div className="bg-white rounded-lg shadow p-6">
-                  {userRole === 'courier' ? <CourierDocumentsPage /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
-                </div>
-              </Route>
-              <Route exact path="/admin/orders">
-                <div className="bg-white rounded-lg shadow p-6">
-                  <OrderManagement />
-                </div>
-              </Route>
-              <Route exact path="/admin/analytics">
-                <div className="bg-white rounded-lg shadow p-6">
-                  {userRole === 'admin' ? <Analytics /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
-                </div>
-              </Route>
-              <Route exact path="/admin/menu">
-                {/* POS-меню для быстрого добавления в корзину */}
-                <PosMenuPage />
-              </Route>
-              <Route exact path="/admin/bonuses">
-                <div className="bg-white rounded-lg shadow p-6">
-                  {userRole === 'admin' ? <BonusManagement /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
-                </div>
-              </Route>
-              <Route exact path="/admin/achievements">
-                <div className="bg-white rounded-lg shadow p-6">
-                  {userRole === 'admin' ? <AchievementManagement /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
-                </div>
-              </Route>
-              <Route exact path="/admin/promotions">
-                <div className="bg-white rounded-lg shadow p-6">
-                  {userRole === 'admin' ? <PromotionManagement /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
-                </div>
-              </Route>
-              <Route exact path="/admin/stories">
-                <div className="bg-white rounded-lg shadow p-6">
-                  {userRole === 'admin' ? <InstagramStoriesAdminPageNew /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
-                </div>
-              </Route>
-              <Route exact path="/admin/pos">
-                <div className="bg-white rounded-lg shadow p-6">
-                  <PosPage />
-                </div>
-              </Route>
-              <Route exact path="/admin/users">
-                <div className="bg-white rounded-lg shadow p-6">
-                  {userRole === 'admin' ? <UsersPage /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
-                </div>
-              </Route>
-              <Route exact path="/admin/delivery">
-                <div className="bg-white rounded-lg shadow p-6">
-                  {userRole === 'admin' ? <DeliveryManagement /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
-                </div>
-              </Route>
-              <Route exact path="/admin/couriers">
-                <div className="bg-white rounded-lg shadow p-6">
-                  {userRole === 'admin' ? <CourierManagement /> : <div className="p-6 text-center text-gray-500">Нет доступа</div>}
-                </div>
-              </Route>
-              <Redirect from="/admin" exact to={
-                userRole === 'courier' ? "/admin/courier-dashboard" : "/admin/dashboard"
-              } />
-              <Redirect from="/" exact to={
-                userRole === 'courier' ? "/admin/courier-dashboard" : "/admin/dashboard"
-              } />
-            </Switch>
-          </div>
+              </div>
+            </Route>
+          </Switch>
         </main>
       </div>
     </div>

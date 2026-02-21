@@ -2,17 +2,31 @@ import React, { createContext, useEffect, useState, ReactNode, FC } from "react"
 import { onIdTokenChanged, getIdTokenResult, signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
-export type Role = "owner" | "admin" | "barista" | "courier" | "user";
-export interface User { uid: string; email: string | null; role: Role; }
+// Роли системы:
+// superowner - видит ВСЕ точки и всю аналитику
+// owner - видит СВОЮ точку + аналитику по ней  
+// admin - видит свою точку БЕЗ аналитики
+// barista - только меню + создание заказов
+// user - клиент приложения
+export type Role = "superowner" | "owner" | "admin" | "barista" | "courier" | "user";
+
+export interface User { 
+  uid: string; 
+  email: string | null; 
+  role: Role;
+  locationId?: string; // Привязка к точке (для owner/admin/barista)
+  locationIds?: string[]; // Для superowner - доступ ко всем точкам
+}
 interface Ctx { user: User | null; loading: boolean; logout: () => Promise<void>; }
 
 export const UserContext = createContext<Ctx>({ user: null, loading: true, logout: async () => {} });
 
 /** === НАСТРОЙКА ALLOWLIST (заполни своими адресами) === */
-const ADMIN_EMAILS   = ["admin121@gmail.com", "barista121@gmail.com"];
-const BARISTA_EMAILS = ["barista121@gmail.com"];
-const COURIER_EMAILS = ["courier121@gmail.com"];
-const OWNER_EMAILS   = ["owner121@gmail.com"];
+const SUPEROWNER_EMAILS = ["rustam.mukaev@gmail.com", "superowner121@royal.com"]; // Главный владелец всех точек
+const OWNER_EMAILS   = ["owner121@royal.com", "owner121@gmail.com"]; // Владельцы отдельных точек
+const ADMIN_EMAILS   = ["admin121@royal.com", "admin121@gmail.com"];
+const BARISTA_EMAILS = ["barista121@royal.com", "barista121@gmail.com"];
+const COURIER_EMAILS = ["courier121@royal.com", "courier121@gmail.com"];
 
 /** normalize helper */
 const norm = (s?: string | null) => (s ?? "").trim().toLowerCase();
@@ -20,6 +34,7 @@ const norm = (s?: string | null) => (s ?? "").trim().toLowerCase();
 /** resolve role by email allowlist */
 function roleFromEmail(email: string): Role {
   if (!email) return "user";
+  if (SUPEROWNER_EMAILS.map(norm).includes(norm(email))) return "superowner";
   if (OWNER_EMAILS.map(norm).includes(norm(email))) return "owner";
   if (ADMIN_EMAILS.map(norm).includes(norm(email))) return "admin";
   if (BARISTA_EMAILS.map(norm).includes(norm(email))) return "barista";
@@ -31,10 +46,11 @@ function roleFromEmail(email: string): Role {
 function resolveRoleFromClaimsAndEmail(claims: any, email: string | null): Role {
   // 1) кастом-клейм single 'role'
   const ccRole = String(claims?.role || "").trim().toLowerCase();
-  if (ccRole === "owner" || ccRole === "admin" || ccRole === "barista" || ccRole === "courier" || ccRole === "user") {
+  if (ccRole === "superowner" || ccRole === "owner" || ccRole === "admin" || ccRole === "barista" || ccRole === "courier" || ccRole === "user") {
     return ccRole as Role;
   }
   // 2) альтернативные клеймы (булевые)
+  if (claims?.superowner === true) return "superowner";
   if (claims?.owner === true)   return "owner";
   if (claims?.admin === true)   return "admin";
   if (claims?.barista === true) return "barista";
@@ -53,11 +69,12 @@ export const UserProvider: FC<{ children: ReactNode }> = ({ children }) => {
     // 0) Режим имитации через query (?impersonate=admin|barista|owner|courier)
     const params = new URLSearchParams(window.location.search);
     const impersonate = norm(params.get("impersonate"));
-    if (impersonate && ["owner", "admin", "barista", "courier"].includes(impersonate)) {
+    if (impersonate && ["superowner", "owner", "admin", "barista", "courier"].includes(impersonate)) {
       const fake: User = {
         uid: `impersonated-${impersonate}`,
         email: `impersonated+${impersonate}@local.test`,
         role: impersonate as Role,
+        locationId: impersonate === "superowner" ? undefined : "default-location",
       };
       localStorage.setItem("admin_user", JSON.stringify(fake));
       console.warn("⚠️ IMITATION MODE enabled:", fake);
@@ -113,8 +130,42 @@ export const UserProvider: FC<{ children: ReactNode }> = ({ children }) => {
           if (allow !== "user") role = allow;
         }
 
-        console.log(`✅ resolved role: ${role} (email=${email || "no-email"})`);
-        setUser({ uid: fbUser.uid, email: fbUser.email, role });
+        // Получаем locationId: сначала из claims, потом из API
+        let locationId: string | undefined;
+        
+        // 1) Claims (установлены через setCustomUserClaims)
+        const claimLocationId = tokenRes.claims?.locationId;
+        if (typeof claimLocationId === "string" && claimLocationId) {
+          locationId = claimLocationId;
+          console.log(`📍 locationId from claims: ${locationId}`);
+        }
+
+        // 2) Fallback: API staff lookup (если нет в claims)
+        if (!locationId && role !== "superowner" && role !== "user" && email) {
+          try {
+            const response = await fetch(
+              `${import.meta.env.VITE_API_BASE || '/api'}/locations?action=staffByEmail&email=${encodeURIComponent(email)}`
+            );
+            if (response.ok) {
+              const result = await response.json();
+              if (result.success && result.data?.locationId) {
+                locationId = result.data.locationId;
+                console.log(`📍 locationId from API: ${locationId}`);
+              }
+            }
+          } catch (err) {
+            console.warn("Failed to fetch staff location:", err);
+          }
+        }
+
+        // 3) Fallback: default location
+        if (!locationId && role !== "superowner" && role !== "user") {
+          locationId = "royal-main";
+          console.log(`📍 locationId fallback: ${locationId}`);
+        }
+
+        console.log(`✅ resolved role: ${role} (email=${email || "no-email"}, locationId=${locationId || "all"})`);
+        setUser({ uid: fbUser.uid, email: fbUser.email, role, locationId });
       } catch (e) {
         console.error("❌ getIdTokenResult error:", e);
         // вообще край — хоть allowlist отработает

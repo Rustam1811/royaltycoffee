@@ -1,15 +1,27 @@
 import React, { useState } from 'react';
 
 export interface PremiumDrinkBadge { type:string; label:string; color?:string; }
+export interface PremiumDrinkSize { key: string; label: string; volume: number; price: number; }
 export interface PremiumDrinkItem {
   id: string | number;
   name: string;
   price: number;
   image: string;
+  video?: string; // URL видео для модалки (формат MP4/WebM)
   badges?: PremiumDrinkBadge[];
   energy?: number; protein?: number; fat?: number; carbs?: number;
-  categoryId?: number; // added for category filtering
+  categoryId?: string | number; // string for Firestore, number for legacy
+  sizes?: PremiumDrinkSize[]; // Доступные размеры с ценами
 }
+
+// Утилита для получения webp версии изображения
+const getOptimizedImage = (src: string): string => {
+  if (!src) return '/images/placeholder.png';
+  // Если уже webp - возвращаем как есть
+  if (src.endsWith('.webp')) return src;
+  // Пробуем webp версию
+  return src.replace(/\.(png|jpg|jpeg)$/i, '.webp');
+};
 
 interface Props { item: PremiumDrinkItem; onOpen: (id: string|number)=>void; index?: number; prefersReduced?: boolean; }
 
@@ -23,14 +35,14 @@ export const DrinkCardPremiumImpl: React.FC<Props> = ({ item, onOpen }) => {
       className="
         group relative flex flex-col
         w-full h-[240px] p-0
-        bg-white
+        bg-white/95
         rounded-[20px]
-        shadow-[0_1px_3px_rgba(0,0,0,0.05)]
-        hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)]
+        shadow-[0_2px_8px_rgba(0,0,0,0.15)]
+        hover:shadow-[0_4px_20px_rgba(0,0,0,0.2)]
         active:scale-[0.98]
         border-0
         transition-all duration-150 ease-out
-        focus:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2
+        focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4A574] focus-visible:ring-offset-2
         overflow-hidden
         will-change-transform
       "
@@ -41,7 +53,7 @@ export const DrinkCardPremiumImpl: React.FC<Props> = ({ item, onOpen }) => {
         <div className="absolute top-3 left-3 z-10">
           <div className="
             px-2 py-1
-            bg-black
+            bg-[#5C0E0E]
             text-white text-[9px] font-medium uppercase tracking-wider
             rounded-md
           ">
@@ -50,35 +62,39 @@ export const DrinkCardPremiumImpl: React.FC<Props> = ({ item, onOpen }) => {
         </div>
       )}
 
-      {/* Image section - clean and spacious */}
-      <div className="relative flex-1 flex items-center justify-center p-3">
-        <div className="w-full aspect-[3/4] rounded-xl overflow-hidden bg-gray-100">
-          {/* Product image - NO layout animations, fixed aspect ratio */}
-          <img
-            src={item.image}
-            alt={item.name}
-            loading="lazy"
-            decoding="async"
-            fetchPriority="low"
-            width={320}
-            height={400}
-            onLoad={() => setLoaded(true)}
-            style={{ aspectRatio: '3/4', willChange: 'auto' }}
-            className={`
-              w-full h-full object-cover
-              drop-shadow-sm
-              transition-opacity duration-200
-              ${loaded ? 'opacity-100' : 'opacity-0'}
-            `}
-          />
-        </div>
+      {/* Image section - centered, large */}
+      <div className="relative flex-1 flex items-center justify-center overflow-hidden">
+        {/* Product image with WebP support */}
+        <img
+          src={getOptimizedImage(item.image)}
+          alt={item.name}
+          loading="lazy"
+          decoding="async"
+          fetchPriority="low"
+          width={200}
+          height={200}
+          onLoad={() => setLoaded(true)}
+          onError={(e) => {
+            // Fallback to original if webp fails
+            const target = e.target as HTMLImageElement;
+            if (target.src !== item.image) {
+              target.src = item.image;
+            }
+          }}
+          className={`
+            w-full h-full object-contain p-2
+            drop-shadow-[0_4px_12px_rgba(0,0,0,0.15)]
+            transition-opacity duration-200
+            ${loaded ? 'opacity-100' : 'opacity-0'}
+          `}
+        />
       </div>
 
       {/* Info section - minimal and clean */}
       <div className="flex flex-col p-3 pt-1">
         <h3 className="
             text-[13px] font-medium leading-tight
-            text-black
+            text-[#5C0E0E]
             mb-1.5
             line-clamp-2
           "
@@ -87,14 +103,14 @@ export const DrinkCardPremiumImpl: React.FC<Props> = ({ item, onOpen }) => {
         </h3>
         
         <div className="flex items-center justify-between">
-          <span className="text-[15px] font-semibold text-black">
+          <span className="text-[15px] font-semibold text-[#5C0E0E]">
             {item.price} ₸
           </span>
           
           {/* Minimal add button */}
           <div className="
             w-7 h-7 
-            bg-black
+            bg-[#5C0E0E]
             text-white
             rounded-full 
             flex items-center justify-center

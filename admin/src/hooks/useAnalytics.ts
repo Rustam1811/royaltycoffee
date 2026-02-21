@@ -6,6 +6,7 @@ import {
   Order,
   ProcessedAnalytics,
 } from "@/services/analyticsService";
+import { useLocation } from "@/contexts/LocationContext";
 
 type Period = "day" | "week" | "month" | "all";
 
@@ -42,30 +43,39 @@ export function useAnalytics(period: Period) {
   const [aggregated, setAggregated] = useState<ProcessedAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Получаем текущую локацию для фильтрации
+  const { selectedLocationId, isAllLocationsSelected } = useLocation();
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      console.log('🔄 Загружаем аналитику для периода:', period);
+      console.log('🔄 Загружаем аналитику для периода:', period, 'локация:', selectedLocationId);
       const { from, to } = rangeForPeriod(period);
       console.log('📅 Диапазон дат:', { from: from.toISOString(), to: to.toISOString() });
       
       const fetched = await getOrders(from, to);
-      console.log('📦 Получены заказы:', fetched);
-      console.log('📊 Количество заказов:', fetched.length);
+      console.log('📦 Получены заказы:', fetched.length);
       
-      const rawAggregated = aggregateOrders(fetched);
+      // Фильтруем по локации если выбрана конкретная точка
+      const filteredOrders = isAllLocationsSelected 
+        ? fetched 
+        : fetched.filter(order => order.locationId === selectedLocationId);
+      
+      console.log('🏢 После фильтрации по локации:', filteredOrders.length, 'из', fetched.length);
+      
+      const rawAggregated = aggregateOrders(filteredOrders);
       console.log('🔢 Агрегированные данные:', rawAggregated);
       
       const processed = projectAnalytics(rawAggregated, period);
       console.log('📈 Обработанная аналитика:', processed);
 
       // Добавляем сырые данные для детального анализа
-      processed.rawOrders = fetched;
+      processed.rawOrders = filteredOrders;
 
-      setOrders(fetched);
+      setOrders(filteredOrders);
       setAggregated(processed);
     } catch (err) {
       console.error("❌ Analytics load error", err);
@@ -73,7 +83,7 @@ export function useAnalytics(period: Period) {
     } finally {
       setLoading(false);
     }
-  }, [period]);
+  }, [period, selectedLocationId, isAllLocationsSelected]);
 
   useEffect(() => {
     load();

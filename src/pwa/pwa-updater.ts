@@ -24,6 +24,7 @@ class PWAUpdater {
     try {
       this.registration = await navigator.serviceWorker.ready;
       this.setupUpdateListener();
+      this.setupStaleChunkListener();
       this.setupVisibilityCheck();
       this.startPeriodicCheck();
     } catch {
@@ -66,6 +67,23 @@ class PWAUpdater {
     }
 
     worker.postMessage({ type: 'SKIP_WAITING' });
+  }
+
+  /**
+   * Listen for STALE_CHUNK messages from the SW.
+   * This fires when a hashed JS/CSS chunk is missing after a new deploy
+   * (Firebase returns HTML instead of JS). We hard-reload once to pick up
+   * the fresh index.html with the new chunk URLs.
+   */
+  private setupStaleChunkListener(): void {
+    let reloading = false;
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data?.type === 'STALE_CHUNK' && !reloading) {
+        reloading = true;
+        // Force a fresh load — bypass cache
+        window.location.reload();
+      }
+    });
   }
 
   private setupVisibilityCheck(): void {

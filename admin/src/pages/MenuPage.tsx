@@ -1,301 +1,372 @@
-import React, { useEffect, useState, useContext } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+/**
+ * MenuPage — Единая страница меню (читает из menuCategories / menuItems)
+ * Синхронизирована с MenuEditorPageNew и клиентским приложением
+ */
+
+import React, { useEffect, useState, useMemo, useContext } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
-  listenCategories,
-  addCategory,
-  updateCategory,
-  deleteCategory,
-} from "@/services/categoryService";
-import { DrinkCategoryLocal, Product } from "@/types/types";
-import CategoryModal from "@/components/CategoryModalNew";
-import ProductModal from "@/components/ProductModalNew";
-import { PremiumMenuModal } from "@/components/PremiumMenuModal";
+  MenuService,
+  MenuCategory,
+  MenuItem,
+} from "@/services/menuService";
 import { UserContext } from "@/contexts/UserContext";
-import { useCart } from "@/contexts/CartContext";
-import { 
-  PlusIcon, 
-  PencilIcon, 
-  TrashIcon, 
+import {
+  TrashIcon,
   EyeIcon,
+  EyeSlashIcon,
   Squares2X2Icon,
-  SparklesIcon
+  SparklesIcon,
+  PhotoIcon,
+  MagnifyingGlassIcon,
+  FunnelIcon,
+  ArrowsUpDownIcon,
+  FireIcon,
+  CheckCircleIcon,
+  XCircleIcon,
 } from "@heroicons/react/24/outline";
 
+/* ─── Helpers ────────────────────────────────────── */
+
+const badgeColors: Record<string, string> = {
+  HIT: "bg-red-500 text-white",
+  NEW: "bg-emerald-500 text-white",
+  SALE: "bg-amber-500 text-white",
+  PROMO: "bg-violet-500 text-white",
+};
+
+/* ─── Component ──────────────────────────────────── */
+
 const MenuPage: React.FC = () => {
-  const [cats, setCats] = useState<DrinkCategoryLocal[]>([]);
-  const [editCat, setEditCat] = useState<DrinkCategoryLocal | null>(null);
-  const [selCat, setSelCat] = useState<DrinkCategoryLocal | null>(null);
-  const [editProd, setEditProd] = useState<Product | null>(null);
-  const [viewProd, setViewProd] = useState<Product | null>(null);
-  const [showCatM, setShowCatM] = useState(false);
-  const [showProdM, setShowProdM] = useState(false);
-  const [showViewerModal, setShowViewerModal] = useState(false);
-  const { user, loading } = useContext(UserContext);
-  const { dispatch } = useCart();
+  const [categories, setCategories] = useState<MenuCategory[]>([]);
+  const [items, setItems] = useState<MenuItem[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"name" | "price" | "popular">("name");
+  const [filterAvailable, setFilterAvailable] = useState<"all" | "yes" | "no">("all");
+  const [loading, setLoading] = useState(true);
+  const [toggling, setToggling] = useState<string | null>(null);
 
-  // Навигация по категориям для мобильных
-  const [catIdx, setCatIdx] = useState(0);
-  useEffect(() => {
-    if (cats.length > 0 && catIdx >= cats.length) setCatIdx(cats.length - 1);
-  }, [cats, catIdx]);
+  const { user, loading: authLoading } = useContext(UserContext);
+  const prefersReduced = useReducedMotion();
 
+  /* ── Data subscriptions ── */
   useEffect(() => {
-    if (!loading) {
-      const unsub = listenCategories(setCats);
-      return () => unsub();
+    if (authLoading) return;
+    const unsubCats = MenuService.listenCategories(setCategories);
+    const unsubItems = MenuService.listenItems(setItems);
+    setLoading(false);
+    return () => { unsubCats(); unsubItems(); };
+  }, [authLoading]);
+
+  /* ── Derived data ── */
+  const categoryStats = useMemo(() => {
+    const map: Record<string, { total: number; available: number }> = {};
+    items.forEach(item => {
+      if (!map[item.categoryId]) map[item.categoryId] = { total: 0, available: 0 };
+      map[item.categoryId].total++;
+      if (item.isAvailable) map[item.categoryId].available++;
+    });
+    return map;
+  }, [items]);
+
+  const filteredItems = useMemo(() => {
+    let list = selectedCategory === "all"
+      ? [...items]
+      : items.filter(i => i.categoryId === selectedCategory);
+
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(i =>
+        i.name.toLowerCase().includes(q) ||
+        (i.nameEn || "").toLowerCase().includes(q) ||
+        (i.description || "").toLowerCase().includes(q)
+      );
     }
-  }, [loading]);
 
-  const onSaveCat = async (
-    data: Omit<DrinkCategoryLocal, "id">,
-    id?: string
-  ) => {
-    if (id) await updateCategory(id, data);
-    else await addCategory(data);
-    setShowCatM(false);
+    if (filterAvailable === "yes") list = list.filter(i => i.isAvailable);
+    if (filterAvailable === "no") list = list.filter(i => !i.isAvailable);
+
+    list.sort((a, b) => {
+      if (sortBy === "price") return a.price - b.price;
+      if (sortBy === "popular") return (b.isPopular ? 1 : 0) - (a.isPopular ? 1 : 0);
+      return a.name.localeCompare(b.name, "ru");
+    });
+
+    return list;
+  }, [items, selectedCategory, search, filterAvailable, sortBy]);
+
+  /* ── Handlers ── */
+  const handleToggle = async (id: string, current: boolean) => {
+    setToggling(id);
+    try {
+      await MenuService.toggleAvailability(id, !current);
+    } finally {
+      setToggling(null);
+    }
   };
 
-  // Форматируем продукт для PremiumMenuModal
-  const formatProductForModal = (product: Product | null) => {
-    if (!product) return null;
-    return {
-      id: product.id,
-      name: product.name.ru || product.name.en || product.name.kz || 'Unnamed',
-      price: product.price || 0,
-      image: product.image || '',
-      categoryId: product.id,
-    };
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`Удалить "${name}"? Это действие необратимо.`)) return;
+    await MenuService.deleteItem(id);
   };
 
-  if (loading || !user) return (
-    <div className="min-h-screen bg-[var(--color-bg-base)] flex items-center justify-center">
-      <div className="bg-[var(--color-bg-elevated)]/80 backdrop-blur-lg rounded-[var(--radius-xl)] p-8 shadow-[var(--shadow-lg)] border border-[var(--color-border)]">
-        <div className="animate-spin w-8 h-8 border-4 border-[var(--color-brand-amber)] border-t-transparent rounded-full mx-auto"></div>
-        <p className="mt-4 text-[var(--color-text-secondary)] text-center">Загрузка админки...</p>
+  /* ── Loading / Auth ── */
+  if (loading || authLoading || !user) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="mt-4 text-sm text-slate-500">Загрузка меню…</p>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  const anim = prefersReduced ? {} : { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-base)]">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -16 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="sticky top-0 z-40 -mx-6 px-6 py-4 bg-gradient-to-r from-[var(--color-accent-orange)] to-[var(--color-accent-pink)]/80 backdrop-blur-md shadow-card"
-      >
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-white/20 rounded-[var(--radius-lg)] flex items-center justify-center">
-                <Squares2X2Icon className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-white font-[var(--font-family-heading)]">Меню Админ</h1>
-                <p className="text-sm text-white/80">Управление категориями и напитками</p>
-              </div>
-            </div>
-            <motion.button
-              onClick={() => {
-                setEditCat(null);
-                setShowCatM(true);
-              }}
-              className="flex items-center gap-2 px-6 py-3 rounded-2xl font-semibold bg-white/90 text-[var(--color-accent-orange)] shadow-card hover:bg-white transition"
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <PlusIcon className="w-5 h-5" />
-              Новая категория
-            </motion.button>
+    <div className="space-y-6">
+      {/* ─── Header ─── */}
+      <motion.div {...anim} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
+            <Squares2X2Icon className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Меню</h1>
+            <p className="text-sm text-slate-500">
+              {categories.length} категорий · {items.length} позиций ·{" "}
+              <span className="text-green-600">{items.filter(i => i.isAvailable).length} доступно</span>
+            </p>
           </div>
         </div>
       </motion.div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {cats.length === 0 ? (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-center py-16"
+      {/* ─── Search + Filters ─── */}
+      <motion.div {...anim} transition={{ delay: 0.05 }} className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <MagnifyingGlassIcon className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            placeholder="Поиск по меню…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/40 focus:border-orange-500 transition"
+          />
+        </div>
+        <div className="relative">
+          <ArrowsUpDownIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <select
+            value={sortBy}
+            onChange={e => setSortBy(e.target.value as typeof sortBy)}
+            className="pl-9 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-500/40"
           >
-            <div className="w-24 h-24 bg-[var(--color-accent-orange)]/10 rounded-[var(--radius-xl)] flex items-center justify-center mx-auto mb-6">
-              <SparklesIcon className="w-12 h-12 text-[var(--color-accent-orange)]" />
-            </div>
-            <h3 className="text-xl font-semibold text-[var(--color-text-primary)] mb-2">Создайте первую категорию</h3>
-            <p className="text-[var(--color-text-secondary)] mb-6">Начните добавлять напитки в ваше меню</p>
-            <button
-              onClick={() => {
-                setEditCat(null);
-                setShowCatM(true);
-              }}
-              className="bg-gradient-to-r from-[var(--color-accent-orange)] to-[var(--color-accent-pink)] text-white px-8 py-3 rounded-[var(--radius-lg)] font-semibold hover:scale-105 transition-transform shadow-card"
-            >
-              Создать категорию
-            </button>
-          </motion.div>
-        ) : (
-          <>
-            {/* Навигационные кнопки для категорий на мобильных */}
-            <div className="flex items-center gap-2 mb-4 md:hidden">
+            <option value="name">По названию</option>
+            <option value="price">По цене</option>
+            <option value="popular">Популярные</option>
+          </select>
+        </div>
+        <div className="relative">
+          <FunnelIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <select
+            value={filterAvailable}
+            onChange={e => setFilterAvailable(e.target.value as typeof filterAvailable)}
+            className="pl-9 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-500/40"
+          >
+            <option value="all">Все статусы</option>
+            <option value="yes">✅ Доступные</option>
+            <option value="no">❌ Скрытые</option>
+          </select>
+        </div>
+      </motion.div>
+
+      {/* ─── Categories horizontal scroll ─── */}
+      <motion.div {...anim} transition={{ delay: 0.1 }}>
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
+          <button
+            onClick={() => setSelectedCategory("all")}
+            className={`flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium transition-all duration-200 ${
+              selectedCategory === "all"
+                ? "bg-gradient-to-r from-orange-500 to-pink-500 text-white shadow-lg shadow-orange-500/25"
+                : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200"
+            }`}
+          >
+            <span className="text-base">📋</span>
+            <span>Все</span>
+            <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full ${
+              selectedCategory === "all" ? "bg-white/20" : "bg-slate-100"
+            }`}>
+              {items.length}
+            </span>
+          </button>
+
+          {categories.map(cat => {
+            const stats = categoryStats[cat.id] || { total: 0, available: 0 };
+            const isActive = selectedCategory === cat.id;
+            return (
               <button
-                className="px-3 py-2 rounded-[var(--radius-lg)] bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] hover:bg-[var(--color-bg-hover)]"
-                disabled={catIdx === 0}
-                onClick={() => setCatIdx(idx => Math.max(0, idx - 1))}
-              >←</button>
-              <span className="font-bold text-lg text-[var(--color-accent-orange)]">{cats[catIdx]?.title?.ru || ''}</span>
-              <button
-                className="px-3 py-2 rounded-[var(--radius-lg)] bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] hover:bg-[var(--color-bg-hover)]"
-                disabled={catIdx === cats.length - 1}
-                onClick={() => setCatIdx(idx => Math.min(cats.length - 1, idx + 1))}
-              >→</button>
-            </div>
-            {/* Сетка категорий */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              {(window.innerWidth < 768 && cats[catIdx] ? [cats[catIdx]] : cats).map((category, index) => (
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id)}
+                className={`flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium transition-all duration-200 group ${
+                  isActive
+                    ? "bg-gradient-to-r from-orange-500 to-pink-500 text-white shadow-lg shadow-orange-500/25"
+                    : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200"
+                }`}
+              >
+                <span className="text-base">{cat.icon || "☕"}</span>
+                <span className="whitespace-nowrap">{cat.name}</span>
+                <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                  isActive ? "bg-white/20" : "bg-slate-100"
+                }`}>
+                  {stats.available}/{stats.total}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </motion.div>
+
+      {/* ─── Items Grid ─── */}
+      {filteredItems.length === 0 ? (
+        <motion.div {...anim} className="text-center py-16">
+          <div className="w-20 h-20 bg-slate-100 rounded-3xl flex items-center justify-center mx-auto mb-4">
+            {search ? (
+              <MagnifyingGlassIcon className="w-10 h-10 text-slate-300" />
+            ) : (
+              <SparklesIcon className="w-10 h-10 text-orange-300" />
+            )}
+          </div>
+          <h3 className="text-lg font-semibold text-slate-700 mb-1">
+            {search ? "Ничего не найдено" : "Пока нет позиций"}
+          </h3>
+          <p className="text-sm text-slate-500">
+            {search
+              ? `По запросу «${search}» ничего не найдено`
+              : "Добавьте первую позицию через Редактор меню"}
+          </p>
+        </motion.div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <AnimatePresence mode="popLayout">
+            {filteredItems.map((item, idx) => {
+              const cat = categories.find(c => c.id === item.categoryId);
+              return (
                 <motion.div
-                  key={category.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.06 }}
-                  className="bg-[var(--color-bg-elevated)] rounded-2xl shadow-card border border-[var(--color-border)] overflow-hidden hover:shadow-[var(--shadow-xl)] transition-all duration-300 hover:-translate-y-1"
+                  key={item.id}
+                  layout
+                  initial={prefersReduced ? {} : { opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ delay: Math.min(idx * 0.03, 0.3) }}
+                  className={`group bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 ${
+                    !item.isAvailable ? "opacity-60 grayscale-[30%]" : ""
+                  }`}
                 >
-                  {/* Category Header */}
-                  <div className="relative h-32 bg-gradient-to-br from-[var(--color-accent-orange)]/20 to-[var(--color-accent-pink)]/10">
-                    {category.image && (
+                  {/* Image */}
+                  <div className="relative aspect-[4/3] bg-gradient-to-br from-orange-50 to-pink-50 overflow-hidden">
+                    {item.image ? (
                       <img
-                        src={category.image}
-                        alt={category.title.ru}
-                        className="w-full h-full object-cover"
+                        src={item.image}
+                        alt={item.name}
+                        loading="lazy"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                       />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <PhotoIcon className="w-14 h-14 text-orange-200" />
+                      </div>
                     )}
-                    <div className="absolute top-4 right-4 flex gap-2">
+
+                    {/* Badges top-left */}
+                    <div className="absolute top-2 left-2 flex flex-col gap-1">
+                      {item.isPopular && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500 text-white shadow-sm">
+                          <FireIcon className="w-3 h-3" /> Хит
+                        </span>
+                      )}
+                      {item.badges?.map(b => (
+                        <span key={b} className={`px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm ${badgeColors[b] || "bg-slate-500 text-white"}`}>
+                          {b}
+                        </span>
+                      ))}
+                      {!item.isAvailable && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-700 text-white shadow-sm">
+                          Скрыто
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Category badge top-right */}
+                    {cat && (
+                      <span className="absolute top-2 right-2 px-2 py-1 rounded-lg bg-white/80 backdrop-blur text-[10px] font-medium text-slate-700 shadow-sm">
+                        {cat.icon} {cat.name}
+                      </span>
+                    )}
+
+                    {/* Quick actions on hover */}
+                    <div className="absolute bottom-0 inset-x-0 p-2 flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-t from-black/30 to-transparent">
                       <button
-                        onClick={() => {
-                          setEditCat(category);
-                          setShowCatM(true);
-                        }}
-                        className="w-8 h-8 bg-[var(--color-bg-elevated)]/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-[var(--color-bg-elevated)] transition-colors shadow-card border border-[var(--color-border)]"
+                        onClick={() => handleToggle(item.id, item.isAvailable)}
+                        disabled={toggling === item.id}
+                        className={`w-8 h-8 rounded-full flex items-center justify-center shadow transition-colors ${
+                          item.isAvailable
+                            ? "bg-green-500 hover:bg-green-600 text-white"
+                            : "bg-white hover:bg-slate-100 text-slate-500"
+                        }`}
+                        title={item.isAvailable ? "Скрыть" : "Показать"}
                       >
-                        <PencilIcon className="w-4 h-4 text-[var(--color-text-secondary)]" />
+                        {toggling === item.id ? (
+                          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                        ) : item.isAvailable ? (
+                          <EyeIcon className="w-4 h-4" />
+                        ) : (
+                          <EyeSlashIcon className="w-4 h-4" />
+                        )}
                       </button>
                       <button
-                        onClick={() => deleteCategory(category.id)}
-                        className="w-8 h-8 bg-red-500/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-red-600 transition-colors shadow-card"
+                        onClick={() => handleDelete(item.id, item.name)}
+                        className="w-8 h-8 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow transition-colors"
+                        title="Удалить"
                       >
-                        <TrashIcon className="w-4 h-4 text-white" />
+                        <TrashIcon className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
 
-                  {/* Category Info */}
-                  <div className="p-6">
-                    <h3 className="text-xl font-bold text-[var(--color-text-primary)] mb-2">{category.title.ru}</h3>
-                    <p className="text-[var(--color-text-secondary)] mb-4 line-clamp-2">{'Описание отсутствует'}</p>
-                    {/* Products Count */}
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-sm text-[var(--color-text-secondary)]">
-                        {category.products?.length || 0} напитков
+                  {/* Info */}
+                  <div className="p-4">
+                    <h3 className="font-semibold text-slate-900 mb-0.5 line-clamp-1 leading-tight">
+                      {item.name}
+                    </h3>
+                    {item.description && (
+                      <p className="text-xs text-slate-500 mb-2 line-clamp-2 leading-relaxed">
+                        {item.description}
+                      </p>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-lg font-bold bg-gradient-to-r from-orange-600 to-pink-600 bg-clip-text text-transparent">
+                        {item.price.toLocaleString("ru")} ₸
                       </span>
-                      <button
-                        onClick={() => setSelCat(category)}
-                        className="text-[var(--color-accent-orange)] hover:text-[var(--color-accent-pink)] text-sm font-medium flex items-center gap-1"
-                      >
-                        <EyeIcon className="w-4 h-4" />
-                        Просмотр
-                      </button>
-                    </div>
-                    {/* Add Product Button */}
-                    <button
-                      onClick={() => {
-                        setSelCat(category);
-                        setEditProd(null);
-                        setShowProdM(true);
-                      }}
-                      className="w-full bg-gradient-to-r from-[var(--color-accent-orange)] to-[var(--color-accent-pink)] text-white py-3 rounded-[var(--radius-lg)] font-semibold hover:shadow-[var(--shadow-md)] transition-all duration-300 flex items-center justify-center gap-2"
-                    >
-                      <PlusIcon className="w-5 h-5" />
-                      Добавить напиток
-                    </button>
-                  </div>
-                  {/* Products Preview */}
-                  {category.products && category.products.length > 0 && (
-                    <div className="px-6 pb-6">
-                      <div className="grid grid-cols-2 gap-3">
-                        {category.products.slice(0, 4).map((product) => (
-                          <div
-                            key={product.id}
-                            className="relative bg-[var(--color-bg-hover)] rounded-2xl p-3 hover:bg-[color-mix(in_oklab,var(--color-bg-hover)_80%,white)] transition-colors cursor-pointer group"
-                            onClick={() => {
-                              setViewProd(product);
-                              setShowViewerModal(true);
-                            }}
-                          >
-                            <div className="w-12 h-12 bg-gradient-to-br from-[var(--color-accent-orange)]/15 to-[var(--color-accent-pink)]/15 rounded-xl mb-2 flex items-center justify-center overflow-hidden">
-                              {product.image ? (
-                                <img src={product.image} alt={product.name.ru} className="w-12 h-12 object-cover" />
-                              ) : (
-                                <span className="text-lg">☕</span>
-                              )}
-                            </div>
-                            <h3 className="text-sm font-semibold text-[var(--color-text-primary)] line-clamp-2 mb-1">
-                              {product.name.ru || product.name.en || product.name.kz}
-                            </h3>
-                            <p className="text-xs font-bold text-[var(--color-accent-orange)]">
-                              {product.price} ₸
-                            </p>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditProd(product);
-                                setSelCat(category);
-                                setShowProdM(true);
-                              }}
-                              className="absolute top-2 right-2 w-6 h-6 bg-white/90 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-white"
-                            >
-                              <PencilIcon className="w-3.5 h-3.5 text-gray-700" />
-                            </button>
-                          </div>
-                        ))}
+                      <div className="flex items-center gap-1">
+                        {item.isAvailable ? (
+                          <CheckCircleIcon className="w-4 h-4 text-green-500" />
+                        ) : (
+                          <XCircleIcon className="w-4 h-4 text-slate-400" />
+                        )}
+                        {item.energy ? (
+                          <span className="text-[10px] text-slate-400 ml-1">{item.energy} ккал</span>
+                        ) : null}
                       </div>
-                      {category.products.length > 4 && (
-                        <p className="text-center text-sm text-[var(--color-text-secondary)] mt-3">
-                          +{category.products.length - 4} ещё
-                        </p>
-                      )}
                     </div>
-                  )}
+                  </div>
                 </motion.div>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-      {/* Modals */}
-      <AnimatePresence>
-        {showCatM && (
-          <CategoryModal
-            initialData={editCat}
-            onClose={() => setShowCatM(false)}
-            onSave={onSaveCat}
-          />
-        )}
-        {showProdM && selCat && (
-          <ProductModal
-            categoryId={selCat.id}
-            initialData={editProd}
-            onClose={() => setShowProdM(false)}
-          />
-        )}
-      </AnimatePresence>
-      
-      {/* Premium Product Modal */}
-      <PremiumMenuModal
-        open={showViewerModal}
-        item={formatProductForModal(viewProd)}
-        onClose={() => setShowViewerModal(false)}
-        type="drinks"
-      />
+              );
+            })}
+          </AnimatePresence>
+        </div>
+      )}
     </div>
   );
 };

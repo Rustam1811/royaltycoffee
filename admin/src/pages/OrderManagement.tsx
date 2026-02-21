@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import {
   CheckCircleIcon,
   ClockIcon,
   BellIcon,
   ArrowPathIcon,
+  MapPinIcon,
+  BuildingStorefrontIcon,
 } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { collection, query, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
@@ -15,6 +17,7 @@ import {
 } from '../utils/orderLocalization';
 import { OrderStatusControl } from '@/components/OrderStatusControl';
 import { OrderStatus, OrderType } from '@/types/orderStatus';
+import { useLocation, ALL_LOCATIONS_ID } from '@/contexts/LocationContext';
 
 interface OrderItem { 
   name: string; 
@@ -39,6 +42,7 @@ interface Order {
   bonusUsed?: number;
   deliveryType?: 'pickup' | 'delivery' | 'dine_in';
   courierId?: string;
+  locationId?: string;
 }
 
 /**
@@ -112,6 +116,7 @@ const OrderManagement: React.FC = () => {
   const { user } = useContext(UserContext);
   const userRole: Role = user?.role || 'user';
   const prefersReducedMotion = useReducedMotion();
+  const { locations, selectedLocationId, selectLocation, isOwner, isAllLocationsSelected } = useLocation();
 
   // Real-time Firestore listener (replaces polling)
   useEffect(() => {
@@ -162,6 +167,7 @@ const OrderManagement: React.FC = () => {
             bonusUsed: data.bonusUsed,
             deliveryType: data.deliveryType || 'pickup',
             courierId: data.courierId,
+            locationId: data.locationId,
           };
         });
 
@@ -217,7 +223,13 @@ const OrderManagement: React.FC = () => {
     }
   };
 
-  const filteredOrders = orders.filter(order => order.status === activeTab);
+  // Filter by location first, then by status tab
+  const locationFilteredOrders = useMemo(() => {
+    if (isAllLocationsSelected) return orders;
+    return orders.filter(o => o.locationId === selectedLocationId);
+  }, [orders, isAllLocationsSelected, selectedLocationId]);
+
+  const filteredOrders = locationFilteredOrders.filter(order => order.status === activeTab);
 
   return (
     <motion.div 
@@ -267,6 +279,41 @@ const OrderManagement: React.FC = () => {
           </motion.button>
         </motion.div>
 
+        {/* Фильтр по точкам (owner/superowner) */}
+        {isOwner && locations.length > 0 && (
+          <div className="mb-4">
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              <motion.button
+                onClick={() => selectLocation(ALL_LOCATIONS_ID)}
+                className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl font-medium text-sm transition-all ${
+                  isAllLocationsSelected
+                    ? 'bg-black text-white shadow-lg'
+                    : 'bg-white text-slate-700 border border-slate-200 hover:border-slate-300 shadow-sm'
+                }`}
+                whileTap={{ scale: 0.95 }}
+              >
+                <BuildingStorefrontIcon className="h-4 w-4" />
+                Все точки
+              </motion.button>
+              {locations.map(loc => (
+                <motion.button
+                  key={loc.id}
+                  onClick={() => selectLocation(loc.id)}
+                  className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl font-medium text-sm transition-all ${
+                    selectedLocationId === loc.id
+                      ? 'bg-black text-white shadow-lg'
+                      : 'bg-white text-slate-700 border border-slate-200 hover:border-slate-300 shadow-sm'
+                  }`}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <MapPinIcon className="h-4 w-4" />
+                  {loc.name}
+                </motion.button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Tabs */}
         <motion.div
           initial={prefersReducedMotion ? { y: 0 } : { opacity: 0, y: 16 }}
@@ -276,7 +323,7 @@ const OrderManagement: React.FC = () => {
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           {(['pending', 'preparing', 'ready'] as const).map((status) => {
-            const count = orders.filter((o) => o.status === status).length;
+            const count = locationFilteredOrders.filter((o) => o.status === status).length;
             const isActive = activeTab === status;
             return (
               <motion.button
