@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   PlusIcon,
@@ -8,10 +8,50 @@ import {
   XMarkIcon,
   TagIcon,
   TrashIcon,
+  PhotoIcon,
 } from '@heroicons/react/24/outline';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '@/lib/firebase';
 import { Card, CardBody, Button, Badge, PageLoader, Input } from '@/components/ui';
 import { getAllProducts, getCategories, toggleProductAvailability, addProduct, updateProduct, deleteProduct, addCategory } from '@/services';
 import { WorkshopProduct, WorkshopCategory, LocalizedString } from '@/types';
+
+// ─── WebP conversion utility ───
+async function convertToWebP(file: File, quality = 0.85): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    img.onload = () => {
+      const maxSize = 800;
+      let { width, height } = img;
+      if (width > maxSize || height > maxSize) {
+        if (width > height) { height = (height / width) * maxSize; width = maxSize; }
+        else { width = (width / height) * maxSize; height = maxSize; }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      ctx?.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error('WebP conversion failed'))),
+        'image/webp',
+        quality,
+      );
+    };
+    img.onerror = () => reject(new Error('Failed to load image'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+// Upload to Firebase Storage under workshop/ prefix
+async function uploadWorkshopImage(file: File, name: string): Promise<string> {
+  const webpBlob = await convertToWebP(file);
+  const fileName = `${Date.now()}-${name.replace(/\s+/g, '-').toLowerCase()}.webp`;
+  const storageRef = ref(storage, `workshop/menu/${fileName}`);
+  await uploadBytes(storageRef, new File([webpBlob], fileName, { type: 'image/webp' }));
+  return getDownloadURL(storageRef);
+}
 
 const getLocalizedName = (name: LocalizedString): string => {
   return name.ru || name.en || name.kz || '';
@@ -35,6 +75,18 @@ const ProductModal: React.FC<{
   const [minOrder, setMinOrder] = useState(product?.minOrder?.toString() || '1');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>(product?.image || '');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,13 +96,22 @@ const ProductModal: React.FC<{
     setSaving(true);
     setError('');
     try {
+      let imageUrl = image;
+
+      // Upload new image if selected
+      if (imageFile) {
+        setUploading(true);
+        imageUrl = await uploadWorkshopImage(imageFile, name.ru);
+        setUploading(false);
+      }
+
       await onSave({
         name,
         description: description.ru ? description : undefined as unknown as LocalizedString,
         price: Number(price),
         unit,
         categoryId,
-        image: image || undefined,
+        image: imageUrl || undefined,
         minOrder: Number(minOrder) || 1,
         isAvailable: product?.isAvailable ?? true,
       });
@@ -59,6 +120,7 @@ const ProductModal: React.FC<{
       setError(err instanceof Error ? err.message : 'Ошибка сохранения');
     } finally {
       setSaving(false);
+      setUploading(false);
     }
   };
 
@@ -84,6 +146,41 @@ const ProductModal: React.FC<{
           {error && <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-xl text-sm">{error}</div>}
 
           <div className="space-y-4">
+            {/* Image upload area */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Изображение</label>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageChange}
+                accept="image/*"
+                className="hidden"
+              />
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="aspect-video bg-slate-50 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center cursor-pointer hover:border-workshop-400 hover:bg-workshop-50 transition-all overflow-hidden"
+              >
+                {imagePreview ? (
+                  <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="text-center py-4">
+                    <PhotoIcon className="w-10 h-10 text-slate-400 mx-auto mb-2" />
+                    <p className="text-sm text-slate-500 font-medium">Нажмите для загрузки</p>
+                    <p className="text-xs text-slate-400 mt-1">Автоконвертация в WebP</p>
+                  </div>
+                )}
+              </div>
+              {imagePreview && (
+                <button
+                  type="button"
+                  onClick={() => { setImageFile(null); setImagePreview(''); setImage(''); }}
+                  className="mt-2 text-xs text-red-500 hover:text-red-700"
+                >
+                  Удалить изображение
+                </button>
+              )}
+            </div>
+
             <Input label="Название (RU) *" value={name.ru} onChange={e => setName({ ...name, ru: e.target.value })} placeholder="Круассан с шоколадом" />
             <Input label="Название (KZ)" value={name.kz} onChange={e => setName({ ...name, kz: e.target.value })} placeholder="" />
             <Input label="Описание (RU)" value={description.ru} onChange={e => setDescription({ ...description, ru: e.target.value })} placeholder="Свежая выпечка" />
@@ -113,13 +210,13 @@ const ProductModal: React.FC<{
                 ))}
               </select>
             </div>
-
-            <Input label="URL изображения" value={image} onChange={e => setImage(e.target.value)} placeholder="https://..." />
           </div>
 
           <div className="flex gap-3 mt-6">
             <Button type="button" variant="outline" fullWidth onClick={onClose}>Отмена</Button>
-            <Button type="submit" fullWidth loading={saving}>{product ? 'Сохранить' : 'Создать'}</Button>
+            <Button type="submit" fullWidth loading={saving || uploading}>
+              {uploading ? 'Загрузка фото...' : saving ? 'Сохранение...' : product ? 'Сохранить' : 'Создать'}
+            </Button>
           </div>
         </form>
       </motion.div>
