@@ -157,9 +157,9 @@ workflows:
       xcode: latest
       node: 20
       cocoapods: default
+      integrations:
+        app_store_connect: App Store Connect
       groups:
-        - app_store_connect    # APP_STORE_CONNECT_ISSUER_ID, APP_STORE_CONNECT_KEY_IDENTIFIER, APP_STORE_CONNECT_PRIVATE_KEY
-        - ios_signing          # CERTIFICATE_PRIVATE_KEY, CM_PROVISIONING_PROFILE
         - firebase             # VITE_FIREBASE_API_KEY, etc.
       vars:
         BUNDLE_ID: "com.royalcoffee.app"
