@@ -24,7 +24,7 @@
         "build:web": "cross-env NODE_ENV=production vite build && npm run build:copy-public && npm run build:cleanup",
         "build:admin": "cd admin && npm run build",
         "build:workshop": "cd workshop && npm run build",
-        "build:landing": "cd public/landing && npm run build",
+        "build:landing": "cd public/landing && npm ci && npm run build",
         "build:all": "npm run build:web && npm run build:admin && npm run build:workshop && npm run build:landing && npm run build:cleanup",
         "build:copy-public": "node scripts/copy-public.mjs",
         "build:cleanup": "node scripts/cleanup-dist.mjs",

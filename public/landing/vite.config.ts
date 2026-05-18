@@ -1,6 +1,9 @@
 ﻿import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
 
 export default defineConfig({
   plugins: [react()],
@@ -14,7 +17,13 @@ export default defineConfig({
     exclude: ['firebase/firestore', 'firebase/auth']
   },
   css: {
-    devSourcemap: true
+    devSourcemap: true,
+    postcss: {
+      plugins: [
+        require('tailwindcss'),
+        require('autoprefixer'),
+      ],
+    },
   },
   build: {
     target: 'esnext',
