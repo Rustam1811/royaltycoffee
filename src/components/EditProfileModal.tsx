@@ -7,6 +7,33 @@ import { storage } from '../firebase';
 import { useAuth } from '../auth/AuthContext';
 import { sanitizePhone, validateE164, ensurePlusPrefix } from '../utils/phone';
 
+// WebP conversion — same pattern as MenuEditor (max 400px for avatars)
+async function convertToWebP(file: File, quality = 0.85): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    img.onload = () => {
+      const maxSize = 400;
+      let { width, height } = img;
+      if (width > maxSize || height > maxSize) {
+        if (width > height) { height = (height / width) * maxSize; width = maxSize; }
+        else { width = (width / height) * maxSize; height = maxSize; }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      ctx?.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error('WebP conversion failed'))),
+        'image/webp',
+        quality,
+      );
+    };
+    img.onerror = () => reject(new Error('Failed to load image'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 interface EditProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -28,40 +55,24 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const sanitized = sanitizePhone(e.target.value);
-    setPhone(sanitized);
+    setPhone(sanitizePhone(e.target.value));
     setError('');
-  };
-
-  const handleAvatarClick = () => {
-    fileInputRef.current?.click();
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
-
-    // Validate file
-    if (!file.type.startsWith('image/')) {
-      setError('Пожалуйста, выберите изображение');
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Файл слишком большой (макс. 5MB)');
-      return;
-    }
+    if (!file.type.startsWith('image/')) { setError('Пожалуйста, выберите изображение'); return; }
+    if (file.size > 10 * 1024 * 1024) { setError('Файл слишком большой (макс. 10MB)'); return; }
 
     setUploading(true);
     setError('');
-
     try {
-      // Upload to Firebase Storage
-      const storageRef = ref(storage, `avatars/${user.uid}/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(storageRef);
-      
-      setAvatar(downloadURL);
+      const webpBlob = await convertToWebP(file);
+      const fileName = `${Date.now()}_avatar.webp`;
+      const storageRef = ref(storage, `avatars/${user.uid}/${fileName}`);
+      await uploadBytes(storageRef, new File([webpBlob], fileName, { type: 'image/webp' }));
+      setAvatar(await getDownloadURL(storageRef));
     } catch (err) {
       console.error('Error uploading avatar:', err);
       setError('Ошибка загрузки аватарки');
@@ -72,29 +83,13 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validate name
-    if (!name.trim()) {
-      setError('Введите имя');
-      return;
-    }
-
-    // Validate phone
+    if (!name.trim()) { setError('Введите имя'); return; }
     const phoneWithPlus = ensurePlusPrefix(phone);
-    if (!validateE164(phoneWithPlus)) {
-      setError('Введите корректный номер телефона');
-      return;
-    }
-
+    if (!validateE164(phoneWithPlus)) { setError('Введите корректный номер телефона'); return; }
     setSaving(true);
     setError('');
-    
     try {
-      await onSave({
-        name: name.trim(),
-        phone: phoneWithPlus,
-        avatar: avatar || undefined,
-      });
+      await onSave({ name: name.trim(), phone: phoneWithPlus, avatar: avatar || undefined });
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка при сохранении');
@@ -113,68 +108,65 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9998]"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[9998]"
           />
-          
-          {/* Modal */}
+
+          {/* Bottom sheet — slides up, matches app dark style */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 40 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 40 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed inset-0 flex items-center justify-center p-4 z-[9999] pointer-events-none"
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 28, stiffness: 280 }}
+            className="fixed bottom-0 left-0 right-0 z-[9999] rounded-t-3xl overflow-hidden md:right-auto md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-[440px]"
+            style={{ background: 'linear-gradient(160deg, #3D0A11 0%, #4D0E16 55%, #5A0D17 100%)' }}
+            onClick={(e) => e.stopPropagation()}
           >
-            <div 
-              className="bg-white rounded-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] max-w-md w-full p-6 pointer-events-auto max-h-[90vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
+            {/* Drag handle */}
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-10 h-1 rounded-full bg-white/20" />
+            </div>
+
+            <div className="px-6 pt-3" style={{ paddingBottom: 'calc(80px + max(env(safe-area-inset-bottom, 0px), 16px))' }}>
               {/* Header */}
               <div className="flex justify-between items-start mb-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900">
-                    Редактировать профиль
-                  </h2>
-                  <div className="h-1 w-20 bg-slate-900 rounded-full mt-2"></div>
+                  <h2 className="text-xl font-bold text-white">Редактировать профиль</h2>
+                  <div className="h-0.5 w-16 bg-[#D4AF37] rounded-full mt-1.5" />
                 </div>
                 <button
                   onClick={onClose}
-                  className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg p-2 transition-all duration-200"
                   disabled={saving}
+                  className="text-white/50 hover:text-white hover:bg-white/10 rounded-xl p-2 transition-all"
                 >
-                  <XMarkIcon className="w-6 h-6" />
+                  <XMarkIcon className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Avatar Upload */}
+              {/* Avatar */}
               <div className="flex flex-col items-center mb-6">
-                <div className="relative group">
-                  <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-100 border-4 border-white shadow-lg">
+                <div className="relative">
+                  <div className="w-24 h-24 rounded-full overflow-hidden ring-2 ring-[#D4AF37]/50 shadow-xl">
                     {avatar ? (
-                      <img
-                        src={avatar}
-                        alt="Avatar"
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-slate-200">
-                        <UserIcon className="w-12 h-12 text-slate-400" />
+                      <div className="w-full h-full flex items-center justify-center bg-white/10">
+                        <UserIcon className="w-12 h-12 text-white/40" />
                       </div>
                     )}
                   </div>
                   <button
                     type="button"
-                    onClick={handleAvatarClick}
+                    onClick={() => fileInputRef.current?.click()}
                     disabled={uploading}
-                    className="absolute bottom-0 right-0 bg-slate-900 hover:bg-black text-white p-2 rounded-full shadow-lg transition-colors disabled:opacity-50"
+                    className="absolute bottom-0 right-0 bg-[#D4AF37] hover:bg-[#C9A632] text-black p-2 rounded-xl shadow-lg transition-colors disabled:opacity-50"
                   >
-                    {uploading ? (
-                      <ArrowPathIcon className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <CameraIcon className="w-4 h-4" />
-                    )}
+                    {uploading
+                      ? <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                      : <CameraIcon className="w-4 h-4" />
+                    }
                   </button>
                 </div>
-                <p className="text-xs text-slate-500 mt-2">Нажмите на камеру чтобы загрузить фото</p>
+                <p className="text-xs text-white/40 mt-2">Нажмите на камеру чтобы загрузить фото</p>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -186,42 +178,34 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
               {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Name */}
                 <div>
-                  <label htmlFor="name" className="block text-sm font-semibold text-slate-700 mb-2">
-                    Имя
-                  </label>
-                  <div className="relative group">
-                    <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-slate-600 transition-colors" />
+                  <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Имя</label>
+                  <div className="relative">
+                    <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
                     <input
-                      id="name"
                       type="text"
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      onChange={(e) => { setName(e.target.value); setError(''); }}
                       placeholder="Ваше имя"
-                      className="w-full pl-12 pr-4 py-3 border-2 rounded-xl font-medium text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-200 focus:border-slate-900 transition-all duration-200 border-slate-200 bg-white hover:border-slate-300"
+                      className="w-full pl-11 pr-4 py-3.5 rounded-xl bg-white/10 border border-white/15 text-white placeholder:text-white/30 focus:outline-none focus:border-[#D4AF37]/60 focus:bg-white/15 transition-all"
                       disabled={saving}
                     />
                   </div>
                 </div>
 
-                {/* Phone */}
                 <div>
-                  <label htmlFor="phone" className="block text-sm font-semibold text-slate-700 mb-2">
-                    Номер телефона
-                  </label>
-                  <div className="relative group">
-                    <PhoneIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-slate-600 transition-colors" />
+                  <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Телефон</label>
+                  <div className="relative">
+                    <PhoneIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
                     <input
-                      id="phone"
                       type="tel"
                       value={phone}
                       onChange={handlePhoneChange}
                       placeholder="+7 (___) ___-__-__"
-                      className={`w-full pl-12 pr-4 py-3 border-2 rounded-xl font-medium text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-slate-200 focus:border-slate-900 transition-all duration-200 ${
-                        error 
-                          ? 'border-red-400 bg-red-50/50' 
-                          : 'border-slate-200 bg-white hover:border-slate-300'
+                      className={`w-full pl-11 pr-4 py-3.5 rounded-xl border text-white placeholder:text-white/30 focus:outline-none transition-all ${
+                        error
+                          ? 'bg-red-500/20 border-red-400/60 focus:border-red-400'
+                          : 'bg-white/10 border-white/15 focus:border-[#D4AF37]/60 focus:bg-white/15'
                       }`}
                       disabled={saving}
                     />
@@ -229,22 +213,21 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                 </div>
 
                 {error && (
-                  <motion.p 
-                    initial={{ opacity: 0, y: -10 }}
+                  <motion.p
+                    initial={{ opacity: 0, y: -6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="text-sm text-red-600 font-medium"
+                    className="text-sm text-red-400 font-medium"
                   >
                     {error}
                   </motion.p>
                 )}
 
-                {/* Buttons */}
-                <div className="flex gap-3 pt-2">
+                <div className="flex gap-3 pt-1">
                   <button
                     type="button"
                     onClick={onClose}
                     disabled={saving}
-                    className="flex-1 px-4 py-3 border-2 border-slate-200 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50"
+                    className="flex-1 py-3.5 rounded-xl border border-white/20 text-white/70 font-semibold hover:bg-white/10 transition-colors disabled:opacity-50"
                   >
                     Отмена
                   </button>
@@ -252,17 +235,11 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
                     type="submit"
                     disabled={saving || uploading}
                     whileTap={{ scale: 0.97 }}
-                    whileHover={{ scale: 1.01 }}
-                    className="flex-1 bg-slate-900 hover:bg-black text-white font-bold py-3 px-6 rounded-xl shadow-[0_14px_36px_-14px_rgba(0,0,0,0.55)] active:shadow-none transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:shadow-none flex items-center justify-center gap-2"
+                    className="flex-1 bg-[#D4AF37] hover:bg-[#C9A632] text-black font-bold py-3.5 rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {saving ? (
-                      <>
-                        <ArrowPathIcon className="w-5 h-5 animate-spin" />
-                        Сохранение...
-                      </>
-                    ) : (
-                      'Сохранить'
-                    )}
+                      <><ArrowPathIcon className="w-4 h-4 animate-spin" />Сохранение...</>
+                    ) : 'Сохранить'}
                   </motion.button>
                 </div>
               </form>

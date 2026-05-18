@@ -31,6 +31,15 @@ export async function getCategories(): Promise<WorkshopCategory[]> {
   })) as WorkshopCategory[];
 }
 
+// Получить ВСЕ категории (включая неактивные)
+export async function getAllCategories(): Promise<WorkshopCategory[]> {
+  const snapshot = await getDocs(collection(db, CATEGORIES_COLLECTION));
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as WorkshopCategory[];
+}
+
 // Получить все доступные продукты
 export async function getProducts(): Promise<WorkshopProduct[]> {
   const q = query(

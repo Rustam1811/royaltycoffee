@@ -310,7 +310,7 @@ export const AchievementBadge: React.FC<AchievementBadgeProps> = ({
             {config.nameRu}
           </div>
           {progress.nextTier && (
-            <div className="text-white/50 text-[10px] mt-0.5">
+            <div className="text-gray-400 text-[10px] mt-0.5">
               {spent} / {progress.next} ₸
             </div>
           )}

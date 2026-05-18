@@ -62,32 +62,33 @@ export const DrinkCardPremiumImpl: React.FC<Props> = ({ item, onOpen }) => {
         </div>
       )}
 
-      {/* Image section - centered, large */}
+      {/* Image section - centered in a maroon circle */}
       <div className="relative flex-1 flex items-center justify-center overflow-hidden">
-        {/* Product image with WebP support */}
-        <img
-          src={getOptimizedImage(item.image)}
-          alt={item.name}
-          loading="lazy"
-          decoding="async"
-          fetchPriority="low"
-          width={200}
-          height={200}
-          onLoad={() => setLoaded(true)}
-          onError={(e) => {
-            // Fallback to original if webp fails
-            const target = e.target as HTMLImageElement;
-            if (target.src !== item.image) {
-              target.src = item.image;
-            }
-          }}
-          className={`
-            w-full h-full object-contain p-2
-            drop-shadow-[0_4px_12px_rgba(0,0,0,0.15)]
-            transition-opacity duration-200
-            ${loaded ? 'opacity-100' : 'opacity-0'}
-          `}
-        />
+        <div className="bg-[#5C0E0E] rounded-full w-[120px] h-[120px] flex items-center justify-center mx-auto">
+          <img
+            src={getOptimizedImage(item.image)}
+            alt={item.name}
+            loading="lazy"
+            decoding="async"
+            fetchPriority="low"
+            width={90}
+            height={90}
+            onLoad={() => setLoaded(true)}
+            onError={(e) => {
+              // Fallback to original if webp fails
+              const target = e.target as HTMLImageElement;
+              if (target.src !== item.image) {
+                target.src = item.image;
+              }
+            }}
+            className={`
+              object-contain w-[90px] h-[90px]
+              drop-shadow-[0_4px_12px_rgba(0,0,0,0.15)]
+              transition-opacity duration-200
+              ${loaded ? 'opacity-100' : 'opacity-0'}
+            `}
+          />
+        </div>
       </div>
 
       {/* Info section - minimal and clean */}

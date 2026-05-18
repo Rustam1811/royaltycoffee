@@ -1,8 +1,11 @@
 /**
  * WhatsApp Phone Authentication Service
  */
+import { API_CONFIG } from './apiConfig';
 
-const API_BASE = '/api/auth';
+function getApiBase() {
+  return `${API_CONFIG.BASE_URL}/auth`;
+}
 
 interface RequestCodeResponse {
   ok?: boolean;
@@ -21,7 +24,7 @@ interface VerifyCodeResponse {
  */
 export async function requestWhatsAppCode(phone: string): Promise<RequestCodeResponse> {
   try {
-    const response = await fetch(`${API_BASE}/request-code`, {
+    const response = await fetch(`${getApiBase()}/request-code`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone }),
@@ -51,7 +54,7 @@ export async function requestWhatsAppCode(phone: string): Promise<RequestCodeRes
  */
 export async function verifyWhatsAppCode(phone: string, code: string): Promise<VerifyCodeResponse> {
   try {
-    const response = await fetch(`${API_BASE}/verify-code`, {
+    const response = await fetch(`${getApiBase()}/verify-code`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone, code }),

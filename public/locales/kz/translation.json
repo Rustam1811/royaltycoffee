@@ -1,4 +1,5 @@
 {
+  "greeting": "QOSH KELDINIZ",
   "menu": {
     "categories": {
       "black_coffee": "Қара кофе",
@@ -12,7 +13,8 @@
       "breakfasts": "Таңғы ас",
       "hearty_croissants": "Тойымды круассандар",
       "paninis": "Панинилер",
-      "pastries": "Қамыр өнімдері"
+      "pastries": "Қамыр өнімдері",
+      "new_items": "Жаңалықтар"
     },
     "espresso": {
       "name": "Эспрессо",

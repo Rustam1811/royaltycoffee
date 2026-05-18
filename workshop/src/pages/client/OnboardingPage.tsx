@@ -12,7 +12,7 @@ import {
   SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { useUser } from '@/contexts/UserContext';
-import { Button, Input, PageLoader } from '@/components/ui';
+import { Button, Input, WorkshopLoader } from '@/components/ui';
 import { getClientByUid, updateClient, addOutlet } from '@/services';
 
 interface OutletDraft {
@@ -93,7 +93,13 @@ const OnboardingPage: React.FC = () => {
   };
 
   const handleFinish = async () => {
-    if (outlets.length === 0) {
+    // Если форма заполнена но ещё не добавлена — добавить автоматически
+    const pendingOutlets = [...outlets];
+    if (outletForm.name.trim() && outletForm.address.trim()) {
+      pendingOutlets.push({ ...outletForm });
+    }
+
+    if (pendingOutlets.length === 0) {
       setError('Добавьте хотя бы одну точку доставки');
       return;
     }
@@ -111,7 +117,7 @@ const OnboardingPage: React.FC = () => {
       });
 
       // 2. Добавляем каждую точку
-      for (const outlet of outlets) {
+      for (const outlet of pendingOutlets) {
         await addOutlet(clientDocId, {
           name: outlet.name.trim(),
           address: outlet.address.trim(),
@@ -134,8 +140,24 @@ const OnboardingPage: React.FC = () => {
     }
   };
 
+  const handleSkip = async () => {
+    if (!clientDocId) { history.replace('/client/outlets'); return; }
+    setSaving(true);
+    try {
+      await updateClient(clientDocId, {
+        companyName: companyName.trim(),
+        contactPerson: contactPerson.trim(),
+        phone: phone.trim(),
+        onboardingCompleted: true,
+      });
+    } catch { /* ignore */ } finally {
+      setSaving(false);
+    }
+    history.replace('/client/outlets');
+  };
+
   if (loading) {
-    return <PageLoader text="Загрузка..." />;
+    return <WorkshopLoader text="Загрузка..." />;
   }
 
   // Step 3 — Success
@@ -159,9 +181,9 @@ const OnboardingPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-orange-50">
+    <div className="min-h-screen bg-gradient-to-b from-rose-50 via-white to-rose-50">
       {/* Header */}
-      <div className="bg-gradient-to-br from-workshop-500 to-workshop-600 text-white px-6 pt-14 pb-10">
+      <div className="bg-gradient-to-br from-[#3D0A11] via-[#4D0E16] to-[#5A0D17] text-white px-6 pt-12 pb-8">
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
           <div className="flex items-center gap-3 mb-4">
             <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
@@ -169,7 +191,7 @@ const OnboardingPage: React.FC = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold">Добро пожаловать!</h1>
-              <p className="text-workshop-100 text-sm">Заполните данные для начала работы</p>
+              <p className="text-white/60 text-sm">Заполните данные для начала работы</p>
             </div>
           </div>
 
@@ -334,10 +356,14 @@ const OnboardingPage: React.FC = () => {
               </Button>
             </div>
 
-            {outlets.length === 0 && (
-              <p className="text-xs text-slate-400 text-center px-4">
-                Добавьте хотя бы одну точку, чтобы мы знали куда доставлять заказы
-              </p>
+            {outlets.length === 0 && !outletForm.name.trim() && (
+              <button
+                type="button"
+                onClick={handleSkip}
+                className="w-full text-center text-xs text-slate-400 hover:text-slate-600 py-1 transition-colors"
+              >
+                Пропустить, добавлю точку позже →
+              </button>
             )}
           </motion.div>
         )}

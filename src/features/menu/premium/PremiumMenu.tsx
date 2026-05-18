@@ -322,7 +322,7 @@ export const PremiumMenu: React.FC<Props> = ({ items, categories, type = 'drinks
   }, [touchStart, touchEnd, handleSwipe]);
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-base)] text-[var(--color-text-primary)] font-sans transition-colors">
+    <div className="min-h-screen pt-safe bg-[var(--color-bg-base)] text-[var(--color-text-primary)] font-sans transition-colors">
       {/* Header - только индикаторы категорий */}
       <div className="pt-4 pb-4 sticky top-0 z-20 bg-[var(--color-bg-base)]/95 backdrop-blur supports-[backdrop-filter]:backdrop-blur-sm flex items-center justify-center px-5">
           <div className="flex items-center gap-1">

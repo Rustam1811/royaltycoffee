@@ -1,8 +1,9 @@
 import { initializeApp, getApps, FirebaseApp, FirebaseError } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
+import { getAuth, initializeAuth, browserLocalPersistence, indexedDBLocalPersistence, Auth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import { getMessaging, Messaging } from 'firebase/messaging';
+import { getMessaging, isSupported as isMessagingSupported, Messaging } from 'firebase/messaging';
+import { Capacitor } from '@capacitor/core';
 import { logger } from './logger';
 
 const firebaseConfig = {
@@ -44,18 +45,32 @@ if (existingApps.length > 0) {
   }
 }
 
-export const auth = getAuth(app);
+// On Capacitor native, IndexedDB on capacitor:// scheme can hang forever,
+// so force localStorage persistence. On web, use default (IndexedDB → localStorage fallback).
+let auth: Auth;
+if (Capacitor.isNativePlatform()) {
+  auth = initializeAuth(app, { persistence: browserLocalPersistence });
+} else {
+  auth = getAuth(app);
+}
+export { auth };
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 
 let messaging: Messaging | null = null;
 if (typeof window !== 'undefined') {
-  try {
-    messaging = getMessaging(app);
-    logger.debug('Firebase Messaging initialized');
-  } catch (error) {
-    logger.warn('Firebase Messaging not available', { error });
-  }
+  isMessagingSupported().then(supported => {
+    if (supported) {
+      try {
+        messaging = getMessaging(app);
+        logger.debug('Firebase Messaging initialized');
+      } catch (error) {
+        logger.warn('Firebase Messaging not available', { error });
+      }
+    }
+  }).catch(() => {
+    // Silently ignore — messaging not supported (e.g., Capacitor WebView)
+  });
 }
 
 export function getMessagingOrNull(): Messaging | null {

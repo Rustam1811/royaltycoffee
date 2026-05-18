@@ -12,7 +12,25 @@
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Splash screen while JS loads -->
+      <style>
+        #workshop-splash{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#fff7ed,#fff,#fffbeb);font-family:'Manrope',sans-serif}
+        #workshop-splash img{width:100px;height:100px;object-fit:contain;animation:wspin 2.5s linear infinite;filter:drop-shadow(0 0 20px rgba(238,123,17,.25))}
+        @keyframes wspin{from{transform:rotateY(0)}to{transform:rotateY(360deg)}}
+        #workshop-splash .dots{display:flex;gap:6px;margin-top:16px}
+        #workshop-splash .dots span{width:6px;height:6px;border-radius:50%;background:#ee7b11;opacity:.3;animation:wpulse 1.2s ease-in-out infinite}
+        #workshop-splash .dots span:nth-child(2){animation-delay:.2s}
+        #workshop-splash .dots span:nth-child(3){animation-delay:.4s}
+        @keyframes wpulse{0%,100%{opacity:.3}50%{opacity:1}}
+        #workshop-splash p{color:#64748b;font-size:14px;margin-top:12px;font-weight:500}
+      </style>
+      <div id="workshop-splash">
+        <img src="/images/royal-thermos.webp" alt="" />
+        <p>Загрузка...</p>
+        <div class="dots"><span></span><span></span><span></span></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

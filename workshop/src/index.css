@@ -4,8 +4,8 @@
 
 /* Custom styles */
 :root {
-  --color-workshop-primary: #ee7b11;
-  --color-workshop-secondary: #df6007;
+  --color-workshop-primary: #5A0D17;
+  --color-workshop-secondary: #4D0E16;
 }
 
 * {
@@ -24,7 +24,7 @@ body {
 
 /* Safe area for mobile devices */
 .safe-area-pb {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: max(env(safe-area-inset-bottom), 10px);
 }
 
 /* Hide scrollbar but keep functionality */

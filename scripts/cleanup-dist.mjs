@@ -13,6 +13,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 const DIST_DIR = join(ROOT, 'dist');
 
+// Large files to always remove from dist (unused assets that bloat deploy)
+const REMOVE_LARGE_FILES = [
+  'images/3Dcup.glb',       // 20MB unused original model (only 3Dcup_tiny.glb is used)
+  'images/3Dcup_opt.glb',   // 1.2MB unused intermediate model
+  'eats/Выпечка.svg',       // 112MB Figma source file
+  'eats/Выпечка.webp',      // derivative of above
+];
+
 // Paths to always remove from dist
 const REMOVE_PATHS = [
   // Landing build artifacts (root-level copy)
@@ -40,11 +48,14 @@ const REMOVE_PATHS = [
   'app/landing/postcss.config.js',
   'app/landing/eslint.config.js',
   // Duplicate image folders inside app/ (already at root via copy-public)
-  'app/drinks',
-  'app/eats',
-  'app/images',
-  'app/uploads',
-  'app/locales',
+  // Skip removal when building for Capacitor — native needs these in webDir
+  ...(process.env.CAPACITOR_BUILD === 'true' ? [] : [
+    'app/drinks',
+    'app/eats',
+    'app/images',
+    'app/uploads',
+    'app/locales',
+  ]),
 ];
 
 // Critical files that must exist after build:web (admin/landing/workshop built separately)
@@ -93,6 +104,16 @@ function formatSize(bytes) {
 }
 
 console.log('🧹 Cleaning up dist folder...');
+
+// Remove known large unused files
+for (const relPath of REMOVE_LARGE_FILES) {
+  const fullPath = join(DIST_DIR, relPath);
+  if (existsSync(fullPath)) {
+    const size = formatSize(statSync(fullPath).size);
+    console.log(`  🗑️  Removing large file: ${relPath} (${size})`);
+    rmSync(fullPath, { force: true });
+  }
+}
 
 // Remove unwanted paths
 for (const relPath of REMOVE_PATHS) {

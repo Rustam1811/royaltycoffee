@@ -8,10 +8,10 @@ import {
   ClockIcon,
   PhoneIcon,
   CheckIcon,
-  XMarkIcon
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { useUser } from '@/contexts/UserContext';
-import { Card, CardBody, Button, Input, PageLoader } from '@/components/ui';
+import { Card, CardBody, Button, Input, WorkshopLoader } from '@/components/ui';
 import { getClientByUid, addClientOutlet } from '@/services';
 import { ClientOutlet } from '@/types';
 
@@ -65,7 +65,6 @@ const OutletsPage: React.FC = () => {
   }, [user?.uid]);
 
   const handleSelectOutlet = (outlet: ClientOutlet) => {
-    // Переходим на страницу меню с выбранной точкой
     history.push(`/client/menu?outletId=${outlet.id}&outletName=${encodeURIComponent(outlet.name)}`);
   };
 
@@ -105,15 +104,15 @@ const OutletsPage: React.FC = () => {
   };
 
   if (loading) {
-    return <PageLoader text="Загрузка точек..." />;
+    return <WorkshopLoader text="Загрузка точек..." />;
   }
 
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
       {/* Header */}
-      <div className="bg-gradient-to-br from-workshop-500 to-workshop-600 text-white px-5 pt-12 pb-8">
-        <h1 className="text-2xl font-bold">Мои точки</h1>
-        <p className="text-workshop-100 mt-1">
+      <div className="bg-gradient-to-br from-[#3D0A11] via-[#4D0E16] to-[#5A0D17] text-white px-5 pt-10 pb-4">
+        <h1 className="text-xl font-bold">Мои точки</h1>
+        <p className="text-white/60 text-sm mt-0.5">
           {outlets.length > 0 
             ? 'Выберите точку для заказа' 
             : 'Добавьте вашу первую точку'
@@ -343,3 +342,4 @@ const OutletsPage: React.FC = () => {
 };
 
 export default OutletsPage;
+

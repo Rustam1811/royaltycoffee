@@ -1020,6 +1020,78 @@ httpApp.get('/api/orders', async (req: Request, res: Response) => {
   }
 });
 
+// ─── /api/approval-settings ─────────────────────────────────────────────
+httpApp.get('/api/approval-settings', async (req: Request, res: Response) => {
+  try {
+    const doc = await db.collection('settings').doc('orderApproval').get();
+    const data = doc.exists ? doc.data() : null;
+    return res.json({
+      ok: true,
+      threshold: data?.threshold ?? 20000,
+      enabled: data?.enabled ?? true,
+    });
+  } catch (error: unknown) {
+    console.error('[ApprovalSettings GET] Error:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return res.status(500).json({ ok: false, error: message });
+  }
+});
+
+httpApp.post('/api/approval-settings', async (req: Request, res: Response) => {
+  try {
+    const { threshold, enabled } = req.body || {};
+    await db.collection('settings').doc('orderApproval').set({
+      threshold: Number(threshold) || 20000,
+      enabled: enabled !== false,
+      updatedAt: admin.firestore.Timestamp.now(),
+    }, { merge: true });
+    return res.json({ ok: true });
+  } catch (error: unknown) {
+    console.error('[ApprovalSettings POST] Error:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return res.status(500).json({ ok: false, error: message });
+  }
+});
+
+// ─── /api/order-approve ─────────────────────────────────────────────
+httpApp.post('/api/order-approve', async (req: Request, res: Response) => {
+  try {
+    const { orderId, action: approvalAction, approvedBy } = req.body || {};
+    if (!orderId || !approvalAction) {
+      return res.status(400).json({ ok: false, error: 'orderId and action are required' });
+    }
+    const orderRef = db.collection('orders').doc(orderId);
+    const orderDoc = await orderRef.get();
+    if (!orderDoc.exists) {
+      return res.status(404).json({ ok: false, error: 'Order not found' });
+    }
+    if (approvalAction === 'approve') {
+      await orderRef.update({
+        status: 'pending',
+        needsApproval: false,
+        approvedBy: approvedBy || null,
+        approvedAt: admin.firestore.Timestamp.now(),
+        updatedAt: admin.firestore.Timestamp.now(),
+      });
+      return res.json({ ok: true, message: 'Заказ одобрен' });
+    } else if (approvalAction === 'reject') {
+      await orderRef.update({
+        status: 'cancelled',
+        needsApproval: false,
+        rejectedBy: approvedBy || null,
+        rejectedAt: admin.firestore.Timestamp.now(),
+        updatedAt: admin.firestore.Timestamp.now(),
+      });
+      return res.json({ ok: true, message: 'Заказ отклонён' });
+    }
+    return res.status(400).json({ ok: false, error: 'action must be "approve" or "reject"' });
+  } catch (error: unknown) {
+    console.error('[OrderApprove] Error:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return res.status(500).json({ ok: false, error: message });
+  }
+});
+
 // ─── /api/placeOrder ─────────────────────────────────────────────
 httpApp.post('/api/placeOrder', async (req: Request, res: Response) => {
   try {
@@ -1067,6 +1139,13 @@ httpApp.post('/api/placeOrder', async (req: Request, res: Response) => {
     const bonusUsed = Math.min(bonusToUse || 0, totalAmount);
     const finalAmount = Math.max(0, totalAmount - bonusUsed);
     
+    // ─── Проверка порога одобрения ───
+    const approvalDoc = await db.collection('settings').doc('orderApproval').get();
+    const approvalData = approvalDoc.exists ? approvalDoc.data() : null;
+    const approvalThreshold = approvalData?.threshold ?? 20000;
+    const approvalEnabled = approvalData?.enabled !== false;
+    const needsApproval = approvalEnabled && totalAmount > approvalThreshold;
+    
     // Если используются бонусы - проверяем баланс
     if (bonusUsed > 0) {
       const bonusDoc = await db.collection('bonuses').doc(userId).get();
@@ -1097,7 +1176,8 @@ httpApp.post('/api/placeOrder', async (req: Request, res: Response) => {
       totalPrice: totalAmount,
       bonusUsed,
       bonusEarned: 0,
-      status: 'pending',
+      status: needsApproval ? 'awaiting_approval' : 'pending',
+      needsApproval: needsApproval || false,
       customerInfo: customerInfo || {},
       createdAt: admin.firestore.Timestamp.now(),
       updatedAt: admin.firestore.Timestamp.now()
@@ -1131,6 +1211,56 @@ httpApp.post('/api/placeOrder', async (req: Request, res: Response) => {
     }
     
     console.log(`[PlaceOrder] Created order #${orderNumberFormatted} (${orderId}) for ${customerName} (${customerPhone})`);
+    
+    // ─── Push-уведомление суперовнерам при превышении порога ───
+    if (needsApproval) {
+      try {
+        // Ищем суперовнеров с FCM-токенами
+        const staffSnapshot = await db.collection('staff')
+          .where('role', 'in', ['superowner', 'owner'])
+          .where('isActive', '==', true)
+          .get();
+        
+        const ownerTokens: string[] = [];
+        for (const staffDoc of staffSnapshot.docs) {
+          const staffData = staffDoc.data();
+          const email = staffData.email;
+          if (!email) continue;
+          // Ищем пользователя по email для получения fcmToken
+          const userSnap = await db.collection('users')
+            .where('email', '==', email)
+            .limit(1)
+            .get();
+          if (!userSnap.empty) {
+            const token = userSnap.docs[0].data().fcmToken;
+            if (token) ownerTokens.push(token);
+          }
+        }
+        
+        if (ownerTokens.length > 0) {
+          const locName = locationName || locationId || 'неизвестная точка';
+          const messaging = admin.messaging();
+          await messaging.sendEachForMulticast({
+            notification: {
+              title: '⚠️ Требуется одобрение заказа',
+              body: `Заказ #${orderNumberFormatted} на ${totalAmount.toLocaleString()} ₸ (${locName}). Одобрить?`,
+            },
+            data: {
+              type: 'order_approval',
+              orderId,
+              orderNumber: orderNumberFormatted,
+              amount: String(totalAmount),
+              locationId: locationId || '',
+            },
+            tokens: ownerTokens,
+          });
+          console.log(`[PlaceOrder] Approval notification sent to ${ownerTokens.length} owner(s)`);
+        }
+      } catch (notifErr) {
+        console.error('[PlaceOrder] Failed to send approval notification:', notifErr);
+        // Не блокируем создание заказа из-за ошибки уведомления
+      }
+    }
     
     return res.status(201).json({
       ok: true,
@@ -1824,58 +1954,157 @@ httpApp.delete('/api/promo', async (req: Request, res: Response) => {
 httpApp.get('/api/leaderboard', async (req: Request, res: Response) => {
   try {
     const { limit: limitParam, userId } = req.query;
-    const limitNum = Math.min(50, Math.max(1, parseInt(limitParam as string) || 10));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limitParam as string) || 50));
     
-    // Получаем топ пользователей по количеству заказов
-    const usersSnapshot = await db.collection('users')
-      .orderBy('ordersCount', 'desc')
-      .limit(limitNum)
-      .get();
-    
-    const leaders = usersSnapshot.docs.map((doc, index) => {
+    // Drink / food category sets
+    const DRINK_CATS = new Set(['coffee', 'ice_coffee', 'lemonade', 'milkshake', 'raf_royal']);
+    const FOOD_CATS = new Set(['croissants', 'bakery', 'desserts', 'sandwiches']);
+
+    // 1. Загружаем всех пользователей
+    const usersSnapshot = await db.collection('users').limit(500).get();
+    const usersMap = new Map<string, { name: string; ordersCount: number }>();
+    usersSnapshot.docs.forEach(doc => {
       const data = doc.data();
-      return {
-        id: doc.id,
+      usersMap.set(doc.id, {
         name: data.displayName || data.name || 'Пользователь',
         ordersCount: data.ordersCount || 0,
-        position: index + 1,
-        level: data.level || 'Бронза'
-      };
+      });
     });
-    
-    // Если запрошен конкретный пользователь и его нет в топе
+
+    // 2. Загружаем menuItems для маппинга itemName → categoryId
+    const menuItemsSnap = await db.collection('menuItems').get();
+    const itemNameToCat = new Map<string, string>();
+    menuItemsSnap.docs.forEach(d => {
+      const data = d.data();
+      if (data.name && data.categoryId) {
+        itemNameToCat.set((data.name as string).toLowerCase(), data.categoryId as string);
+      }
+    });
+
+    // 3. Агрегируем totalSpent + drink/food из orders (Admin SDK — full access)
+    const ordersSnapshot = await db.collection('orders').get();
+    const spentMap = new Map<string, number>();
+    // catMap: { catId -> { userId -> count } }
+    const drinkCatMap = new Map<string, Map<string, number>>();
+    const foodCatMap = new Map<string, Map<string, number>>();
+    const drinkTotalMap = new Map<string, number>();
+    const foodTotalMap = new Map<string, number>();
+
+    ordersSnapshot.docs.forEach(doc => {
+      const o = doc.data();
+      const uid = o.userId as string | undefined;
+      if (!uid) return;
+      const amount = (o.amount || o.totalAmount || o.total || 0) as number;
+      spentMap.set(uid, (spentMap.get(uid) || 0) + amount);
+      const items = o.items as Array<{ name?: string; quantity?: number }> | undefined;
+      if (items && Array.isArray(items)) {
+        items.forEach(item => {
+          if (!item.name) return;
+          const qty = item.quantity || 1;
+          const catId = itemNameToCat.get(item.name.toLowerCase());
+          if (!catId) return;
+          if (DRINK_CATS.has(catId)) {
+            drinkTotalMap.set(uid, (drinkTotalMap.get(uid) || 0) + qty);
+            if (!drinkCatMap.has(catId)) drinkCatMap.set(catId, new Map());
+            const m = drinkCatMap.get(catId)!;
+            m.set(uid, (m.get(uid) || 0) + qty);
+          } else if (FOOD_CATS.has(catId)) {
+            foodTotalMap.set(uid, (foodTotalMap.get(uid) || 0) + qty);
+            if (!foodCatMap.has(catId)) foodCatMap.set(catId, new Map());
+            const m = foodCatMap.get(catId)!;
+            m.set(uid, (m.get(uid) || 0) + qty);
+          }
+        });
+      }
+    });
+
+    // 4. Собираем лидерборд по сумме
+    const leaderboardData: Array<{
+      id: string;
+      name: string;
+      ordersCount: number;
+      totalSpent: number;
+      position: number;
+    }> = [];
+
+    usersMap.forEach((userData, id) => {
+      const totalSpent = spentMap.get(id) || 0;
+      if (totalSpent > 0 || userData.ordersCount > 0) {
+        leaderboardData.push({
+          id,
+          name: userData.name,
+          ordersCount: userData.ordersCount,
+          totalSpent,
+          position: 0,
+        });
+      }
+    });
+
+    leaderboardData.sort((a, b) => {
+      if (b.totalSpent !== a.totalSpent) return b.totalSpent - a.totalSpent;
+      return b.ordersCount - a.ordersCount;
+    });
+    leaderboardData.forEach((u, i) => { u.position = i + 1; });
+
+    // 5. Находим текущего юзера
     let currentUser = null;
     if (userId) {
-      const userInList = leaders.find(l => l.id === userId);
-      if (!userInList) {
-        // Получаем данные пользователя
-        const userDoc = await db.collection('users').doc(userId as string).get();
-        if (userDoc.exists) {
-          const userData = userDoc.data()!;
-          // Считаем позицию
-          const higherCount = await db.collection('users')
-            .where('ordersCount', '>', userData.ordersCount || 0)
-            .count()
-            .get();
-          
+      currentUser = leaderboardData.find(u => u.id === userId) || null;
+      if (!currentUser) {
+        const uData = usersMap.get(userId as string);
+        if (uData) {
           currentUser = {
-            id: userDoc.id,
-            name: userData.displayName || userData.name || 'Вы',
-            ordersCount: userData.ordersCount || 0,
-            position: higherCount.data().count + 1,
-            level: userData.level || 'Бронза'
+            id: userId as string,
+            name: uData.name,
+            ordersCount: uData.ordersCount,
+            totalSpent: spentMap.get(userId as string) || 0,
+            position: leaderboardData.length + 1,
           };
         }
-      } else {
-        currentUser = userInList;
       }
     }
+
+    // 6. Строим drink/food лидерборды
+    const buildCatLeaders = (
+      catMap: Map<string, Map<string, number>>,
+      totalMap: Map<string, number>,
+      allKey: string,
+    ): Record<string, Array<{ id: string; name: string; count: number; position: number }>> => {
+      const result: Record<string, Array<{ id: string; name: string; count: number; position: number }>> = {};
+      // "all" tab
+      const allList: Array<{ id: string; name: string; count: number; position: number }> = [];
+      totalMap.forEach((count, uid) => {
+        allList.push({ id: uid, name: usersMap.get(uid)?.name || 'Пользователь', count, position: 0 });
+      });
+      allList.sort((a, b) => b.count - a.count);
+      allList.forEach((u, i) => { u.position = i + 1; });
+      result[allKey] = allList.slice(0, 10);
+      // per-category tabs
+      catMap.forEach((userMap, catKey) => {
+        const list: Array<{ id: string; name: string; count: number; position: number }> = [];
+        userMap.forEach((count, uid) => {
+          list.push({ id: uid, name: usersMap.get(uid)?.name || 'Пользователь', count, position: 0 });
+        });
+        list.sort((a, b) => b.count - a.count);
+        list.forEach((u, i) => { u.position = i + 1; });
+        result[catKey] = list.slice(0, 10);
+      });
+      return result;
+    };
+
+    const drinkLeaders = buildCatLeaders(drinkCatMap, drinkTotalMap, 'all_drinks');
+    const foodLeaders = buildCatLeaders(foodCatMap, foodTotalMap, 'all_food');
+
+    // 7. Возвращаем
+    const leaders = leaderboardData.slice(0, limitNum);
     
     return res.json({
       ok: true,
       leaders,
       currentUser,
-      total: usersSnapshot.size
+      total: leaderboardData.length,
+      drinkLeaders,
+      foodLeaders,
     });
   } catch (error: unknown) {
     console.error('[Leaderboard] Error:', error);

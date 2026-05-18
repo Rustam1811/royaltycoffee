@@ -12,9 +12,9 @@ import {
 } from '@heroicons/react/24/outline';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/lib/firebase';
-import { Card, CardBody, Button, Badge, PageLoader, Input } from '@/components/ui';
-import { getAllProducts, getCategories, toggleProductAvailability, addProduct, updateProduct, deleteProduct, addCategory } from '@/services';
-import { WorkshopProduct, WorkshopCategory, LocalizedString } from '@/types';
+import { Card, CardBody, Button, Badge, WorkshopLoader, Input } from '@/components/ui';
+import { getAllProducts, getCategories, toggleProductAvailability, addProduct, updateProduct, deleteProduct, addCategory, getAllClients } from '@/services';
+import { WorkshopProduct, WorkshopCategory, LocalizedString, WorkshopClient, ProductNutrition } from '@/types';
 
 // ─── WebP conversion utility ───
 async function convertToWebP(file: File, quality = 0.85): Promise<Blob> {
@@ -60,12 +60,18 @@ const getLocalizedName = (name: LocalizedString): string => {
 const emptyLocalized = (): LocalizedString => ({ ru: '', kz: '', en: '' });
 
 // ─── Modal: Создать/Редактировать продукт ───
+const PRESET_COLORS = [
+  '#ffffff', '#fef3c7', '#fde68a', '#fee2e2', '#fce7f3',
+  '#dbeafe', '#d1fae5', '#ede9fe', '#e0f2fe', '#f1f5f9',
+];
+
 const ProductModal: React.FC<{
   product?: WorkshopProduct | null;
   categories: WorkshopCategory[];
+  allOutlets: { id: string; name: string }[];
   onSave: (data: Omit<WorkshopProduct, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   onClose: () => void;
-}> = ({ product, categories, onSave, onClose }) => {
+}> = ({ product, categories, allOutlets, onSave, onClose }) => {
   const [name, setName] = useState<LocalizedString>(product?.name || emptyLocalized());
   const [description, setDescription] = useState<LocalizedString>(product?.description || emptyLocalized());
   const [price, setPrice] = useState(product?.price?.toString() || '');
@@ -73,6 +79,9 @@ const ProductModal: React.FC<{
   const [categoryId, setCategoryId] = useState(product?.categoryId || (categories[0]?.id || ''));
   const [image, setImage] = useState(product?.image || '');
   const [minOrder, setMinOrder] = useState(product?.minOrder?.toString() || '1');
+  const [color, setColor] = useState(product?.color || '');
+  const [restrictedToOutletIds, setRestrictedToOutletIds] = useState<string[]>(product?.restrictedToOutletIds || []);
+  const [nutrition, setNutrition] = useState<ProductNutrition>(product?.nutrition || {});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -114,6 +123,11 @@ const ProductModal: React.FC<{
         image: imageUrl || undefined,
         minOrder: Number(minOrder) || 1,
         isAvailable: product?.isAvailable ?? true,
+        color: color || undefined,
+        restrictedToOutletIds: restrictedToOutletIds.length > 0 ? restrictedToOutletIds : undefined,
+        nutrition: (nutrition.calories || nutrition.protein || nutrition.fat || nutrition.carbs)
+          ? { ...nutrition, per: nutrition.per || 'порция' }
+          : undefined,
       });
       onClose();
     } catch (err) {
@@ -125,7 +139,7 @@ const ProductModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center sm:justify-center" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 z-[60] flex items-end sm:items-center sm:justify-center" onClick={onClose}>
       <motion.div
         initial={{ y: '100%', opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -158,10 +172,10 @@ const ProductModal: React.FC<{
               />
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="aspect-video bg-slate-50 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center cursor-pointer hover:border-workshop-400 hover:bg-workshop-50 transition-all overflow-hidden"
+                className="aspect-video bg-[#f5f0eb] rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center cursor-pointer hover:border-workshop-400 transition-all overflow-hidden"
               >
                 {imagePreview ? (
-                  <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                  <img src={imagePreview} alt="Preview" className="w-full h-full object-contain" />
                 ) : (
                   <div className="text-center py-4">
                     <PhotoIcon className="w-10 h-10 text-slate-400 mx-auto mb-2" />
@@ -184,6 +198,41 @@ const ProductModal: React.FC<{
             <Input label="Название (RU) *" value={name.ru} onChange={e => setName({ ...name, ru: e.target.value })} placeholder="Круассан с шоколадом" />
             <Input label="Название (KZ)" value={name.kz} onChange={e => setName({ ...name, kz: e.target.value })} placeholder="" />
             <Input label="Описание (RU)" value={description.ru} onChange={e => setDescription({ ...description, ru: e.target.value })} placeholder="Свежая выпечка" />
+
+            {/* КБЖУ */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                КБЖУ
+                <span className="text-xs text-slate-400 font-normal ml-1">(необязательно)</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <Input label="Ккал" type="number" placeholder="240"
+                  value={nutrition.calories?.toString() || ''}
+                  onChange={e => setNutrition(n => ({ ...n, calories: e.target.value ? Number(e.target.value) : undefined }))} />
+                <Input label="Белки (г)" type="number" placeholder="8"
+                  value={nutrition.protein?.toString() || ''}
+                  onChange={e => setNutrition(n => ({ ...n, protein: e.target.value ? Number(e.target.value) : undefined }))} />
+                <Input label="Жиры (г)" type="number" placeholder="12"
+                  value={nutrition.fat?.toString() || ''}
+                  onChange={e => setNutrition(n => ({ ...n, fat: e.target.value ? Number(e.target.value) : undefined }))} />
+                <Input label="Углеводы (г)" type="number" placeholder="30"
+                  value={nutrition.carbs?.toString() || ''}
+                  onChange={e => setNutrition(n => ({ ...n, carbs: e.target.value ? Number(e.target.value) : undefined }))} />
+              </div>
+              <div className="flex gap-2 mt-2">
+                {(['порция', '100г'] as const).map(p => (
+                  <button key={p} type="button" onClick={() => setNutrition(n => ({ ...n, per: p }))}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      (nutrition.per || 'порция') === p
+                        ? 'bg-workshop-500 text-white'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    на {p}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <div className="grid grid-cols-2 gap-3">
               <Input label="Цена (₸) *" type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="500" min="0" />
@@ -210,6 +259,73 @@ const ProductModal: React.FC<{
                 ))}
               </select>
             </div>
+
+            {/* Color picker */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Цвет строки в матрице</label>
+              <div className="flex items-center gap-2 flex-wrap">
+                {PRESET_COLORS.map(c => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setColor(c === '#ffffff' ? '' : c)}
+                    className={`w-7 h-7 rounded-lg border-2 transition-all ${
+                      (c === '#ffffff' ? !color : color === c)
+                        ? 'border-workshop-500 scale-110'
+                        : 'border-slate-200 hover:border-slate-400'
+                    }`}
+                    style={{ backgroundColor: c }}
+                    title={c}
+                  />
+                ))}
+                <input
+                  type="color"
+                  value={color || '#ffffff'}
+                  onChange={e => setColor(e.target.value === '#ffffff' ? '' : e.target.value)}
+                  className="w-7 h-7 rounded-lg border border-slate-200 cursor-pointer"
+                  title="Свой цвет"
+                />
+                {color && (
+                  <button type="button" onClick={() => setColor('')} className="text-xs text-slate-400 hover:text-red-500">
+                    Сбросить
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Restricted outlets */}
+            {allOutlets.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Только для точек{' '}
+                  <span className="text-xs text-slate-400 font-normal">(оставьте пустым — доступно всем)</span>
+                </label>
+                <div className="border border-slate-200 rounded-xl max-h-40 overflow-y-auto">
+                  {allOutlets.map(outlet => (
+                    <label key={outlet.id} className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0">
+                      <input
+                        type="checkbox"
+                        checked={restrictedToOutletIds.includes(outlet.id)}
+                        onChange={e => {
+                          if (e.target.checked) {
+                            setRestrictedToOutletIds(prev => [...prev, outlet.id]);
+                          } else {
+                            setRestrictedToOutletIds(prev => prev.filter(id => id !== outlet.id));
+                          }
+                        }}
+                        className="rounded border-slate-300 text-workshop-500 focus:ring-workshop-500"
+                      />
+                      <span className="text-sm text-slate-700">{outlet.name}</span>
+                    </label>
+                  ))}
+                </div>
+                {restrictedToOutletIds.length > 0 && (
+                  <p className="text-xs text-workshop-600 mt-1">
+                    Выбрано {restrictedToOutletIds.length} точек
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex gap-3 mt-6">
@@ -250,7 +366,7 @@ const CategoryModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center sm:justify-center" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 z-[60] flex items-end sm:items-center sm:justify-center" onClick={onClose}>
       <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         className="bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md max-h-[70vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
@@ -282,6 +398,7 @@ const CategoryModal: React.FC<{
 const MenuEditorPage: React.FC = () => {
   const [products, setProducts] = useState<WorkshopProduct[]>([]);
   const [categories, setCategories] = useState<WorkshopCategory[]>([]);
+  const [allOutlets, setAllOutlets] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [editingProduct, setEditingProduct] = useState<WorkshopProduct | null>(null);
@@ -294,12 +411,25 @@ const MenuEditorPage: React.FC = () => {
 
   const loadData = async () => {
     try {
-      const [productsData, categoriesData] = await Promise.all([
+      const [productsData, categoriesData, clientsData] = await Promise.all([
         getAllProducts(),
         getCategories(),
+        getAllClients(),
       ]);
       setProducts(productsData);
       setCategories(categoriesData);
+      // Flatten all outlets from all clients for restriction picker
+      const outlets: { id: string; name: string }[] = [];
+      const seen = new Set<string>();
+      clientsData.forEach((c: WorkshopClient) => {
+        c.outlets?.forEach(o => {
+          if (!seen.has(o.id)) {
+            seen.add(o.id);
+            outlets.push({ id: o.id, name: `${o.name} (${c.companyName})` });
+          }
+        });
+      });
+      setAllOutlets(outlets.sort((a, b) => a.name.localeCompare(b.name, 'ru')));
     } catch (error) {
       console.error('Error loading menu:', error);
     } finally {
@@ -346,17 +476,17 @@ const MenuEditorPage: React.FC = () => {
     : products.filter(p => p.categoryId === selectedCategory);
 
   if (loading) {
-    return <PageLoader text="Загрузка меню..." />;
+    return <WorkshopLoader text="Загрузка меню..." />;
   }
 
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
       {/* Header */}
-      <div className="bg-gradient-to-br from-workshop-500 to-workshop-600 text-white px-5 pt-12 pb-8">
+      <div className="bg-gradient-to-br from-[#3D0A11] via-[#4D0E16] to-[#5A0D17] text-white px-5 pt-10 pb-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Меню цеха</h1>
-            <p className="text-workshop-100 mt-1">{products.length} позиций · {categories.length} категорий</p>
+            <h1 className="text-xl font-bold">Меню цеха</h1>
+            <p className="text-white/60 text-sm mt-0.5">{products.length} позиций · {categories.length} категорий</p>
           </div>
           <div className="flex gap-2">
             <Button variant="secondary" size="sm" onClick={() => setShowAddCategory(true)}>
@@ -468,6 +598,7 @@ const MenuEditorPage: React.FC = () => {
           <ProductModal
             product={editingProduct}
             categories={categories}
+            allOutlets={allOutlets}
             onSave={handleSaveProduct}
             onClose={() => { setShowAddProduct(false); setEditingProduct(null); }}
           />

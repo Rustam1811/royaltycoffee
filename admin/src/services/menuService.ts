@@ -35,6 +35,16 @@ export interface MenuItemSize {
   price: number;
 }
 
+export interface MenuModifier {
+  id: number;
+  title: string;
+  type: 'select' | 'multi' | 'toggle' | 'slider';
+  options?: string[];
+  default: string | string[] | boolean | number;
+  min?: number;
+  max?: number;
+}
+
 export interface MenuItem {
   id: string;
   categoryId: string;
@@ -47,6 +57,7 @@ export interface MenuItem {
   price: number;
   image: string;
   sizes?: MenuItemSize[];
+  modifiers?: MenuModifier[];
   energy?: number;
   protein?: number;
   fat?: number;

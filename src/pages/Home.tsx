@@ -1,26 +1,45 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, lazy, Suspense, Component, ErrorInfo, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { InstagramStoriesNew } from '../components/InstagramStoriesNew';
 import { PromotionBanner } from '../components/PromotionBanner';
-import { RoyalLoader } from '../components/RoyalLoader';
-import { AchievementBadgeCompact, getCashbackPercent } from '../components/AchievementBadge';
+import { getCashbackPercent } from '../components/AchievementBadge';
 import { auth, db } from '../lib/firebase';
+import { useAuth } from '../auth/AuthContext';
+import { API_CONFIG } from '../services/apiConfig';
 import { doc, getDoc, collection, getDocs, query, limit, where } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import { 
   TrophyIcon, 
-  SparklesIcon,
-  ArrowTrendingUpIcon,
   StarIcon,
   CakeIcon,
   FireIcon,
+  CurrencyDollarIcon,
+  ArrowTrendingUpIcon,
+  GiftIcon,
+  ShoppingBagIcon,
 } from '@heroicons/react/24/solid';
 
-// Ленивая загрузка 3D компонента
 const Cup3D = lazy(() => import('../components/Cup3D'));
 
-// Фон Royalty Coffee  
-const ROYAL_BG = '/images/royal-bg.jpg';
+/** Local error boundary for 3D content */
+class Cup3DErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.warn('[Cup3D] 3D rendering failed:', error.message, info.componentStack);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="w-full h-full flex items-center justify-center bg-slate-50">
+          <span className="text-2xl">☕</span>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 interface LeaderboardUser {
   id: string;
@@ -29,104 +48,210 @@ interface LeaderboardUser {
   bonusBalance: number;
   totalSpent: number;
   position: number;
+  avatar?: string;
 }
 
-/* ─── Language flag picker with real SVG flags ─── */
-const FlagRU: React.FC<{ className?: string }> = ({ className = 'w-6 h-4' }) => (
-  <svg viewBox="0 0 900 600" className={className}>
-    <rect width="900" height="200" fill="#fff" />
-    <rect y="200" width="900" height="200" fill="#0039A6" />
-    <rect y="400" width="900" height="200" fill="#D52B1E" />
-  </svg>
-);
-const FlagKZ: React.FC<{ className?: string }> = ({ className = 'w-6 h-4' }) => (
-  <svg viewBox="0 0 900 600" className={className}>
-    <rect width="900" height="600" fill="#00AFCA" />
-    <circle cx="450" cy="300" r="100" fill="#FFD700" />
-    {/* rays */}
-    {Array.from({ length: 32 }).map((_, i) => {
-      const a = (i * 360) / 32;
-      const r1 = 110, r2 = 150;
-      const x1 = 450 + r1 * Math.cos((a * Math.PI) / 180);
-      const y1 = 300 + r1 * Math.sin((a * Math.PI) / 180);
-      const x2 = 450 + r2 * Math.cos((a * Math.PI) / 180);
-      const y2 = 300 + r2 * Math.sin((a * Math.PI) / 180);
-      return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#FFD700" strokeWidth="4" />;
-    })}
-    {/* ornament stripe */}
-    <rect x="0" y="0" width="60" height="600" fill="#FFD700" opacity="0.3" />
-  </svg>
-);
-const FlagUS: React.FC<{ className?: string }> = ({ className = 'w-6 h-4' }) => (
-  <svg viewBox="0 0 912 600" className={className}>
-    {/* stripes */}
-    {Array.from({ length: 13 }).map((_, i) => (
-      <rect key={i} y={i * 46.15} width="912" height="46.15" fill={i % 2 === 0 ? '#B22234' : '#fff'} />
-    ))}
-    {/* blue canton */}
-    <rect width="365" height="323" fill="#3C3B6E" />
-  </svg>
-);
-
-const LANG_FLAGS: { code: string; label: string; Flag: React.FC<{ className?: string }> }[] = [
-  { code: 'ru', label: 'RU', Flag: FlagRU },
-  { code: 'kz', label: 'KZ', Flag: FlagKZ },
-  { code: 'en', label: 'EN', Flag: FlagUS },
+/* ─── Language picker with text labels ─── */
+const LANGS: { code: string; label: string }[] = [
+  { code: 'ru', label: 'RU' },
+  { code: 'kz', label: 'KAZ' },
+  { code: 'en', label: 'ENG' },
 ];
 
 const LangPicker: React.FC = () => {
   const { i18n } = useTranslation();
   const [open, setOpen] = useState(false);
-  const current = LANG_FLAGS.find(l => l.code === i18n.language) || LANG_FLAGS[0];
-  const others = LANG_FLAGS.filter(l => l.code !== i18n.language);
+  const btnRef = React.useRef<HTMLButtonElement>(null);
+  const current = LANGS.find(l => l.code === i18n.language) || LANGS[0];
+  const others = LANGS.filter(l => l.code !== i18n.language);
+
+  const [pos, setPos] = useState({ top: 0, right: 0 });
+  React.useEffect(() => {
+    if (open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 4, right: window.innerWidth - r.right });
+    }
+  }, [open]);
 
   return (
-    <div className="relative">
+    <>
       <button
+        ref={btnRef}
         onClick={() => setOpen(!open)}
-        className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 flex items-center justify-center active:scale-95 transition-transform"
+        className="relative z-10 h-10 px-3 rounded-xl bg-white/10 border border-white/15 shadow-sm flex items-center justify-center active:scale-95 transition-transform"
       >
-        <current.Flag className="w-6 h-4 rounded-[2px] shadow-sm" />
+        <span className="text-white/80 text-xs font-bold tracking-wide">{current.label}</span>
       </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8, y: -4 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: -4 }}
-            transition={{ duration: 0.15 }}
-            className="absolute top-12 right-0 z-50 flex flex-col gap-1 bg-[#1a1a1a]/95 backdrop-blur-xl rounded-xl border border-white/10 p-1.5 shadow-xl"
-          >
-            {others.map(lang => (
-              <button
-                key={lang.code}
-                onClick={() => { i18n.changeLanguage(lang.code); setOpen(false); }}
-                className="w-10 h-10 rounded-lg bg-white/5 hover:bg-white/15 flex items-center justify-center active:scale-90 transition-all"
+      {createPortal(
+        <AnimatePresence>
+          {open && (
+            <>
+              <div className="fixed inset-0 z-[9998]" onClick={() => setOpen(false)} />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8, y: -4 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.8, y: -4 }}
+                transition={{ duration: 0.15 }}
+                className="fixed z-[9999] flex flex-col gap-1 bg-[#5A0D17] backdrop-blur-xl rounded-xl border border-white/15 p-1.5 shadow-xl"
+                style={{ top: pos.top, right: pos.right }}
               >
-                <lang.Flag className="w-6 h-4 rounded-[2px] shadow-sm" />
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-      {/* Click-away overlay */}
-      {open && <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />}
-    </div>
+                {others.map(lang => (
+                  <button
+                    key={lang.code}
+                    onClick={() => { i18n.changeLanguage(lang.code); setOpen(false); }}
+                    className="h-10 px-3 rounded-lg bg-white/10 hover:bg-white/15 flex items-center justify-center active:scale-90 transition-all"
+                  >
+                    <span className="text-white text-xs font-bold tracking-wide">{lang.label}</span>
+                  </button>
+                ))}
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+    </>
   );
 };
 
-// Компонент вращающегося термоса с прогресс-кругом
+// ── SVG кольцо прогресса вокруг термоса ──
+const ThermosProgressRing: React.FC<{ percent: number; size: number; stroke: number; earned: boolean }> = ({ percent, size, stroke, earned }) => {
+  const r = (size - stroke) / 2;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (percent / 100) * circ;
+  return (
+    <svg width={size} height={size} className="absolute inset-0" style={{ transform: 'rotate(-90deg)' }}>
+      {/* фоновое кольцо */}
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(212,175,55,0.12)" strokeWidth={stroke} />
+      {/* прогресс */}
+      <motion.circle
+        cx={size / 2} cy={size / 2} r={r} fill="none"
+        stroke={earned ? '#D4AF37' : '#D4AF37'}
+        strokeWidth={stroke} strokeLinecap="round"
+        strokeDasharray={circ}
+        initial={{ strokeDashoffset: circ }}
+        animate={{ strokeDashoffset: offset }}
+        transition={{ duration: 1.6, ease: 'easeOut', delay: 0.3 }}
+      />
+    </svg>
+  );
+};
+
+/* ── Bonus info bottom-sheet / modal ── */
+const BonusInfoSheet: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  const levels = [
+    { name: 'Бронза', from: '0 ₸', cashback: '5%', color: '#CD7F32' },
+    { name: 'Серебро', from: '5 000 ₸', cashback: '10%', color: '#C0C0C0' },
+    { name: 'Золото', from: '15 000 ₸', cashback: '15%', color: '#D4AF37' },
+    { name: 'Платинум', from: '25 000 ₸', cashback: '20%', color: '#E5E4E2' },
+  ];
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            className="fixed inset-0 z-[60] bg-black/60"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+          />
+          {/* Sheet */}
+          <motion.div
+            className="fixed bottom-0 left-0 right-0 z-[60] rounded-t-3xl overflow-hidden md:right-auto md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-[440px]"
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+          >
+            <div className="bg-[#5A0D17] max-h-[85vh] overflow-y-auto">
+              {/* Handle */}
+              <div className="flex justify-center pt-3 pb-2">
+                <div className="w-10 h-1 rounded-full bg-white/20" />
+              </div>
+              
+              <div className="px-5 pb-24 space-y-5">
+                <h2 className="text-white text-lg font-bold text-center">Как работают бонусы?</h2>
+
+                {/* Levels */}
+                <div className="space-y-2">
+                  <h3 className="text-white/60 text-xs font-bold uppercase tracking-widest">Уровни кешбэка</h3>
+                  {levels.map((lvl) => (
+                    <div key={lvl.name} className="flex items-center gap-3 bg-white/5 rounded-xl px-3 py-2.5">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: lvl.color + '20' }}>
+                        <StarIcon className="w-4 h-4" style={{ color: lvl.color }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-white text-[13px] font-semibold">{lvl.name}</span>
+                        <p className="text-white/40 text-[11px]">от {lvl.from}</p>
+                      </div>
+                      <span className="text-[#D4AF37] text-sm font-bold">{lvl.cashback}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* How it works */}
+                <div className="space-y-2">
+                  <h3 className="text-white/60 text-xs font-bold uppercase tracking-widest">Как начисляются</h3>
+                  <div className="bg-white/5 rounded-xl p-3 space-y-2">
+                    {[
+                      { icon: <ShoppingBagIcon className="w-4 h-4 text-[#D4AF37]" />, text: 'Делайте заказы — бонусы начисляются автоматически' },
+                      { icon: <CurrencyDollarIcon className="w-4 h-4 text-[#D4AF37]" />, text: 'Кешбэк зачисляется от суммы каждого заказа' },
+                      { icon: <ArrowTrendingUpIcon className="w-4 h-4 text-[#D4AF37]" />, text: 'Чем больше покупок — тем выше уровень и % кешбэка' },
+                      { icon: <GiftIcon className="w-4 h-4 text-[#D4AF37]" />, text: 'Бонусы можно тратить на любой заказ' },
+                    ].map((item, i) => (
+                      <div key={i} className="flex items-start gap-2.5">
+                        <span className="leading-none mt-0.5 flex-shrink-0">{item.icon}</span>
+                        <span className="text-white/70 text-[12px] leading-snug">{item.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Thermos goal */}
+                <div className="space-y-2">
+                  <h3 className="text-white/60 text-xs font-bold uppercase tracking-widest">Приз — термос</h3>
+                  <div className="bg-white/5 rounded-xl p-3">
+                    <div className="flex items-start gap-2.5">
+                      <span className="leading-none mt-0.5 flex-shrink-0"><TrophyIcon className="w-4 h-4 text-[#D4AF37]" /></span>
+                      <span className="text-white/70 text-[12px] leading-snug">
+                        Потратьте <span className="text-[#D4AF37] font-bold">50 000 ₸</span> суммарно и получите фирменный термос Royalty Coffee в подарок!
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Close button */}
+                <button
+                  onClick={onClose}
+                  className="w-full py-3 rounded-xl bg-[#D4AF37] text-[#3D0A11] font-bold text-sm active:scale-[0.97] transition-transform"
+                >
+                  Понятно
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+};
+
+// Компонент карточки лояльности — компактный, с 3D термосом
 const LoyaltyCard: React.FC<{ 
   bonusBalance: number; 
   ordersToFree: number; 
   totalOrders: number;
   totalSpent: number;
-}> = ({ totalSpent }) => {
+  userName: string;
+}> = ({ totalSpent, userName }) => {
+  const [showInfo, setShowInfo] = useState(false);
   const cashback = getCashbackPercent(totalSpent);
   
-  // Прогресс до следующего уровня
   const levelThresholds = [0, 5000, 15000, 25000];
   const levelNames = ['Бронза', 'Серебро', 'Золото', 'Платинум'];
+  const levelColors = ['#CD7F32', '#C0C0C0', '#D4AF37', '#E5E4E2'];
   let currentLevelIdx = 0;
   for (let i = levelThresholds.length - 1; i >= 0; i--) {
     if (totalSpent >= levelThresholds[i]) { currentLevelIdx = i; break; }
@@ -137,70 +262,112 @@ const LoyaltyCard: React.FC<{
   const progressPercent = isMaxLevel ? 100 : Math.min(((totalSpent - currentThreshold) / (nextThreshold - currentThreshold)) * 100, 100);
   const spentToNext = isMaxLevel ? 0 : nextThreshold - totalSpent;
   
+  const THERMOS_GOAL = 50000;
+  const thermosPercent = Math.min((totalSpent / THERMOS_GOAL) * 100, 100);
+  const thermosEarned = totalSpent >= THERMOS_GOAL;
+  const thermosRemaining = Math.max(THERMOS_GOAL - totalSpent, 0);
+
+  const RING_SIZE = 100;
+  const RING_STROKE = 3;
+  
   return (
-    <div className="relative rounded-3xl overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-[#4A1A2C] via-[#2D0F1A] to-[#1A0A10]" />
-      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-amber-500/20 to-transparent rounded-full blur-2xl" />
-      <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-amber-600/15 to-transparent rounded-full blur-xl" />
-      
-      <div className="relative p-5">
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            {/* Уровень */}
-            <div className="flex items-center gap-2 mb-4">
-              <AchievementBadgeCompact ordersCount={0} totalSpent={totalSpent} />
-              <span className="bg-emerald-500/20 text-emerald-300 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-500/30">
-                {cashback}% кешбэк
+    <>
+      <div
+        className="relative active:scale-[0.98] transition-transform cursor-pointer"
+        onClick={() => setShowInfo(true)}
+      >
+        {/* Контент карточки — на белом фоне */}
+        <div className="relative">
+          {/* Two-column layout: Level info | Thermos */}
+          <div className="flex gap-4">
+            
+            {/* ── LEFT: Level & cashback ── */}
+            <div className="flex-1 flex flex-col justify-between min-w-0">
+              {/* User name */}
+              <h3 className="text-[#3D0A11] text-[15px] font-bold mb-1.5 truncate">{userName.split(' ')[0]}</h3>
+
+              {/* Level name + badge */}
+              <div className="flex items-center gap-2 mb-2">
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: levelColors[currentLevelIdx] + '20' }}
+                >
+                  <StarIcon className="w-3.5 h-3.5" style={{ color: levelColors[currentLevelIdx] }} />
+                </div>
+                <span className="text-[#3D0A11] text-[13px] font-bold">{levelNames[currentLevelIdx]}</span>
+              </div>
+
+              {/* Cashback % — hero number */}
+              <div className="flex items-baseline gap-1.5 mb-3">
+                <span className="text-[#D4AF37] text-[32px] font-extrabold leading-none">{cashback}%</span>
+                <span className="text-[#3D0A11]/40 text-[11px] font-medium">кешбэк</span>
+              </div>
+
+              {/* Level progress bar */}
+              {!isMaxLevel ? (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[#3D0A11]/50 text-[10px]">До {levelNames[currentLevelIdx + 1]}</span>
+                    <span className="text-[#3D0A11]/60 text-[10px] font-semibold">{spentToNext.toLocaleString()} ₸</span>
+                  </div>
+                  <div className="w-full bg-[#3D0A11]/10 rounded-full h-1.5">
+                    <motion.div
+                      className="h-1.5 rounded-full"
+                      style={{ backgroundColor: levelColors[currentLevelIdx + 1] }}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${progressPercent}%` }}
+                      transition={{ duration: 1.2, ease: 'easeOut' }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between mt-0.5">
+                    <span className="text-[#3D0A11]/25 text-[9px]">{totalSpent.toLocaleString()} ₸</span>
+                    <span className="text-[#3D0A11]/25 text-[9px]">{nextThreshold.toLocaleString()} ₸</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <StarIcon className="w-3 h-3 text-[#D4AF37]" />
+                  <span className="text-[#D4AF37] text-[10px] font-bold">Макс. уровень</span>
+                </div>
+              )}
+            </div>
+
+            {/* ── RIGHT: Thermos with ring ── */}
+            <div className="flex flex-col items-center justify-center flex-shrink-0">
+              <div className="relative" style={{ width: RING_SIZE, height: RING_SIZE }}>
+                <ThermosProgressRing percent={thermosPercent} size={RING_SIZE} stroke={RING_STROKE} earned={thermosEarned} />
+                <div
+                  className="absolute overflow-hidden rounded-full"
+                  style={{ inset: RING_STROKE + 2 }}
+                >
+                  <Cup3DErrorBoundary>
+                    <Suspense fallback={
+                      <div className="w-full h-full flex items-center justify-center bg-slate-50">
+                        <div className="w-8 h-8 rounded-full bg-[#D4AF37]/20 animate-pulse" />
+                      </div>
+                    }>
+                      <Cup3D className="w-full h-full" />
+                    </Suspense>
+                  </Cup3DErrorBoundary>
+                </div>
+              </div>
+              {/* Thermos progress text */}
+              <span className="text-[#D4AF37] text-[10px] font-semibold mt-1">{Math.round(thermosPercent)}%</span>
+              <span className="text-[#D4AF37]/50 text-[9px] mt-0.5 text-center leading-tight flex items-center justify-center gap-0.5">
+                {thermosEarned ? <><TrophyIcon className="w-3 h-3 text-[#D4AF37]" /> Получен!</> : `ещё ${thermosRemaining.toLocaleString()} ₸`}
               </span>
             </div>
 
-            {/* Сколько потрачено */}
-            <div className="flex items-center gap-2 mb-4">
-              <ArrowTrendingUpIcon className="w-4 h-4 text-amber-400" />
-              <span className="text-white text-sm font-medium">
-                Потрачено: <span className="text-amber-300 font-bold">{totalSpent.toLocaleString()} ₸</span>
-              </span>
-            </div>
-            
-            {/* Прогресс до следующего уровня */}
-            {!isMaxLevel ? (
-              <div className="bg-white/10 rounded-xl p-3 backdrop-blur-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-amber-100/90 text-xs">До уровня {levelNames[currentLevelIdx + 1]}</span>
-                  <span className="text-amber-300 text-xs font-bold">{spentToNext.toLocaleString()} ₸</span>
-                </div>
-                <div className="w-full bg-white/20 rounded-full h-2">
-                  <motion.div
-                    className="h-2 rounded-full bg-gradient-to-r from-amber-400 to-amber-500"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${progressPercent}%` }}
-                    transition={{ duration: 1.2, ease: 'easeOut' }}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="bg-amber-500/10 rounded-xl p-3 backdrop-blur-sm border border-amber-500/20">
-                <div className="flex items-center gap-2">
-                  <StarIcon className="w-5 h-5 text-amber-400" />
-                  <span className="text-amber-300 text-xs font-bold">Максимальный уровень</span>
-                </div>
-              </div>
-            )}
-          </div>
-          
-          {/* 3D термос */}
-          <div className="relative flex-shrink-0 ml-2" style={{ width: 140, height: 140 }}>
-            <Suspense fallback={
-              <div className="w-full h-full flex items-center justify-center">
-                <SparklesIcon className="w-10 h-10 text-amber-400/50" />
-              </div>
-            }>
-              <Cup3D className="w-full h-full" />
-            </Suspense>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Bottom-sheet with bonus info — portal to body so it's above everything */}
+      {createPortal(
+        <BonusInfoSheet open={showInfo} onClose={() => setShowInfo(false)} />,
+        document.body
+      )}
+    </>
   );
 };
 
@@ -210,49 +377,16 @@ interface CategoryLeaderUser {
   name: string;
   count: number;
   position: number;
+  avatar?: string;
 }
 
-const DRINK_CATS: readonly { key: string; label: string }[] = [
-  { key: 'all_drinks', label: 'Все' },
-  { key: 'americano', label: 'Американо' },
-  { key: 'cappuccino', label: 'Капучино' },
-  { key: 'latte', label: 'Латте' },
-  { key: 'raf', label: 'Раф' },
-  { key: 'flat_white', label: 'Флэт уайт' },
-  { key: 'matcha', label: 'Матча' },
-] as const;
-
-const FOOD_CATS: readonly { key: string; label: string }[] = [
-  { key: 'all_food', label: 'Все' },
-  { key: 'croissant', label: 'Круассаны' },
-  { key: 'bakery', label: 'Выпечка' },
-  { key: 'sandwich', label: 'Сэндвичи' },
-  { key: 'dessert', label: 'Десерты' },
-] as const;
-
-function matchDrinkCategory(n: string): string | null {
-  const s = n.toLowerCase();
-  if (/америк/i.test(s)) return 'americano';
-  if (/капуч/i.test(s)) return 'cappuccino';
-  if (/латте|latte/i.test(s)) return 'latte';
-  if (/раф|raf/i.test(s)) return 'raf';
-  if (/флэт|flat\s?white/i.test(s)) return 'flat_white';
-  if (/матча|matcha/i.test(s)) return 'matcha';
-  // generic drink match
-  if (/кофе|эспрессо|мокк|фраппе|какао|чай|tea|coffee/i.test(s)) return 'all_drinks';
-  return null;
-}
-
-function matchFoodCategory(n: string): string | null {
-  const s = n.toLowerCase();
-  if (/круассан|croissant/i.test(s)) return 'croissant';
-  if (/синнабон|маффин|кекс|печенье|брауни|эклер|шу |тарт|булочк/i.test(s)) return 'bakery';
-  if (/сэндвич|панини|sandwich|тост|багет|wrap/i.test(s)) return 'sandwich';
-  if (/чизкейк|тирамису|наполеон|медовик|пирожн|торт|десерт|cake|mousse/i.test(s)) return 'dessert';
-  // generic food match
-  if (/боул|салат|bowl|каша|гранола|йогурт/i.test(s)) return 'all_food';
-  return null;
-}
+// Маппинг categoryId → читабельное название для табов
+const DRINK_CAT_LABELS: Record<string, string> = {
+  coffee: 'Кофе', ice_coffee: 'Ice', lemonade: 'Лимонады', milkshake: 'Milkshake', raf_royal: 'Раф Royal',
+};
+const FOOD_CAT_LABELS: Record<string, string> = {
+  croissants: 'Круассаны', bakery: 'Выпечка', desserts: 'Десерты', sandwiches: 'Сэндвичи',
+};
 
 /* ─── Shared helpers ─── */
 const getInitials = (name: string) => {
@@ -270,8 +404,13 @@ const LeaderboardCarousel: React.FC<{
   foodLeaders: Record<string, CategoryLeaderUser[]>;
   currentUserId?: string;
 }> = ({ leaders, currentUser, drinkLeaders, foodLeaders, currentUserId }) => {
-  const [drinkCat, setDrinkCat] = useState(DRINK_CATS[0].key);
-  const [foodCat, setFoodCat] = useState(FOOD_CATS[0].key);
+  const [drinkCat, setDrinkCat] = useState('all_drinks');
+  const [foodCat, setFoodCat] = useState('all_food');
+
+  // Динамические табы из данных
+  const drinkCatTabs = [{ key: 'all_drinks', label: 'Все' }, ...Object.keys(drinkLeaders).filter(k => k !== 'all_drinks').map(k => ({ key: k, label: DRINK_CAT_LABELS[k] || k }))];
+  const foodCatTabs = [{ key: 'all_food', label: 'Все' }, ...Object.keys(foodLeaders).filter(k => k !== 'all_food').map(k => ({ key: k, label: FOOD_CAT_LABELS[k] || k }))];
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const top10Spent = leaders.slice(0, 10);
   const drinkList = drinkLeaders[drinkCat] || [];
@@ -279,65 +418,154 @@ const LeaderboardCarousel: React.FC<{
 
   const spentVisible = currentUser ? top10Spent.some(u => u.id === currentUser.id) : true;
 
-  /* Medal config */
+  /* Medal config — dark text on white cards */
   const medal = (p: number) => {
-    if (p === 1) return { ring: 'ring-amber-400/60', bg: 'bg-amber-400/20', text: 'text-amber-400', glow: 'shadow-amber-400/30' };
-    if (p === 2) return { ring: 'ring-slate-300/50', bg: 'bg-slate-300/15', text: 'text-slate-300', glow: 'shadow-slate-300/20' };
-    if (p === 3) return { ring: 'ring-amber-600/50', bg: 'bg-amber-600/15', text: 'text-amber-600', glow: 'shadow-amber-600/20' };
-    return { ring: 'ring-white/10', bg: 'bg-white/[0.05]', text: 'text-white/40', glow: '' };
+    if (p === 1) return { ring: 'ring-[#D4AF37]/60', bg: 'bg-[#D4AF37]/15', text: 'text-[#D4AF37]', glow: 'shadow-[#D4AF37]/20' };
+    if (p === 2) return { ring: 'ring-slate-400/40', bg: 'bg-slate-200/40', text: 'text-slate-500', glow: 'shadow-slate-300/15' };
+    if (p === 3) return { ring: 'ring-amber-400/40', bg: 'bg-amber-100/40', text: 'text-amber-600', glow: 'shadow-amber-400/15' };
+    return { ring: 'ring-[#3D0A11]/10', bg: 'bg-[#3D0A11]/5', text: 'text-[#3D0A11]/40', glow: '' };
   };
 
-  /* Row component */
-  const Row: React.FC<{ pos: number; name: string; value: string; isMe: boolean }> = ({ pos, name, value, isMe }) => {
+  /* Row component — expandable on tap, dark text on white */
+  const Row: React.FC<{
+    pos: number; name: string; value: string; isMe: boolean;
+    uid: string;
+    avatar?: string;
+    extra?: { ordersCount?: number; totalSpent?: number; bonusBalance?: number; count?: number };
+  }> = ({ pos, name, value, isMe, uid, avatar, extra }) => {
     const m = medal(pos);
+    const isOpen = expandedId === uid;
+    const toggle = () => setExpandedId(prev => prev === uid ? null : uid);
+
     return (
-      <motion.div
-        initial={{ opacity: 0, x: -10 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: pos * 0.03 }}
-        className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-colors ${
-          isMe ? 'bg-amber-400/[0.10] ring-1 ring-amber-400/25' : 'hover:bg-white/[0.03]'
-        }`}
+      <div
+        className={`transition-transform duration-300 ease-out origin-center ${isOpen ? 'scale-[1.03]' : 'scale-100'}`}
+        style={{ zIndex: isOpen ? 10 : 1, position: 'relative' }}
       >
-        {/* Position badge */}
-        <div className={`w-8 h-8 rounded-lg ${m.bg} ring-1 ${m.ring} flex items-center justify-center flex-shrink-0 ${pos <= 3 ? `shadow-md ${m.glow}` : ''}`}>
-          {pos <= 3
-            ? <TrophyIcon className={`w-4 h-4 ${m.text}`} />
-            : <span className="text-[11px] font-bold text-white/35">{pos}</span>
-          }
+        <button onClick={toggle} className="w-full text-left">
+          <motion.div
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: pos * 0.03 }}
+            className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all ${
+              isMe ? 'bg-[#D4AF37]/10 ring-1 ring-[#D4AF37]/30' : 'hover:bg-[#3D0A11]/5'
+            } ${isOpen ? 'bg-[#3D0A11]/5 ring-1 ring-[#3D0A11]/10 shadow-sm' : ''}`}
+          >
+            {/* Position badge */}
+            <div className={`w-8 h-8 rounded-lg ${m.bg} ring-1 ${m.ring} flex items-center justify-center flex-shrink-0 transition-transform duration-300 ${pos <= 3 ? `shadow-md ${m.glow}` : ''} ${isOpen ? 'scale-110' : ''}`}>
+              {pos <= 3
+                ? <TrophyIcon className={`w-4 h-4 ${m.text}`} />
+                : <span className="text-[11px] font-bold text-[#3D0A11]/40">{pos}</span>
+              }
+            </div>
+            {/* Avatar */}
+            <div className="w-10 h-10 rounded-full overflow-hidden ring-1 ring-[#3D0A11]/10 flex-shrink-0">
+              {avatar ? (
+                <img
+                  src={avatar}
+                  alt={name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; (e.currentTarget.parentElement as HTMLElement).classList.add('bg-[#3D0A11]/10', 'items-center', 'justify-center', 'flex'); }}
+                />
+              ) : (
+                <div className="w-full h-full bg-[#3D0A11]/10 flex items-center justify-center">
+                  <span className="text-[#3D0A11]/60 text-[11px] font-bold">{getInitials(name)}</span>
+                </div>
+              )}
+            </div>
+            {/* Name */}
+            <div className="flex-1 min-w-0">
+              <span className="text-[#3D0A11] text-[13px] font-medium truncate block leading-tight">
+                {name.split(' ')[0]}
+                {isMe && <span className="text-[#D4AF37] text-[10px] ml-1 font-bold">(Вы)</span>}
+              </span>
+            </div>
+            {/* Value */}
+            <span className={`text-[13px] font-bold flex-shrink-0 ${isMe ? 'text-[#D4AF37]' : 'text-[#3D0A11]/70'}`}>{value}</span>
+            {/* Chevron */}
+            <svg className={`w-3.5 h-3.5 text-[#3D0A11]/30 flex-shrink-0 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+            </svg>
+          </motion.div>
+        </button>
+
+        {/* Expandable details */}
+        <div
+          className="overflow-hidden transition-all duration-300 ease-out"
+          style={{
+            maxHeight: isOpen ? '200px' : '0px',
+            opacity: isOpen ? 1 : 0,
+          }}
+        >
+          <div className="px-3 pb-3 pt-1">
+            <div className="bg-[#3D0A11]/5 rounded-xl p-3 ring-1 ring-[#3D0A11]/10 space-y-2">
+              {extra?.totalSpent != null && (
+                <div className="flex justify-between items-center">
+                  <span className="text-[#3D0A11]/40 text-[11px]">Потрачено</span>
+                  <span className="text-[#3D0A11] text-[12px] font-semibold">{extra.totalSpent.toLocaleString()} ₸</span>
+                </div>
+              )}
+              {extra?.ordersCount != null && (
+                <div className="flex justify-between items-center">
+                  <span className="text-[#3D0A11]/40 text-[11px]">Заказов</span>
+                  <span className="text-[#3D0A11] text-[12px] font-semibold">{extra.ordersCount}</span>
+                </div>
+              )}
+              {extra?.bonusBalance != null && (
+                <div className="flex justify-between items-center">
+                  <span className="text-[#3D0A11]/40 text-[11px]">Бонусы</span>
+                  <span className="text-[#D4AF37] text-[12px] font-semibold">{extra.bonusBalance.toLocaleString()} ₸</span>
+                </div>
+              )}
+              {extra?.count != null && (
+                <div className="flex justify-between items-center">
+                  <span className="text-[#3D0A11]/40 text-[11px]">Кол-во</span>
+                  <span className="text-[#3D0A11] text-[12px] font-semibold">{extra.count} шт</span>
+                </div>
+              )}
+              {extra?.ordersCount != null && extra?.totalSpent != null && extra.ordersCount > 0 && (
+                <div className="flex justify-between items-center pt-1 border-t border-[#3D0A11]/5">
+                  <span className="text-[#3D0A11]/40 text-[11px]">Средний чек</span>
+                  <span className="text-[#3D0A11] text-[12px] font-semibold">{Math.round(extra.totalSpent / extra.ordersCount).toLocaleString()} ₸</span>
+                </div>
+              )}
+              {/* Progress bar — how this user compares to #1 */}
+              {leaders.length > 0 && extra?.totalSpent != null && (
+                <div className="pt-1">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[#3D0A11]/30 text-[10px]">Доля от #1</span>
+                    <span className="text-[#3D0A11]/40 text-[10px]">{Math.round((extra.totalSpent / (leaders[0]?.totalSpent || 1)) * 100)}%</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-[#3D0A11]/10 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-[#D4AF37] to-[#D4AF37]/60 transition-all duration-500"
+                      style={{ width: `${Math.min(100, (extra.totalSpent / (leaders[0]?.totalSpent || 1)) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-        {/* Avatar */}
-        <div className="w-8 h-8 rounded-full bg-[#2A1520] ring-1 ring-white/10 flex items-center justify-center flex-shrink-0">
-          <span className="text-white/50 text-[10px] font-bold">{getInitials(name)}</span>
-        </div>
-        {/* Name */}
-        <div className="flex-1 min-w-0">
-          <span className="text-white/80 text-[13px] font-medium truncate block leading-tight">
-            {name.split(' ')[0]}
-            {isMe && <span className="text-amber-400 text-[10px] ml-1 font-bold">(Вы)</span>}
-          </span>
-        </div>
-        {/* Value */}
-        <span className={`text-[13px] font-bold flex-shrink-0 ${isMe ? 'text-amber-300' : 'text-amber-300/70'}`}>{value}</span>
-      </motion.div>
+      </div>
     );
   };
 
-  /* Tab pill */
+  /* Tab pill — on white card */
   const Tab: React.FC<{ active: boolean; label: string; onClick: () => void }> = ({ active, label, onClick }) => (
     <button
       onClick={onClick}
       className={`flex-shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all ${
         active
-          ? 'bg-amber-400/15 text-amber-300 ring-1 ring-amber-400/25'
-          : 'text-white/30 hover:text-white/50'
+          ? 'bg-[#D4AF37]/15 text-[#D4AF37] ring-1 ring-[#D4AF37]/30'
+          : 'text-[#3D0A11]/40 hover:text-[#3D0A11]/60'
       }`}
     >
       {label}
     </button>
   );
 
-  /* Card wrapper */
+  /* Card wrapper — white card */
   const Card: React.FC<{
     icon: React.ReactNode;
     title: string;
@@ -345,20 +573,20 @@ const LeaderboardCarousel: React.FC<{
     accentColor: string;
     children: React.ReactNode;
   }> = ({ icon, title, subtitle, accentColor, children }) => (
-    <div className="flex-shrink-0 w-[85vw] max-w-[360px] snap-center rounded-2xl overflow-hidden relative">
-      {/* Card bg */}
-      <div className="absolute inset-0 bg-[#150D11]" />
+    <div className="flex-shrink-0 w-[85vw] max-w-[360px] snap-center rounded-2xl overflow-hidden relative shadow-sm ring-1 ring-[#3D0A11]/5">
+      {/* Card bg — white */}
+      <div className="absolute inset-0 bg-white" />
       {/* Subtle top accent line */}
       <div className={`absolute top-0 left-6 right-6 h-[2px] rounded-full ${accentColor} opacity-40`} />
       {/* Content */}
       <div className="relative">
         <div className="px-4 pt-4 pb-3 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-white/[0.06] ring-1 ring-white/[0.08] flex items-center justify-center">
+          <div className="w-9 h-9 rounded-lg bg-[#3D0A11]/5 ring-1 ring-[#3D0A11]/10 flex items-center justify-center">
             {icon}
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-white text-[14px] leading-tight">{title}</h3>
-            <p className="text-white/25 text-[11px]">{subtitle}</p>
+            <h3 className="font-bold text-[#3D0A11] text-[14px] leading-tight">{title}</h3>
+            <p className="text-[#3D0A11]/40 text-[11px]">{subtitle}</p>
           </div>
         </div>
         {children}
@@ -369,30 +597,73 @@ const LeaderboardCarousel: React.FC<{
   /* Empty state */
   const Empty: React.FC<{ icon: React.ReactNode }> = ({ icon }) => (
     <div className="text-center py-8 px-4">
-      <div className="w-10 h-10 rounded-xl bg-white/[0.04] ring-1 ring-white/[0.06] flex items-center justify-center mx-auto mb-2">
+      <div className="w-10 h-10 rounded-xl bg-[#3D0A11]/5 ring-1 ring-[#3D0A11]/10 flex items-center justify-center mx-auto mb-2">
         {icon}
       </div>
-      <p className="text-white/20 text-xs">Пока нет данных</p>
+      <p className="text-[#3D0A11]/40 text-xs">Пока нет данных</p>
     </div>
   );
 
   return (
     <div className="-mx-4">
       {/* Section title */}
-      <div className="px-4 mb-3 flex items-center gap-2">
-        <TrophyIcon className="w-4 h-4 text-amber-400/70" />
-        <span className="text-[11px] font-bold text-white/40 uppercase tracking-widest">Лидерборд</span>
-        <div className="flex-1 h-px bg-white/[0.06]" />
+      <div className="px-4 mb-3 flex items-center gap-2.5">
+        <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-[#D4AF37]/10">
+          <TrophyIcon className="w-3.5 h-3.5 text-[#D4AF37]" />
+        </span>
+        <span className="text-[15px] font-bold text-[#3D0A11] tracking-wide uppercase">Лидерборд</span>
       </div>
 
       <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory no-scrollbar px-4 pb-2">
 
-        {/* ── Card 1: По сумме ── */}
+        {/* ── Card 1: По напиткам ── */}
         <Card
-          icon={<TrophyIcon className="w-4 h-4 text-amber-400" />}
+          icon={<FireIcon className="w-4 h-4 text-orange-400" />}
+          title="По напиткам"
+          subtitle="Кто больше пьёт кофе"
+          accentColor="bg-orange-400"
+        >
+          <div className="px-3 pb-2 flex gap-1 overflow-x-auto no-scrollbar">
+            {drinkCatTabs.map(cat => (
+              <Tab key={cat.key} active={drinkCat === cat.key} label={cat.label} onClick={() => setDrinkCat(cat.key)} />
+            ))}
+          </div>
+          <div className="px-2 pb-4 space-y-1">
+            {drinkList.length > 0 ? drinkList.slice(0, 10).map(u => (
+              <Row key={u.id + drinkCat} pos={u.position} name={u.name} value={`${u.count} шт`} isMe={currentUserId === u.id} uid={u.id + '_drink_' + drinkCat} avatar={u.avatar} extra={{ count: u.count }} />
+            )) : (
+              <Empty icon={<FireIcon className="w-5 h-5 text-gray-300" />} />
+            )}
+          </div>
+        </Card>
+
+        {/* ── Card 2: По еде ── */}
+        <Card
+          icon={<CakeIcon className="w-4 h-4 text-rose-400" />}
+          title="По еде"
+          subtitle="Кто больше ест"
+          accentColor="bg-rose-400"
+        >
+          <div className="px-3 pb-2 flex gap-1 overflow-x-auto no-scrollbar">
+            {foodCatTabs.map(cat => (
+              <Tab key={cat.key} active={foodCat === cat.key} label={cat.label} onClick={() => setFoodCat(cat.key)} />
+            ))}
+          </div>
+          <div className="px-2 pb-4 space-y-1">
+            {foodList.length > 0 ? foodList.slice(0, 10).map(u => (
+              <Row key={u.id + foodCat} pos={u.position} name={u.name} value={`${u.count} шт`} isMe={currentUserId === u.id} uid={u.id + '_food_' + foodCat} avatar={u.avatar} extra={{ count: u.count }} />
+            )) : (
+              <Empty icon={<CakeIcon className="w-5 h-5 text-gray-300" />} />
+            )}
+          </div>
+        </Card>
+
+        {/* ── Card 3: По сумме ── */}
+        <Card
+          icon={<TrophyIcon className="w-4 h-4 text-[#D4AF37]" />}
           title="По сумме"
           subtitle="Кто больше потратил"
-          accentColor="bg-amber-400"
+          accentColor="bg-[#D4AF37]"
         >
           <div className="px-2 pb-4 space-y-1">
             {top10Spent.length > 0 ? top10Spent.map(u => (
@@ -402,62 +673,26 @@ const LeaderboardCarousel: React.FC<{
                 name={u.name}
                 value={`${u.totalSpent >= 1000 ? `${(u.totalSpent / 1000).toFixed(1)}k` : u.totalSpent} ₸`}
                 isMe={currentUserId === u.id}
+                uid={u.id}
+                avatar={u.avatar}
+                extra={{ ordersCount: u.ordersCount, totalSpent: u.totalSpent, bonusBalance: u.bonusBalance }}
               />
             )) : (
-              <Empty icon={<TrophyIcon className="w-5 h-5 text-white/10" />} />
+              <Empty icon={<TrophyIcon className="w-5 h-5 text-gray-300" />} />
             )}
             {currentUser && !spentVisible && (
               <>
-                <div className="mx-3 my-1.5 h-px bg-white/[0.06]" />
+                <div className="mx-3 my-1.5 h-px bg-gray-200" />
                 <Row
                   pos={currentUser.position}
                   name={currentUser.name}
                   value={`${currentUser.totalSpent >= 1000 ? `${(currentUser.totalSpent / 1000).toFixed(1)}k` : currentUser.totalSpent} ₸`}
                   isMe
+                  uid={currentUser.id}
+                  avatar={currentUser.avatar}
+                  extra={{ ordersCount: currentUser.ordersCount, totalSpent: currentUser.totalSpent, bonusBalance: currentUser.bonusBalance }}
                 />
               </>
-            )}
-          </div>
-        </Card>
-
-        {/* ── Card 2: По напиткам ── */}
-        <Card
-          icon={<FireIcon className="w-4 h-4 text-orange-400" />}
-          title="По напиткам"
-          subtitle="Кто больше пьёт кофе"
-          accentColor="bg-orange-400"
-        >
-          <div className="px-3 pb-2 flex gap-1 overflow-x-auto no-scrollbar">
-            {DRINK_CATS.map(cat => (
-              <Tab key={cat.key} active={drinkCat === cat.key} label={cat.label} onClick={() => setDrinkCat(cat.key)} />
-            ))}
-          </div>
-          <div className="px-2 pb-4 space-y-1">
-            {drinkList.length > 0 ? drinkList.slice(0, 10).map(u => (
-              <Row key={u.id + drinkCat} pos={u.position} name={u.name} value={`${u.count} шт`} isMe={currentUserId === u.id} />
-            )) : (
-              <Empty icon={<FireIcon className="w-5 h-5 text-white/10" />} />
-            )}
-          </div>
-        </Card>
-
-        {/* ── Card 3: По еде ── */}
-        <Card
-          icon={<CakeIcon className="w-4 h-4 text-rose-400" />}
-          title="По еде"
-          subtitle="Кто больше ест"
-          accentColor="bg-rose-400"
-        >
-          <div className="px-3 pb-2 flex gap-1 overflow-x-auto no-scrollbar">
-            {FOOD_CATS.map(cat => (
-              <Tab key={cat.key} active={foodCat === cat.key} label={cat.label} onClick={() => setFoodCat(cat.key)} />
-            ))}
-          </div>
-          <div className="px-2 pb-4 space-y-1">
-            {foodList.length > 0 ? foodList.slice(0, 10).map(u => (
-              <Row key={u.id + foodCat} pos={u.position} name={u.name} value={`${u.count} шт`} isMe={currentUserId === u.id} />
-            )) : (
-              <Empty icon={<CakeIcon className="w-5 h-5 text-white/10" />} />
             )}
           </div>
         </Card>
@@ -466,17 +701,18 @@ const LeaderboardCarousel: React.FC<{
 
       {/* Scroll indicators */}
       <div className="flex justify-center gap-1.5 mt-2">
-        <div className="w-5 h-1 rounded-full bg-amber-400/40" />
-        <div className="w-1.5 h-1 rounded-full bg-white/15" />
-        <div className="w-1.5 h-1 rounded-full bg-white/15" />
+        <div className="w-5 h-1 rounded-full bg-orange-400/40" />
+        <div className="w-1.5 h-1 rounded-full bg-[#3D0A11]/15" />
+        <div className="w-1.5 h-1 rounded-full bg-[#3D0A11]/15" />
       </div>
     </div>
   );
 };
 
 const HomePage: React.FC = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [userName, setUserName] = useState('Гость');
+  const { user: authUser } = useAuth();
+  const [dataReady, setDataReady] = useState(false);
+  const [userName, setUserName] = useState(authUser?.name || authUser?.email?.split('@')[0] || 'Гость');
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [bonusBalance, setBonusBalance] = useState(0);
   const [totalOrders, setTotalOrders] = useState(0);
@@ -491,7 +727,7 @@ const HomePage: React.FC = () => {
       try {
         const user = auth.currentUser;
         if (!user) {
-          setIsLoading(false);
+          setDataReady(true);
           return;
         }
 
@@ -499,9 +735,13 @@ const HomePage: React.FC = () => {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         if (userDoc.exists()) {
           const userData = userDoc.data();
-          setUserName(userData.name || userData.displayName || 'Гость');
+          setUserName(userData.name || user.displayName || authUser?.name || 'Гость');
           setUserAvatar(userData.avatar || user.photoURL || null);
           setTotalOrders(userData.ordersCount || 0);
+        } else {
+          // doc ещё не создан — берём из Firebase Auth
+          setUserName(user.displayName || authUser?.name || 'Гость');
+          setUserAvatar(user.photoURL || null);
         }
 
         // Подсчитываем общую сумму потраченных денег
@@ -526,190 +766,99 @@ const HomePage: React.FC = () => {
           setBonusBalance(userBonusBalance);
         }
 
-        // Загружаем лидерборд — ВСЕГДА из users, потом обогащаем бонусами
+        // Загружаем лидерборд через API (Admin SDK на сервере — full access к orders)
         const leaderboardData: LeaderboardUser[] = [];
         let currentUserData: LeaderboardUser | null = null;
 
         try {
-          // 1. Загружаем пользователей (без orderBy чтобы не терять документы без поля ordersCount)
-          const usersQuery = query(
-            collection(db, 'users'),
-            limit(100)
-          );
-          const usersSnapshot = await getDocs(usersQuery);
-          
-          const userIds: string[] = [];
-          const usersMap = new Map<string, { name: string; ordersCount: number }>();
-          
-          usersSnapshot.docs.forEach((docSnap) => {
-            const data = docSnap.data();
-            const name = data.name || data.displayName || 'Пользователь';
-            const ordersCount = data.ordersCount || 0;
-            userIds.push(docSnap.id);
-            usersMap.set(docSnap.id, { name, ordersCount });
-          });
-
-          // 2. Загружаем бонусы для этих пользователей
-          const bonusMap = new Map<string, number>();
-          try {
-            // Загружаем бонусы пачками по 10 (ограничение Firestore in-query)
-            for (let i = 0; i < userIds.length; i += 10) {
-              const batch = userIds.slice(i, i + 10);
-              const bonusDocs = await Promise.all(
-                batch.map(uid => getDoc(doc(db, 'bonuses', uid)))
-              );
-              bonusDocs.forEach((bDoc) => {
-                if (bDoc.exists()) {
-                  bonusMap.set(bDoc.id, bDoc.data().balance || 0);
-                }
-              });
-            }
-          } catch {
-            // Бонусы не загрузились — продолжаем без них
-          }
-
-          // 2.5. Загружаем все заказы для подсчёта totalSpent + drink/food лидерборды
-          const spentMap = new Map<string, number>();
-          // catMap: { catKey -> { userId -> count } }
-          const drinkCatMap = new Map<string, Map<string, number>>();
-          const foodCatMap = new Map<string, Map<string, number>>();
-          // aggregate totals for "all_drinks" and "all_food"
-          const drinkTotalMap = new Map<string, number>();
-          const foodTotalMap = new Map<string, number>();
-
-          try {
-            const allOrdersSnap = await getDocs(collection(db, 'orders'));
-            allOrdersSnap.forEach(d => {
-              const o = d.data();
-              const uid = o.userId;
-              if (uid) {
-                const orderAmount = o.amount || o.totalAmount || o.total || 0;
-                spentMap.set(uid, (spentMap.get(uid) || 0) + orderAmount);
-                // Parse items for drink/food categories
-                const items = o.items as Array<{ name?: string; quantity?: number }> | undefined;
-                if (items && Array.isArray(items)) {
-                  items.forEach(item => {
-                    if (!item.name) return;
-                    const qty = item.quantity || 1;
-                    const dCat = matchDrinkCategory(item.name);
-                    if (dCat) {
-                      drinkTotalMap.set(uid, (drinkTotalMap.get(uid) || 0) + qty);
-                      if (dCat !== 'all_drinks') {
-                        if (!drinkCatMap.has(dCat)) drinkCatMap.set(dCat, new Map());
-                        const m = drinkCatMap.get(dCat)!;
-                        m.set(uid, (m.get(uid) || 0) + qty);
-                      }
-                    }
-                    const fCat = matchFoodCategory(item.name);
-                    if (fCat) {
-                      foodTotalMap.set(uid, (foodTotalMap.get(uid) || 0) + qty);
-                      if (fCat !== 'all_food') {
-                        if (!foodCatMap.has(fCat)) foodCatMap.set(fCat, new Map());
-                        const m = foodCatMap.get(fCat)!;
-                        m.set(uid, (m.get(uid) || 0) + qty);
-                      }
-                    }
-                  });
-                }
-              }
-            });
-          } catch {
-            // Если не удалось — используем 0
-          }
-
-          // Ensure current user's spent is at least what we computed individually
-          if (user.uid && spent > 0) {
-            const mapSpent = spentMap.get(user.uid) || 0;
-            if (spent > mapSpent) {
-              spentMap.set(user.uid, spent);
-            }
-          }
-
-          // 3. Также проверяем бонусы текущего юзера если его нет в списке
-          if (user.uid && !bonusMap.has(user.uid)) {
+          const lbRes = await fetch(`${API_CONFIG.BASE_URL}/leaderboard?limit=100&userId=${user.uid}`);
+          const lbJson = await lbRes.json();
+          if (lbJson.ok) {
+            // Загружаем бонусы для всех лидеров
+            const bonusMap = new Map<string, number>();
+            const leaderIds = (lbJson.leaders || []).map((u: { id: string }) => u.id);
+            // Добавляем текущего юзера
+            if (!leaderIds.includes(user.uid)) leaderIds.push(user.uid);
             try {
-              const myBonusDoc = await getDoc(doc(db, 'bonuses', user.uid));
-              if (myBonusDoc.exists()) {
-                bonusMap.set(user.uid, myBonusDoc.data().balance || 0);
+              for (let i = 0; i < leaderIds.length; i += 10) {
+                const batch = leaderIds.slice(i, i + 10);
+                const bonusDocs = await Promise.all(
+                  batch.map((uid: string) => getDoc(doc(db, 'bonuses', uid)))
+                );
+                bonusDocs.forEach((bDoc) => {
+                  if (bDoc.exists()) {
+                    bonusMap.set(bDoc.id, bDoc.data().balance || 0);
+                  }
+                });
               }
             } catch {
-              // ignore
+              // Бонусы не загрузились — продолжаем без них
             }
-          }
 
-          // 4. Собираем лидерборд — только активные пользователи (с бонусами или заказами)
-          usersMap.forEach((userData, id) => {
-            const bonus = bonusMap.get(id) || 0;
-            const userTotalSpent = spentMap.get(id) || 0;
-            if (bonus > 0 || userData.ordersCount > 0 || userTotalSpent > 0) {
+            // Загружаем аватары для всех лидеров из Firestore
+            // Собираем ВСЕ уникальные uid: основной список + drink + food категории
+            const avatarMap = new Map<string, string>();
+            const drinkFoodIds = new Set<string>();
+            Object.values(lbJson.drinkLeaders || {}).forEach((list: unknown) =>
+              (list as Array<{ id: string }>).forEach(u => drinkFoodIds.add(u.id))
+            );
+            Object.values(lbJson.foodLeaders || {}).forEach((list: unknown) =>
+              (list as Array<{ id: string }>).forEach(u => drinkFoodIds.add(u.id))
+            );
+            const allAvatarIds = [...new Set([...leaderIds, ...drinkFoodIds])];
+            try {
+              for (let i = 0; i < allAvatarIds.length; i += 10) {
+                const batch = allAvatarIds.slice(i, i + 10);
+                const userDocs = await Promise.all(
+                  batch.map((uid: string) => getDoc(doc(db, 'users', uid)))
+                );
+                userDocs.forEach((uDoc) => {
+                  if (uDoc.exists()) {
+                    const avatar = uDoc.data().avatar || uDoc.data().photoURL;
+                    if (avatar) avatarMap.set(uDoc.id, avatar);
+                  }
+                });
+              }
+            } catch {
+              // Аватары не загрузились — продолжаем без них
+            }
+
+            (lbJson.leaders || []).forEach((u: { id: string; name: string; ordersCount: number; totalSpent: number; position: number }) => {
               leaderboardData.push({
-                id,
-                name: userData.name,
-                ordersCount: userData.ordersCount,
-                bonusBalance: bonus,
-                totalSpent: userTotalSpent,
-                position: 0
+                id: u.id,
+                name: u.name,
+                ordersCount: u.ordersCount,
+                totalSpent: u.totalSpent,
+                bonusBalance: bonusMap.get(u.id) || 0,
+                position: u.position,
+                avatar: avatarMap.get(u.id),
               });
+            });
+
+            if (lbJson.currentUser) {
+              const cu = lbJson.currentUser;
+              currentUserData = {
+                id: cu.id,
+                name: cu.name,
+                ordersCount: cu.ordersCount,
+                totalSpent: cu.totalSpent,
+                bonusBalance: bonusMap.get(cu.id) || userBonusBalance,
+                position: cu.position,
+                avatar: avatarMap.get(cu.id),
+              };
             }
-          });
 
-          // Если текущий юзер не в лидерборде — добавляем обязательно
-          const currentInList = leaderboardData.some(u => u.id === user.uid);
-          if (!currentInList && userDoc.exists()) {
-            const uData = userDoc.data();
-            const bonus = bonusMap.get(user.uid) || userBonusBalance;
-            const oc = uData.ordersCount || 0;
-            leaderboardData.push({
-              id: user.uid,
-              name: uData.name || uData.displayName || 'Вы',
-              ordersCount: oc,
-              bonusBalance: bonus,
-              totalSpent: spentMap.get(user.uid) || spent,
-              position: 0
-            });
-          }
-
-          // 5. Сортируем: по сумме потраченных ₸ desc → заказы desc
-          leaderboardData.sort((a, b) => {
-            if (b.totalSpent !== a.totalSpent) return b.totalSpent - a.totalSpent;
-            return b.ordersCount - a.ordersCount;
-          });
-          leaderboardData.forEach((u, i) => { u.position = i + 1; });
-
-          // 6. Находим текущего юзера
-          currentUserData = leaderboardData.find(u => u.id === user.uid) || null;
-
-          // 7. Строим drink-category лидерборды
-          const buildCatLeaderboards = (
-            catMap: Map<string, Map<string, number>>,
-            totalMap: Map<string, number>,
-            allKey: string,
-          ): Record<string, CategoryLeaderUser[]> => {
-            const result: Record<string, CategoryLeaderUser[]> = {};
-            // "all" tab
-            const allList: CategoryLeaderUser[] = [];
-            totalMap.forEach((count, uid) => {
-              allList.push({ id: uid, name: usersMap.get(uid)?.name || 'Пользователь', count, position: 0 });
-            });
-            allList.sort((a, b) => b.count - a.count);
-            allList.forEach((u, i) => { u.position = i + 1; });
-            result[allKey] = allList.slice(0, 10);
-            // per-category tabs
-            catMap.forEach((userMap, catKey) => {
-              const list: CategoryLeaderUser[] = [];
-              userMap.forEach((count, uid) => {
-                list.push({ id: uid, name: usersMap.get(uid)?.name || 'Пользователь', count, position: 0 });
+            // Drink/food лидерборды — обогащаем аватарами
+            const enrichWithAvatars = (map: Record<string, Array<{id: string; name: string; count: number; position: number}>>) => {
+              const result: Record<string, CategoryLeaderUser[]> = {};
+              Object.entries(map).forEach(([key, list]) => {
+                result[key] = list.map(u => ({ ...u, avatar: avatarMap.get(u.id) }));
               });
-              list.sort((a, b) => b.count - a.count);
-              list.forEach((u, i) => { u.position = i + 1; });
-              result[catKey] = list.slice(0, 10);
-            });
-            return result;
-          };
-
-          setDrinkLeaders(buildCatLeaderboards(drinkCatMap, drinkTotalMap, 'all_drinks'));
-          setFoodLeaders(buildCatLeaderboards(foodCatMap, foodTotalMap, 'all_food'));
-
+              return result;
+            };
+            setDrinkLeaders(enrichWithAvatars(lbJson.drinkLeaders || {}));
+            setFoodLeaders(enrichWithAvatars(lbJson.foodLeaders || {}));
+          }
         } catch (leaderError) {
           console.error('Leaderboard load error:', leaderError);
         }
@@ -724,7 +873,8 @@ const HomePage: React.FC = () => {
             ordersCount: userData.ordersCount || 0,
             bonusBalance: userBonusBalance,
             totalSpent: spent,
-            position: leaderboardData.length + 1
+            position: leaderboardData.length + 1,
+            avatar: userData.avatar || userData.photoURL || userAvatar || undefined,
           });
         } else {
           setCurrentUserLeaderboard(currentUserData);
@@ -733,116 +883,274 @@ const HomePage: React.FC = () => {
       } catch (error) {
         console.error('Error loading user data:', error);
       } finally {
-        setIsLoading(false);
+        setDataReady(true);
       }
     };
 
     loadUserData();
   }, []);
 
-  const getGreeting = () => {
-    return 'Салем';
-  };
-
-  if (isLoading) {
-    return <RoyalLoader fullScreen={false} />;
-  }
+  // Данные загружаются после auth — скелет страницы рисуем сразу,
+  // fullscreen RoyalLoader уже показан на уровне App/PrivateRoute.
 
   return (
-    <div className="min-h-screen relative">
-      {/* Фоновое изображение */}
-      <div 
-        className="fixed inset-0 z-0"
+    <div className="min-h-screen relative overflow-x-hidden" style={{ backgroundColor: '#F4EDE4' }}>
+
+      {/* ═══ HERO — королевское бархатное знамя ═══ */}
+      <div
+        className="relative"
         style={{
-          backgroundImage: `url(${ROYAL_BG})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundAttachment: 'fixed'
+          zIndex: 1,
+          background: 'linear-gradient(175deg, #2D0A10 0%, #4A0E15 35%, #5C1520 55%, #4A0E15 75%, #1A0508 100%)',
         }}
       >
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/60" />
+        {/* ═══ Velvet depth — глубокие вертикальные складки бархата ═══ */}
+        <div className="absolute inset-0 pointer-events-none" style={{
+          zIndex: 18,
+          background: `
+            linear-gradient(90deg,
+              rgba(0,0,0,0.22) 0%, rgba(0,0,0,0.06) 4%, rgba(255,255,255,0.03) 7%,
+              transparent 12%,
+              rgba(0,0,0,0.03) 22%, rgba(0,0,0,0.12) 25%, rgba(0,0,0,0.04) 28%,
+              transparent 33%,
+              rgba(255,255,255,0.02) 42%, rgba(0,0,0,0.08) 47%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.06) 53%,
+              transparent 58%,
+              rgba(0,0,0,0.04) 68%, rgba(0,0,0,0.1) 72%, rgba(0,0,0,0.03) 76%,
+              transparent 82%,
+              rgba(255,255,255,0.02) 90%, rgba(0,0,0,0.08) 95%, rgba(0,0,0,0.2) 100%
+            )
+          `,
+        }} />
+
+        {/* ═══ Diagonal weave — текстура ткани ═══ */}
+        <div className="absolute inset-0 pointer-events-none" style={{
+          zIndex: 19,
+          backgroundImage: `
+            repeating-linear-gradient(135deg, rgba(0,0,0,0.03) 0px, transparent 1px, transparent 2px),
+            repeating-linear-gradient(45deg, rgba(255,255,255,0.015) 0px, transparent 1px, transparent 2px)
+          `,
+          backgroundSize: '4px 4px',
+        }} />
+
+        {/* ═══ Warm radial glow — как свет факела ═══ */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{
+          zIndex: 17,
+          background: `
+            radial-gradient(ellipse 60% 50% at 50% 35%, rgba(120,30,20,0.25) 0%, transparent 70%),
+            radial-gradient(ellipse 80% 40% at 30% 60%, rgba(80,15,10,0.15) 0%, transparent 60%),
+            radial-gradient(ellipse 30% 30% at 75% 25%, rgba(180,120,50,0.06) 0%, transparent 50%)
+          `,
+        }} />
+
+        {/* ═══ Subtle sheen sweep — медленный блик шёлка ═══ */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 20 }}>
+          <div style={{
+            position: 'absolute', top: 0, bottom: 0, width: '40%',
+            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.025), rgba(255,255,255,0.04), rgba(255,255,255,0.025), transparent)',
+            animation: 'velvetSheen 16s ease-in-out infinite',
+          }} />
+        </div>
+
+        {/* ═══ Gold edge accent — тонкая золотая нить по краю ═══ */}
+        <div className="absolute inset-x-0 top-0 h-[1px] pointer-events-none" style={{ zIndex: 22, background: 'linear-gradient(90deg, transparent 5%, rgba(212,175,55,0.3) 20%, rgba(212,175,55,0.5) 50%, rgba(212,175,55,0.3) 80%, transparent 95%)' }} />
+
+        {/* ═══ LOGO WATERMARK — печать справа, центр по вертикали через flex ═══ */}
+        <div
+          className="absolute inset-0 pointer-events-none select-none overflow-hidden flex items-center justify-end"
+          style={{ zIndex: 1 }}
+        >
+          <motion.img
+            src="/images/logo.png"
+            alt=""
+            aria-hidden="true"
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 0.5, x: 0 }}
+            transition={{ duration: 1.2, ease: 'easeOut' }}
+            className="object-contain"
+            style={{
+              width: 260,
+              height: 'auto',
+              marginRight: -80,
+              filter: 'brightness(2.2) saturate(0)',
+            }}
+          />
+        </div>
+
+        <div className="relative z-10 pt-safe">
+
+          {/* Строка 1: Аватар (слева) | ROYALTY COFFEE (центр) | LangPicker (справа) */}
+          <div className="relative flex items-center justify-between px-5 pt-2 pb-0">
+            {/* Слева: аватар */}
+            <button
+              className="w-10 h-10 rounded-full ring-2 ring-white/20 overflow-hidden flex items-center justify-center bg-white/10 active:scale-95 transition-transform"
+              onClick={() => { /* navigate to profile if needed */ }}
+            >
+              {userAvatar ? (
+                <img src={userAvatar} alt={userName} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-white/80 text-xs font-bold">{getInitials(userName)}</span>
+              )}
+            </button>
+
+            {/* По центру: ROYALTY COFFEE */}
+            <motion.img
+              src="/images/logo_home.png"
+              alt="Royalty Coffee"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="object-contain"
+              style={{ width: 'clamp(130px, 36vw, 190px)' }}
+            />
+
+            {/* Справа: LangPicker */}
+            <LangPicker />
+          </div>
+
+          {/* Строка 2: QOSH KELDINIZ (под аватаркой, слева) */}
+          <div className="px-5 pt-2">
+            <motion.span
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="font-bold text-white uppercase tracking-[0.1em] leading-none"
+              style={{
+                fontSize: 'clamp(0.65rem, 2.8vw, 0.85rem)',
+                textShadow: '0 1px 8px rgba(0,0,0,0.4)',
+              }}
+            >
+              QOSH KELDINIZ
+            </motion.span>
+          </div>
+
+          {/* Stories */}
+          <div className="px-4 pt-6 pb-1" style={{ position: 'relative', zIndex: 5 }}>
+            <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 }}>
+              <InstagramStoriesNew />
+            </motion.div>
+          </div>
+
+          <div style={{ height: 60 }} />
+        </div>
+
+        {/* ═══ Плавный переход от hero к контенту ═══ */}
+        <div style={{
+          height: 12,
+          marginTop: -1,
+          background: '#F4EDE4',
+        }} />
       </div>
 
-      {/* Контент */}
-      <div className="relative z-10">
-        {/* Header — аватар + приветствие слева, флаг-язык справа */}
-        <header className="pt-safe px-4 py-6">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
+      {/* ═══ CONTENT — карточка ниже знамени ═══ */}
+      <div className="relative px-4" style={{ zIndex: 3, marginTop: 0 }}>
+        <main className="pb-28 pt-0">
+
+          {/* Карточка лояльности (термос) */}
+          <motion.section
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="flex items-center justify-between"
+            transition={{ delay: 0.12 }}
           >
-            <div className="flex items-center gap-3 min-w-0">
-              {userAvatar ? (
-                <img
-                  src={userAvatar}
-                  alt=""
-                  className="w-11 h-11 rounded-full object-cover ring-2 ring-[#D4AF37]/40 shadow-lg flex-shrink-0"
+            <div className="bg-white rounded-2xl shadow-sm p-4 overflow-hidden">
+              {dataReady ? (
+                <LoyaltyCard 
+                  bonusBalance={bonusBalance}
+                  ordersToFree={7 - (totalOrders % 7)}
+                  totalOrders={totalOrders}
+                  totalSpent={totalSpent}
+                  userName={userName}
                 />
               ) : (
-                <div className="w-11 h-11 rounded-full bg-[#D4AF37]/20 ring-2 ring-[#D4AF37]/40 flex items-center justify-center flex-shrink-0">
-                  <span className="text-[#D4AF37] text-sm font-bold">{getInitials(userName)}</span>
+                /* Skeleton */
+                <div className="flex gap-4">
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-slate-100 animate-pulse" />
+                      <div className="h-3.5 w-16 bg-slate-100 rounded animate-pulse" />
+                    </div>
+                    <div className="h-8 w-20 bg-slate-100 rounded animate-pulse" />
+                    <div className="space-y-1">
+                      <div className="h-2 w-full bg-slate-50 rounded animate-pulse" />
+                      <div className="h-1.5 w-full bg-slate-100 rounded-full animate-pulse" />
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <div className="relative" style={{ width: 100, height: 100 }}>
+                      <svg width={100} height={100} className="absolute inset-0" style={{ transform: 'rotate(-90deg)' }}>
+                        <circle cx={50} cy={50} r={47} fill="none" stroke="rgba(212,175,55,0.12)" strokeWidth={3} />
+                      </svg>
+                      <div className="absolute overflow-hidden rounded-full" style={{ inset: 5 }}>
+                        <div className="w-full h-full flex items-center justify-center bg-slate-50">
+                          <div className="w-8 h-8 rounded-full bg-[#D4AF37]/20 animate-pulse" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="h-2 w-8 bg-slate-100 rounded animate-pulse mt-1.5" />
+                  </div>
                 </div>
               )}
-              <h1 className="text-2xl font-bold text-white truncate">
-                {getGreeting()}, {userName}
-              </h1>
             </div>
-            <LangPicker />
-          </motion.div>
-        </header>
-
-        <main className="space-y-5 pb-28 px-4">
-          {/* Сторис */}
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <InstagramStoriesNew />
           </motion.section>
-
-          {/* Карточка лояльности с термосом */}
           <motion.section
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-          >
-            <LoyaltyCard 
-              bonusBalance={bonusBalance}
-              ordersToFree={7 - (totalOrders % 7)}
-              totalOrders={totalOrders}
-              totalSpent={totalSpent}
-            />
-          </motion.section>
-
-          {/* Акции */}
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="-mx-4"
+            className="-mx-4 mt-5"
           >
             <PromotionBanner showAll={true} />
           </motion.section>
 
-          {/* Лидерборд — 3 карточки по горизонтали */}
+          {/* Лидерборд */}
           <motion.section
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
+            transition={{ delay: 0.2 }}
+            className="mt-5"
           >
-            <LeaderboardCarousel
-              leaders={leaders}
-              currentUser={currentUserLeaderboard}
-              drinkLeaders={drinkLeaders}
-              foodLeaders={foodLeaders}
-              currentUserId={auth.currentUser?.uid}
-            />
+            {dataReady ? (
+              <LeaderboardCarousel
+                leaders={leaders}
+                currentUser={currentUserLeaderboard}
+                drinkLeaders={drinkLeaders}
+                foodLeaders={foodLeaders}
+                currentUserId={auth.currentUser?.uid}
+              />
+            ) : (
+              /* Skeleton пока данные грузятся */
+              <div>
+                <div className="mb-3 flex items-center gap-2.5">
+                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-[#D4AF37]/10">
+                    <TrophyIcon className="w-3.5 h-3.5 text-[#D4AF37]/40" />
+                  </span>
+                  <div className="h-4 w-24 bg-slate-100 rounded animate-pulse" />
+                </div>
+                <div className="flex gap-3 overflow-hidden">
+                  {[1, 2].map(i => (
+                    <div key={i} className="flex-shrink-0 w-[85vw] max-w-[360px] rounded-2xl bg-white ring-1 ring-[#3D0A11]/5 p-4 space-y-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-slate-100 animate-pulse" />
+                        <div className="space-y-1.5 flex-1">
+                          <div className="h-3.5 w-24 bg-slate-100 rounded animate-pulse" />
+                          <div className="h-2.5 w-32 bg-slate-50 rounded animate-pulse" />
+                        </div>
+                      </div>
+                      {[1, 2, 3, 4].map(j => (
+                        <div key={j} className="flex items-center gap-3 px-3 py-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-slate-100 animate-pulse" />
+                          <div className="w-10 h-10 rounded-full bg-slate-100 animate-pulse" />
+                          <div className="flex-1 h-3 bg-slate-100 rounded animate-pulse" />
+                          <div className="w-10 h-3 bg-slate-50 rounded animate-pulse" />
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </motion.section>
         </main>
       </div>
+
     </div>
   );
 };

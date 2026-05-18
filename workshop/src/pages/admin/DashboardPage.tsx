@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useHistory, useLocation } from 'react-router-dom';
 import { 
   ClipboardDocumentListIcon,
   CurrencyDollarIcon,
   UserGroupIcon,
   ShoppingBagIcon,
+  Bars3Icon,
 } from '@heroicons/react/24/outline';
-import { Card, CardBody, CardHeader, PageLoader } from '@/components/ui';
+import { Card, CardBody, CardHeader, WorkshopLoader } from '@/components/ui';
 import { getAllOrders, getAllClients } from '@/services';
 import { WorkshopOrder, WorkshopClient, OrderStatus } from '@/types';
 
@@ -29,6 +31,9 @@ const DashboardPage: React.FC = () => {
   const [orders, setOrders] = useState<WorkshopOrder[]>([]);
   const [clients, setClients] = useState<WorkshopClient[]>([]);
   const [loading, setLoading] = useState(true);
+  const history = useHistory();
+  const location = useLocation();
+  const prefix = location.pathname.startsWith('/admin') ? '/admin' : '/owner';
 
   useEffect(() => {
     const loadData = async () => {
@@ -58,15 +63,25 @@ const DashboardPage: React.FC = () => {
   const todayRevenue = todayOrders.reduce((sum, o) => sum + o.totalAmount, 0);
 
   if (loading) {
-    return <PageLoader text="Загрузка..." />;
+    return <WorkshopLoader text="Загрузка..." />;
   }
 
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
       {/* Header */}
-      <div className="bg-gradient-to-br from-workshop-500 to-workshop-600 text-white px-5 pt-12 pb-8">
-        <h1 className="text-2xl font-bold">Панель управления</h1>
-        <p className="text-workshop-100 mt-1">Цех · Производство</p>
+      <div className="bg-gradient-to-br from-[#3D0A11] via-[#4D0E16] to-[#5A0D17] text-white px-5 pt-10 pb-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold">Панель управления</h1>
+            <p className="text-white/60 text-sm mt-0.5">Цех · Производство</p>
+          </div>
+          <button
+            onClick={() => history.push(`${prefix}/settings`)}
+            className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center hover:bg-white/25 transition-colors"
+          >
+            <Bars3Icon className="w-6 h-6" />
+          </button>
+        </div>
       </div>
 
       {/* Stats */}

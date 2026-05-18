@@ -853,5 +853,289 @@ export const drinkCategories: DrinkCategory[] = [
         allergens: ['Молоко']
       }
     ]
+  },
+
+  /* ══════════════════════════════════════════════════════════
+     6. НОВИНКИ — новые напитки
+     ══════════════════════════════════════════════════════════ */
+  {
+    id: 6,
+    title: 'menu.categories.new_items',
+    image: '/drinks/extra-01.webp',
+    products: [
+      {
+        id: 601,
+        name: 'Новинка 1', // TODO: заполнить название и i18n ключ
+        price: 990,
+        description: 'Описание нового напитка', // TODO
+        ingredients: [],
+        recommendation: '',
+        image: '/drinks/extra-01.webp',
+        isNew: true,
+        isHit: false,
+        energy: 0, protein: 0, fat: 0, carbs: 0,
+        modifiers: [
+          { id: 1, title: 'Размер', type: 'select', options: ['0.3', '0.4'], default: '0.3' },
+        ],
+        togetherBetter: [],
+        badges: ['NEW'],
+        bonusPay: 0,
+        rating: 0,
+        reviews: [],
+        allergens: []
+      },
+      {
+        id: 602,
+        name: 'Новинка 2', // TODO
+        price: 990,
+        description: 'Описание нового напитка', // TODO
+        ingredients: [],
+        recommendation: '',
+        image: '/drinks/extra-02.webp',
+        isNew: true,
+        isHit: false,
+        energy: 0, protein: 0, fat: 0, carbs: 0,
+        modifiers: [
+          { id: 1, title: 'Размер', type: 'select', options: ['0.3', '0.4'], default: '0.3' },
+        ],
+        togetherBetter: [],
+        badges: ['NEW'],
+        bonusPay: 0,
+        rating: 0,
+        reviews: [],
+        allergens: []
+      },
+      {
+        id: 603,
+        name: 'Новинка 3', // TODO
+        price: 990,
+        description: 'Описание нового напитка', // TODO
+        ingredients: [],
+        recommendation: '',
+        image: '/drinks/extra-03.webp',
+        isNew: true,
+        isHit: false,
+        energy: 0, protein: 0, fat: 0, carbs: 0,
+        modifiers: [
+          { id: 1, title: 'Размер', type: 'select', options: ['0.3', '0.4'], default: '0.3' },
+        ],
+        togetherBetter: [],
+        badges: ['NEW'],
+        bonusPay: 0,
+        rating: 0,
+        reviews: [],
+        allergens: []
+      },
+      {
+        id: 604,
+        name: 'Новинка 4', // TODO
+        price: 990,
+        description: 'Описание нового напитка', // TODO
+        ingredients: [],
+        recommendation: '',
+        image: '/drinks/extra-04.webp',
+        isNew: true,
+        isHit: false,
+        energy: 0, protein: 0, fat: 0, carbs: 0,
+        modifiers: [
+          { id: 1, title: 'Размер', type: 'select', options: ['0.3', '0.4'], default: '0.3' },
+        ],
+        togetherBetter: [],
+        badges: ['NEW'],
+        bonusPay: 0,
+        rating: 0,
+        reviews: [],
+        allergens: []
+      },
+      {
+        id: 605,
+        name: 'Новинка 5', // TODO
+        price: 990,
+        description: 'Описание нового напитка', // TODO
+        ingredients: [],
+        recommendation: '',
+        image: '/drinks/extra-05.webp',
+        isNew: true,
+        isHit: false,
+        energy: 0, protein: 0, fat: 0, carbs: 0,
+        modifiers: [
+          { id: 1, title: 'Размер', type: 'select', options: ['0.3', '0.4'], default: '0.3' },
+        ],
+        togetherBetter: [],
+        badges: ['NEW'],
+        bonusPay: 0,
+        rating: 0,
+        reviews: [],
+        allergens: []
+      },
+      {
+        id: 606,
+        name: 'Новинка 6', // TODO
+        price: 990,
+        description: 'Описание нового напитка', // TODO
+        ingredients: [],
+        recommendation: '',
+        image: '/drinks/extra-06.webp',
+        isNew: true,
+        isHit: false,
+        energy: 0, protein: 0, fat: 0, carbs: 0,
+        modifiers: [
+          { id: 1, title: 'Размер', type: 'select', options: ['0.3', '0.4'], default: '0.3' },
+        ],
+        togetherBetter: [],
+        badges: ['NEW'],
+        bonusPay: 0,
+        rating: 0,
+        reviews: [],
+        allergens: []
+      },
+      {
+        id: 607,
+        name: 'Новинка 7', // TODO
+        price: 990,
+        description: 'Описание нового напитка', // TODO
+        ingredients: [],
+        recommendation: '',
+        image: '/drinks/extra-07.webp',
+        isNew: true,
+        isHit: false,
+        energy: 0, protein: 0, fat: 0, carbs: 0,
+        modifiers: [
+          { id: 1, title: 'Размер', type: 'select', options: ['0.3', '0.4'], default: '0.3' },
+        ],
+        togetherBetter: [],
+        badges: ['NEW'],
+        bonusPay: 0,
+        rating: 0,
+        reviews: [],
+        allergens: []
+      },
+      {
+        id: 608,
+        name: 'Новинка 8', // TODO
+        price: 990,
+        description: 'Описание нового напитка', // TODO
+        ingredients: [],
+        recommendation: '',
+        image: '/drinks/extra-08.webp',
+        isNew: true,
+        isHit: false,
+        energy: 0, protein: 0, fat: 0, carbs: 0,
+        modifiers: [
+          { id: 1, title: 'Размер', type: 'select', options: ['0.3', '0.4'], default: '0.3' },
+        ],
+        togetherBetter: [],
+        badges: ['NEW'],
+        bonusPay: 0,
+        rating: 0,
+        reviews: [],
+        allergens: []
+      },
+      {
+        id: 609,
+        name: 'Новинка 9', // TODO
+        price: 990,
+        description: 'Описание нового напитка', // TODO
+        ingredients: [],
+        recommendation: '',
+        image: '/drinks/extra-09.webp',
+        isNew: true,
+        isHit: false,
+        energy: 0, protein: 0, fat: 0, carbs: 0,
+        modifiers: [
+          { id: 1, title: 'Размер', type: 'select', options: ['0.3', '0.4'], default: '0.3' },
+        ],
+        togetherBetter: [],
+        badges: ['NEW'],
+        bonusPay: 0,
+        rating: 0,
+        reviews: [],
+        allergens: []
+      },
+      {
+        id: 610,
+        name: 'Новинка 10', // TODO
+        price: 990,
+        description: 'Описание нового напитка', // TODO
+        ingredients: [],
+        recommendation: '',
+        image: '/drinks/extra-10.webp',
+        isNew: true,
+        isHit: false,
+        energy: 0, protein: 0, fat: 0, carbs: 0,
+        modifiers: [
+          { id: 1, title: 'Размер', type: 'select', options: ['0.3', '0.4'], default: '0.3' },
+        ],
+        togetherBetter: [],
+        badges: ['NEW'],
+        bonusPay: 0,
+        rating: 0,
+        reviews: [],
+        allergens: []
+      },
+      {
+        id: 611,
+        name: 'Новинка 11', // TODO
+        price: 990,
+        description: 'Описание нового напитка', // TODO
+        ingredients: [],
+        recommendation: '',
+        image: '/drinks/extra-11.webp',
+        isNew: true,
+        isHit: false,
+        energy: 0, protein: 0, fat: 0, carbs: 0,
+        modifiers: [
+          { id: 1, title: 'Размер', type: 'select', options: ['0.3', '0.4'], default: '0.3' },
+        ],
+        togetherBetter: [],
+        badges: ['NEW'],
+        bonusPay: 0,
+        rating: 0,
+        reviews: [],
+        allergens: []
+      },
+      {
+        id: 612,
+        name: 'Новинка 12', // TODO
+        price: 990,
+        description: 'Описание нового напитка', // TODO
+        ingredients: [],
+        recommendation: '',
+        image: '/drinks/extra-12.webp',
+        isNew: true,
+        isHit: false,
+        energy: 0, protein: 0, fat: 0, carbs: 0,
+        modifiers: [
+          { id: 1, title: 'Размер', type: 'select', options: ['0.3', '0.4'], default: '0.3' },
+        ],
+        togetherBetter: [],
+        badges: ['NEW'],
+        bonusPay: 0,
+        rating: 0,
+        reviews: [],
+        allergens: []
+      },
+      {
+        id: 613,
+        name: 'Новинка 13', // TODO
+        price: 990,
+        description: 'Описание нового напитка', // TODO
+        ingredients: [],
+        recommendation: '',
+        image: '/drinks/extra-13.webp',
+        isNew: true,
+        isHit: false,
+        energy: 0, protein: 0, fat: 0, carbs: 0,
+        modifiers: [
+          { id: 1, title: 'Размер', type: 'select', options: ['0.3', '0.4'], default: '0.3' },
+        ],
+        togetherBetter: [],
+        badges: ['NEW'],
+        bonusPay: 0,
+        rating: 0,
+        reviews: [],
+        allergens: []
+      },
+    ]
   }
 ];

@@ -32,12 +32,14 @@ async function initStatusBar(): Promise<void> {
   try {
     const { StatusBar, Style } = await import('@capacitor/status-bar');
 
-    await StatusBar.setStyle({ style: Style.Dark });
-    await StatusBar.setBackgroundColor({ color: '#1E3A5F' });
+    // Light icons for dark hero on Home
+    await StatusBar.setStyle({ style: Style.Light });
 
     if (Capacitor.getPlatform() === 'android') {
-      await StatusBar.setOverlaysWebView({ overlay: false });
+      await StatusBar.setBackgroundColor({ color: '#00000000' });
+      await StatusBar.setOverlaysWebView({ overlay: true });
     }
+    // iOS: status bar overlay is handled via viewport-fit=cover + safe-area-inset-top
   } catch (e) {
     console.warn('[Capacitor] StatusBar init failed:', e);
   }

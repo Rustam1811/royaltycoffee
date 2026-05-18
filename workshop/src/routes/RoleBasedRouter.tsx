@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Switch, Route, Redirect } from 'react-router-dom';
 import { useUser } from '@/contexts/UserContext';
-import { PageLoader } from '@/components/ui';
+import { WorkshopLoader } from '@/components/ui';
 import { getLoginRedirect } from '@/config/rbac';
 import { getClientByUid } from '@/services';
 
@@ -14,6 +14,7 @@ import {
   AnalyticsPage as ClientAnalyticsPage,
   QuickOrderPage,
   OnboardingPage,
+  SettingsPage as ClientSettingsPage,
 } from '@/pages/client';
 
 // Admin Pages
@@ -22,6 +23,8 @@ import {
   OrdersManagementPage,
   MenuEditorPage,
   ClientsPage,
+  SettingsPage,
+  ReportsPage,
 } from '@/pages/admin';
 
 /**
@@ -36,7 +39,8 @@ const OnboardingGuard: React.FC<{ children: React.ReactNode }> = ({ children }) 
     const check = async () => {
       if (!user?.uid) { setChecked(true); return; }
       try {
-        const client = await getClientByUid(user.uid);
+        const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000));
+        const client = await Promise.race([getClientByUid(user.uid), timeout]);
         setNeedsOnboarding(!client?.onboardingCompleted);
       } catch {
         setNeedsOnboarding(false);
@@ -47,7 +51,7 @@ const OnboardingGuard: React.FC<{ children: React.ReactNode }> = ({ children }) 
     check();
   }, [user?.uid]);
 
-  if (!checked) return <PageLoader text="Загрузка..." />;
+  if (!checked) return <WorkshopLoader text="Загрузка..." />;
   if (needsOnboarding) return <Redirect to="/client/onboarding" />;
   return <>{children}</>;
 };
@@ -67,6 +71,7 @@ const ClientRoutes: React.FC = () => (
           <Route exact path="/client/quick-order" component={QuickOrderPage} />
           <Route exact path="/client/orders" component={ClientOrdersPage} />
           <Route exact path="/client/analytics" component={ClientAnalyticsPage} />
+          <Route exact path="/client/settings" component={ClientSettingsPage} />
           <Route path="/client">
             <Redirect to="/client/outlets" />
           </Route>
@@ -85,6 +90,7 @@ const AdminRoutes: React.FC = () => (
     <Route exact path="/admin/orders" component={OrdersManagementPage} />
     <Route exact path="/admin/menu" component={MenuEditorPage} />
     <Route exact path="/admin/clients" component={ClientsPage} />
+    <Route exact path="/admin/reports" component={ReportsPage} />
     <Route path="/admin">
       <Redirect to="/admin/dashboard" />
     </Route>
@@ -101,6 +107,8 @@ const OwnerRoutes: React.FC = () => (
     <Route exact path="/owner/menu" component={MenuEditorPage} />
     <Route exact path="/owner/clients" component={ClientsPage} />
     <Route exact path="/owner/analytics" component={ClientAnalyticsPage} />
+    <Route exact path="/owner/reports" component={ReportsPage} />
+    <Route exact path="/owner/settings" component={SettingsPage} />
     <Route path="/owner">
       <Redirect to="/owner/dashboard" />
     </Route>
@@ -117,6 +125,7 @@ const SuperownerRoutes: React.FC = () => (
     <Route exact path="/superowner/menu" component={MenuEditorPage} />
     <Route exact path="/superowner/clients" component={ClientsPage} />
     <Route exact path="/superowner/analytics" component={ClientAnalyticsPage} />
+    <Route exact path="/superowner/settings" component={SettingsPage} />
     <Route path="/superowner">
       <Redirect to="/superowner/dashboard" />
     </Route>
@@ -130,13 +139,17 @@ const RoleBasedRouter: React.FC = () => {
   const { user, loading } = useUser();
 
   if (loading) {
-    return <PageLoader text="Загрузка..." />;
+    return <WorkshopLoader text="Загрузка..." />;
   }
 
   if (!user) {
     // Редирект на основной логин
-    window.location.href = '/app/login';
-    return <PageLoader text="Переход на страницу входа..." />;
+    // На iOS Capacitor нельзя идти на /app/login — используем /login (который в dist/app)
+    const isNativePath = window.location.protocol === 'capacitor:' || 
+      window.location.href.includes('/workshop/index.html') ||
+      window.location.href.includes('capacitor://');
+    window.location.href = isNativePath ? '/index.html' : '/app/login';
+    return <WorkshopLoader text="Переход на страницу входа..." />;
   }
 
   // Редирект на правильный путь в зависимости от роли

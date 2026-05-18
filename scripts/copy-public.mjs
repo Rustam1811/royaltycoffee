@@ -20,6 +20,10 @@ const ROOT_FILES = [
   'coffeeaddict.jpg',
   'favicon.png',
   'index.html',
+  'privacy.html',
+  'terms.html',
+  'delete-account.html',
+  'icon-192.png',
 ];
 
 // Folders to copy to root (needed for absolute paths like /drinks/, /eats/)
@@ -67,6 +71,29 @@ for (const folderName of ROOT_FOLDERS) {
   if (existsSync(srcPath)) {
     copyRecursive(srcPath, destPath);
     console.log(`  ✅ ${folderName}/`);
+  }
+}
+
+// For Capacitor builds: also copy to dist/app/ so assets are available in the WebView
+// Capacitor's webDir is dist/app, so absolute paths like /images/... need files there
+if (process.env.CAPACITOR_BUILD === 'true') {
+  const APP_DIR = join(DIST_DIR, 'app');
+  console.log('📱 Capacitor build: copying assets to dist/app/...');
+  for (const folderName of ROOT_FOLDERS) {
+    const srcPath = join(PUBLIC_DIR, folderName);
+    const destPath = join(APP_DIR, folderName);
+    if (existsSync(srcPath) && !existsSync(destPath)) {
+      copyRecursive(srcPath, destPath);
+      console.log(`  ✅ ${folderName}/ → dist/app/${folderName}/`);
+    }
+  }
+
+  // Copy workshop SPA into dist/app/workshop/ so /workshop/ works in native WebView
+  const workshopSrc = join(DIST_DIR, 'workshop');
+  const workshopDest = join(APP_DIR, 'workshop');
+  if (existsSync(workshopSrc) && !existsSync(workshopDest)) {
+    copyRecursive(workshopSrc, workshopDest);
+    console.log('  ✅ workshop/ → dist/app/workshop/');
   }
 }
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Heart, Eye, Volume2, VolumeX, Play } from 'lucide-react';
 import { StoriesService, Story } from '../services/stories';
@@ -136,7 +137,7 @@ const StoriesRing: React.FC<StoriesRingProps> = ({ story, onOpen }) => {
       onTouchStart={prefetch}
       aria-label={`Open stories by ${story.author || "Anonymous"}`}
       className={`group flex-shrink-0 rounded-full active:scale-95 transition-all duration-200 ${
-        story.viewed ? "opacity-60" : "opacity-100 drop-shadow-[0_4px_12px_rgba(0,0,0,0.3)]"
+        story.viewed ? "opacity-60" : "opacity-100"
       }`}
     >
       <span
@@ -170,7 +171,7 @@ const StoriesRing: React.FC<StoriesRingProps> = ({ story, onOpen }) => {
         </span>
       </span>
 
-      <p className="text-[11px] text-center mt-1 truncate w-[84px] text-white/90 drop-shadow-sm font-medium">
+      <p className="text-[11px] text-center mt-1 truncate w-[84px] text-[#F4EDE4] font-medium">
         {story.author || "Anonymous"}
       </p>
     </button>
@@ -709,8 +710,8 @@ export const InstagramStoriesNew: React.FC = () => {
   }
 
   return (
-    <div className="py-2">
-      <div className="flex gap-4 overflow-x-auto pb-3 px-4 no-scrollbar">
+    <div className="pt-0 pb-1">
+      <div className="flex gap-4 overflow-x-auto pb-1 px-0 no-scrollbar">
         {authors.map((author, i) => {
           const arr = groups[author];
           const anyUnviewed = arr.some((s) => !s.viewed);
@@ -727,18 +728,21 @@ export const InstagramStoriesNew: React.FC = () => {
         })}
       </div>
 
-      <AnimatePresence>
-        {open && currentAuthor && (
-          <StoryViewer
-            stories={groups[currentAuthor]}
-            currentIndex={storyIdx}
-            onClose={closeViewer}
-            onNext={next}
-            onPrevious={prev}
-            onStoryView={markViewed}
-          />
-        )}
-      </AnimatePresence>
+      {createPortal(
+        <AnimatePresence>
+          {open && currentAuthor && (
+            <StoryViewer
+              stories={groups[currentAuthor]}
+              currentIndex={storyIdx}
+              onClose={closeViewer}
+              onNext={next}
+              onPrevious={prev}
+              onStoryView={markViewed}
+            />
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 };

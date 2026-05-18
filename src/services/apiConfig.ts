@@ -1,6 +1,11 @@
+import { Capacitor } from '@capacitor/core';
+
 // 🔧 Конфигурация API endpoints для продакшена
 export const API_CONFIG = {
-  // Firebase Functions URLs (продакшн) - обновленный URL для unified API
+  // Firebase Hosting production URL — used by native Capacitor apps
+  PRODUCTION_URL: 'https://royal-coffee-b1ce9.web.app/api',
+  
+  // Firebase Functions URLs (продакшн) - relative path for web hosting
   FIREBASE_BASE_URL: '/api',
   
   // Local development URLs - используем отдельный API сервер для dev
@@ -8,6 +13,10 @@ export const API_CONFIG = {
   
   // Определяем, какие URL использовать
   get BASE_URL() {
+    // Native Capacitor apps — always use production absolute URL
+    if (Capacitor.isNativePlatform()) {
+      return this.PRODUCTION_URL;
+    }
     const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
     const isMainAppDev = isLocalhost && window.location.port === '5173';
     if (!isMainAppDev) {

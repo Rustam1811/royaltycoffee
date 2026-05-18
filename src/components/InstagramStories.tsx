@@ -10,6 +10,7 @@ import {
   ChevronUpIcon
 } from '@heroicons/react/24/outline';
 import { Heart, Laugh, ThumbsUp, Rocket, X, Smile } from 'lucide-react';
+import { API_CONFIG } from '../services/apiConfig';
 
 // Интерфейс для Story в контексте Instagram Stories компонента
 export interface InstagramStoryItem {
@@ -256,14 +257,14 @@ const InstagramStories = React.forwardRef<InstagramStoriesRef, InstagramStoriesP
     if (!currentStory || sendingReaction) return; // guard uses sendingReaction
     setSendingReaction(true);
     try {
-      await fetch(`/api/register?endpoint=stories&id=${currentStory.id}&action=reaction`, { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ reaction }) });
+      await fetch(`${API_CONFIG.BASE_URL}/register?endpoint=stories&id=${currentStory.id}&action=reaction`, { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ reaction }) });
     } catch(e) { console.warn('reaction failed', e); } finally { setTimeout(()=>setSendingReaction(false),400); }
   };
 
   const sendLike = async () => {
     if (!currentStory) return;
     try {
-            await fetch(`/api/stories-unified?action=like&id=${currentStory.id}`, { method: 'POST', headers: { 'Content-Type':'application/json' } });
+            await fetch(`${API_CONFIG.BASE_URL}/stories-unified?action=like&id=${currentStory.id}`, { method: 'POST', headers: { 'Content-Type':'application/json' } });
     } catch (e) { console.warn('like failed', e); }
   };
 

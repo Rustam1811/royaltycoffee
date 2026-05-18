@@ -4,6 +4,9 @@
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
       { "source": "/api/**", "function": "app" },
+      { "source": "/privacy", "destination": "/privacy.html" },
+      { "source": "/terms", "destination": "/terms.html" },
+      { "source": "/delete-account", "destination": "/delete-account.html" },
       { "source": "/", "destination": "/landing/index.html" },
       { "source": "/superowner", "destination": "/admin/index.html" },
       { "source": "/superowner/**", "destination": "/admin/index.html" },
@@ -25,6 +28,15 @@
       { "source": "/order", "destination": "/app/index.html" }
     ],
     "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Cross-Origin-Opener-Policy",
+            "value": "same-origin-allow-popups"
+          }
+        ]
+      },
       {
         "source": "**/*.html",
         "headers": [

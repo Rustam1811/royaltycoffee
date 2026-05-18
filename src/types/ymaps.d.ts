@@ -1,99 +1,188 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
- * Minimal Yandex Maps 2.1 type declarations
+ * Minimal 2GIS Maps API type declarations (Leaflet-based)
  */
-declare namespace ymaps {
-  function ready(callback: () => void): void;
+declare namespace DG {
+  function then(resolve: () => void, reject?: () => void): Promise<void>;
 
-  class Map {
-    constructor(element: HTMLElement | string, state: MapState, options?: MapOptions);
-    geoObjects: GeoObjectCollection;
-    controls: ControlManager;
-    events: EventManager;
-    destroy(): void;
-    setCenter(center: number[], zoom?: number, options?: any): void;
-    setBounds(bounds: number[][], options?: any): void;
-    getZoom(): number;
-    panTo(center: number[], options?: any): void;
-  }
+  function map(element: HTMLElement | string, options?: MapOptions): Map;
 
-  interface MapState {
-    center: number[];
-    zoom: number;
-    controls?: string[];
-  }
+  function marker(latlng: [number, number], options?: MarkerOptions): Marker;
+
+  function divIcon(options?: DivIconOptions): DivIcon;
+
+  function icon(options: IconOptions): Icon;
+
+  function circleMarker(latlng: [number, number], options?: CircleMarkerOptions): CircleMarker;
+
+  function circle(latlng: [number, number], options?: CircleOptions): Circle;
+
+  function latLngBounds(latlngs: [number, number][]): LatLngBounds;
+
+  function featureGroup(layers?: Layer[]): FeatureGroup;
+
+  function popup(options?: PopupOptions): Popup;
 
   interface MapOptions {
-    suppressMapOpenBlock?: boolean;
+    center?: [number, number];
+    zoom?: number;
     minZoom?: number;
+    maxZoom?: number;
+    zoomControl?: boolean;
+    fullscreenControl?: boolean;
+    geoclicker?: boolean;
+    poi?: boolean;
+  }
+
+  interface Map {
+    setView(center: [number, number], zoom?: number, options?: any): this;
+    setZoom(zoom: number): this;
+    fitBounds(bounds: LatLngBounds | [number, number][], options?: FitBoundsOptions): this;
+    addLayer(layer: Layer): this;
+    removeLayer(layer: Layer): this;
+    eachLayer(fn: (layer: Layer) => void): this;
+    remove(): void;
+    invalidateSize(options?: any): this;
+    getZoom(): number;
+    getCenter(): LatLng;
+    getBounds(): LatLngBounds;
+    on(type: string, fn: (e: any) => void): this;
+    off(type: string, fn?: (e: any) => void): this;
+    openPopup(popup: Popup): this;
+    closePopup(popup?: Popup): this;
+  }
+
+  interface LatLng {
+    lat: number;
+    lng: number;
+  }
+
+  interface LatLngBounds {
+    extend(latlng: [number, number] | LatLng): this;
+    getCenter(): LatLng;
+    getNorthEast(): LatLng;
+    getSouthWest(): LatLng;
+    isValid(): boolean;
+    pad(bufferRatio: number): LatLngBounds;
+  }
+
+  interface FitBoundsOptions {
+    padding?: [number, number];
+    paddingTopLeft?: [number, number];
+    paddingBottomRight?: [number, number];
     maxZoom?: number;
   }
 
-  class Placemark {
-    constructor(coordinates: number[], properties?: any, options?: any);
-    events: EventManager;
-    options: OptionManager;
-    properties: DataManager;
-    geometry: any;
+  interface Layer {
+    addTo(map: Map): this;
+    remove(): this;
+    bindPopup(content: string | HTMLElement, options?: PopupOptions): this;
+    openPopup(): this;
+    closePopup(): this;
+    on(type: string, fn: (e: any) => void): this;
+    off(type: string, fn?: (e: any) => void): this;
   }
 
-  class Circle {
-    constructor(coords: [number[], number], properties?: any, options?: any);
+  interface Marker extends Layer {
+    setLatLng(latlng: [number, number]): this;
+    getLatLng(): LatLng;
+    setIcon(icon: DivIcon | Icon): this;
+    setZIndexOffset(offset: number): this;
+    setOpacity(opacity: number): this;
   }
 
-  class GeoObjectCollection {
-    add(child: any): this;
-    remove(child: any): this;
-    removeAll(): this;
-    each(callback: (obj: any) => void): void;
-    getBounds(): number[][] | null;
-    getLength(): number;
+  interface MarkerOptions {
+    icon?: DivIcon | Icon;
+    interactive?: boolean;
+    draggable?: boolean;
+    zIndexOffset?: number;
+    opacity?: number;
+    title?: string;
   }
 
-  class Balloon {
-    open(position: number[], content: string, options?: any): void;
-    close(): void;
+  interface DivIcon {
+    options: DivIconOptions;
   }
 
-  interface EventManager {
-    add(type: string | string[], callback: (e: any) => void, context?: any): this;
-    remove(type: string, callback: (e: any) => void, context?: any): this;
+  interface DivIconOptions {
+    html?: string;
+    className?: string;
+    iconSize?: [number, number];
+    iconAnchor?: [number, number];
+    popupAnchor?: [number, number];
   }
 
-  interface ControlManager {
-    add(control: string | any, options?: any): this;
-    remove(control: string | any): this;
+  interface Icon {
+    options: IconOptions;
   }
 
-  interface OptionManager {
-    set(key: string | Record<string, any>, value?: any): void;
-    get(key: string): any;
+  interface IconOptions {
+    iconUrl: string;
+    iconRetinaUrl?: string;
+    iconSize?: [number, number];
+    iconAnchor?: [number, number];
+    popupAnchor?: [number, number];
+    shadowUrl?: string;
+    shadowSize?: [number, number];
+    shadowAnchor?: [number, number];
+    className?: string;
   }
 
-  interface DataManager {
-    set(key: string | Record<string, any>, value?: any): void;
-    get(key: string): any;
+  interface CircleMarker extends Layer {
+    setLatLng(latlng: [number, number]): this;
+    getLatLng(): LatLng;
+    setRadius(radius: number): this;
+    getRadius(): number;
   }
 
-  namespace templateLayoutFactory {
-    function createClass(template: string, overrides?: any): any;
+  interface CircleMarkerOptions {
+    radius?: number;
+    color?: string;
+    fillColor?: string;
+    fillOpacity?: number;
+    weight?: number;
+    opacity?: number;
+    interactive?: boolean;
   }
 
-  namespace layout {
-    namespace templateBased {
-      function createClass(template: string): any;
-    }
+  interface Circle extends CircleMarker {
+    setRadius(radius: number): this;
+    getRadius(): number;
+    getBounds(): LatLngBounds;
   }
 
-  function geocode(request: string, options?: any): Promise<any>;
+  interface CircleOptions extends CircleMarkerOptions {
+    radius?: number;
+  }
 
-  namespace util {
-    namespace bounds {
-      function fromPoints(points: number[][]): number[][];
-    }
+  interface FeatureGroup extends Layer {
+    addLayer(layer: Layer): this;
+    removeLayer(layer: Layer): this;
+    clearLayers(): this;
+    getBounds(): LatLngBounds;
+    eachLayer(fn: (layer: Layer) => void): this;
+  }
+
+  interface Popup extends Layer {
+    setLatLng(latlng: [number, number]): this;
+    setContent(content: string | HTMLElement): this;
+    getContent(): string | HTMLElement;
+    getLatLng(): LatLng;
+    openOn(map: Map): this;
+  }
+
+  interface PopupOptions {
+    maxWidth?: number;
+    minWidth?: number;
+    maxHeight?: number;
+    className?: string;
+    offset?: [number, number];
+    autoPan?: boolean;
+    closeButton?: boolean;
+    closeOnClick?: boolean;
   }
 }
 
 interface Window {
-  ymaps: typeof ymaps;
+  DG: typeof DG;
 }

@@ -234,7 +234,7 @@ const LocationModal: React.FC<LocationModalProps> = ({
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[20px] z-[9999] shadow-2xl flex flex-col"
+            className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[20px] z-[9999] shadow-2xl flex flex-col md:right-auto md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-[440px]"
             style={{ height: '50vh' }}
           >
             {/* Drag handle */}
@@ -253,7 +253,7 @@ const LocationModal: React.FC<LocationModalProps> = ({
               </button>
             </div>
 
-            {/* Yandex Map - интерактивная */}
+            {/* 2GIS Map - интерактивная */}
             <div className="flex-shrink-0 h-[140px] relative">
               <YandexMap
                 locations={locations}
@@ -354,42 +354,61 @@ const LocationModal: React.FC<LocationModalProps> = ({
   );
 };
 
-// Yandex Map компонент - интерактивная карта
-interface YandexMapProps {
+// Lazy-load 2GIS Maps SDK (loaded async in index.html, or on-demand on Capacitor native)
+let dgLoadPromise: Promise<void> | null = null;
+function ensureDGLoaded(): Promise<void> {
+  if (typeof DG !== 'undefined') return Promise.resolve();
+  if (dgLoadPromise) return dgLoadPromise;
+  dgLoadPromise = new Promise<void>((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://maps.api.2gis.ru/2.0/loader.js?pkg=full&skin=dark';
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('Failed to load 2GIS Maps API'));
+    document.head.appendChild(s);
+  });
+  return dgLoadPromise;
+}
+
+// 2GIS Map компонент - интерактивная карта
+interface DGMapProps {
   locations: CafeLocation[];
   selectedLocation: CafeLocation | null;
   center: { lat: number; lng: number };
   onSelect: (location: CafeLocation) => void;
 }
 
-const YandexMap: React.FC<YandexMapProps> = ({ locations, selectedLocation, center, onSelect }) => {
+const YandexMap: React.FC<DGMapProps> = ({ locations, selectedLocation, center, onSelect }) => {
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<ymaps.Map | null>(null);
+  const mapInstanceRef = useRef<DG.Map | null>(null);
+  const markersRef = useRef<DG.Marker[]>([]);
+  const [dgReady, setDgReady] = useState(false);
   const onSelectRef = useRef(onSelect);
   useEffect(() => { onSelectRef.current = onSelect; }, [onSelect]);
   
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
+    let cancelled = false;
     
-    const initMap = () => {
-      if (!mapRef.current) return;
-      const map = new ymaps.Map(mapRef.current, {
-        center: [center.lat, center.lng],
-        zoom: 13,
-        controls: ['zoomControl'],
-      }, {
-        suppressMapOpenBlock: true,
+    ensureDGLoaded().then(() => {
+      if (cancelled || !mapRef.current) return;
+      DG.then(() => {
+        if (cancelled || !mapRef.current) return;
+        const map = DG.map(mapRef.current, {
+          center: [center.lat, center.lng],
+          zoom: 13,
+          fullscreenControl: false,
+          zoomControl: true,
+        });
+        mapInstanceRef.current = map;
+        setDgReady(true);
       });
-      mapInstanceRef.current = map;
-    };
-
-    if (window.ymaps) {
-      ymaps.ready(initMap);
-    }
+    }).catch(() => { /* 2GIS load failed — map stays empty */ });
     
     return () => {
+      cancelled = true;
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.destroy();
+        mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
     };
@@ -401,80 +420,71 @@ const YandexMap: React.FC<YandexMapProps> = ({ locations, selectedLocation, cent
     const map = mapInstanceRef.current;
     if (!map) return;
 
-    const updateMarkers = () => {
-      map.geoObjects.removeAll();
+    // Удаляем предыдущие маркеры
+    markersRef.current.forEach(m => map.removeLayer(m));
+    markersRef.current = [];
 
-      const points: number[][] = [];
+    const bounds: [number, number][] = [];
 
-      locations.forEach((location, index) => {
-        if (!location.coordinates?.lat || !location.coordinates?.lng) return;
+    locations.forEach((location, index) => {
+      if (!location.coordinates?.lat || !location.coordinates?.lng) return;
 
-        const isSelected = selectedLocation?.id === location.id;
-        const isNearest = index === 0 && location.distance !== undefined;
+      const isSelected = selectedLocation?.id === location.id;
+      const isNearest = index === 0 && location.distance !== undefined;
 
-        const color = isSelected ? '#f59e0b' : isNearest ? '#22c55e' : '#6b7280';
+      const color = isSelected ? '#f59e0b' : isNearest ? '#22c55e' : '#6b7280';
 
-        const svgIcon = `<svg width="32" height="40" viewBox="0 0 32 40" xmlns="http://www.w3.org/2000/svg">
-          <path d="M16 0C7.164 0 0 7.164 0 16c0 12 16 24 16 24s16-12 16-24c0-8.836-7.164-16-16-16z" fill="${color}" stroke="white" stroke-width="2"/>
-          <circle cx="16" cy="14" r="6" fill="white"/>
-        </svg>`;
+      const svgIcon = `<svg width="32" height="40" viewBox="0 0 32 40" xmlns="http://www.w3.org/2000/svg">
+        <path d="M16 0C7.164 0 0 7.164 0 16c0 12 16 24 16 24s16-12 16-24c0-8.836-7.164-16-16-16z" fill="${color}" stroke="white" stroke-width="2"/>
+        <circle cx="16" cy="14" r="6" fill="white"/>
+      </svg>`;
 
-        const placemark = new ymaps.Placemark(
-          [location.coordinates.lat, location.coordinates.lng],
-          {
-            balloonContentBody: `
-              <div style="font-family:system-ui;min-width:150px;padding:4px">
-                <strong style="font-size:14px;color:#1f2937">${location.name}</strong>
-                <p style="margin:4px 0;font-size:12px;color:#6b7280">${location.address}</p>
-                ${location.distance !== undefined ? `<p style="margin:2px 0;font-size:11px;color:#9ca3af">📍 ${location.distance} км от вас</p>` : ''}
-                ${location.workingHours ? `<p style="margin:2px 0;font-size:11px;color:#9ca3af">⏰ ${location.workingHours}</p>` : ''}
-              </div>
-            `,
-            hintContent: location.name,
-          },
-          {
-            iconLayout: 'default#image',
-            iconImageHref: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgIcon),
-            iconImageSize: [32, 40],
-            iconImageOffset: [-16, -40],
-            zIndex: isSelected ? 2000 : isNearest ? 1000 : 0,
-          },
-        );
-
-        placemark.events.add('click', () => {
-          onSelectRef.current(location);
-        });
-
-        map.geoObjects.add(placemark);
-        points.push([location.coordinates.lat, location.coordinates.lng]);
+      const icon = DG.divIcon({
+        html: svgIcon,
+        className: '',
+        iconSize: [32, 40],
+        iconAnchor: [16, 40],
+        popupAnchor: [0, -40],
       });
 
-      // Подгоняем зум
-      if (points.length > 1) {
-        map.setBounds(ymaps.util.bounds.fromPoints(points), {
-          checkZoomRange: true,
-          zoomMargin: 30,
-        });
-      } else if (points.length === 1) {
-        map.setCenter(points[0], 15);
-      }
-    };
+      const popupContent = `
+        <div style="font-family:system-ui;min-width:150px;padding:4px">
+          <strong style="font-size:14px;color:#1f2937">${location.name}</strong>
+          <p style="margin:4px 0;font-size:12px;color:#6b7280">${location.address}</p>
+          ${location.distance !== undefined ? `<p style="margin:2px 0;font-size:11px;color:#9ca3af">📍 ${location.distance} км от вас</p>` : ''}
+          ${location.workingHours ? `<p style="margin:2px 0;font-size:11px;color:#9ca3af">⏰ ${location.workingHours}</p>` : ''}
+        </div>
+      `;
 
-    if (window.ymaps) {
-      ymaps.ready(updateMarkers);
+      const marker = DG.marker([location.coordinates.lat, location.coordinates.lng], {
+        icon,
+        zIndexOffset: isSelected ? 2000 : isNearest ? 1000 : 0,
+      }).addTo(map);
+
+      marker.bindPopup(popupContent, { maxWidth: 250 });
+
+      marker.on('click', () => {
+        onSelectRef.current(location);
+      });
+
+      markersRef.current.push(marker);
+      bounds.push([location.coordinates.lat, location.coordinates.lng]);
+    });
+
+    // Подгоняем зум
+    if (bounds.length > 1) {
+      const latLngBounds = DG.latLngBounds(bounds);
+      map.fitBounds(latLngBounds, { padding: [30, 30], maxZoom: 16 });
+    } else if (bounds.length === 1) {
+      map.setView(bounds[0], 15);
     }
-  }, [locations, selectedLocation]);
+  }, [locations, selectedLocation, dgReady]);
   
   // Центрируем карту на выбранной локации
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !center) return;
-    
-    if (window.ymaps) {
-      ymaps.ready(() => {
-        map.panTo([center.lat, center.lng]);
-      });
-    }
+    map.setView([center.lat, center.lng]);
   }, [center]);
   
   return (

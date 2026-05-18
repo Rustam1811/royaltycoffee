@@ -2,3 +2,4 @@ export * from './products';
 export * from './orders';
 export * from './clients';
 export * from './analytics';
+export * from './settings';
