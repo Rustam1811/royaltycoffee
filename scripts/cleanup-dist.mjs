@@ -62,13 +62,13 @@ const REMOVE_PATHS = [
 const REQUIRED_FILES = [
   'sw.js',
   'manifest.json',
-  'firebase-messaging-sw.js',
-  'coffeeaddict.jpg',
   'app/index.html',
 ];
 
-// Optional files — only present after build:all
+// Optional files — only present after build:all or on web
 const OPTIONAL_FILES = [
+  'firebase-messaging-sw.js',
+  'coffeeaddict.jpg',
   'landing/index.html',
   'admin/index.html',
   'workshop/index.html',
@@ -138,7 +138,7 @@ for (const relPath of REQUIRED_FILES) {
 for (const relPath of OPTIONAL_FILES) {
   const fullPath = join(DIST_DIR, relPath);
   const exists = existsSync(fullPath);
-  console.log(`  ${exists ? '✅' : '⏭️ '} ${relPath} ${exists ? '' : '(skipped — run build:all)'}`);
+  console.log(`  ${exists ? '✅' : '⏭️ '} ${relPath} ${exists ? '' : '(optional — skipped)'}`);
 }
 
 // Calculate and report final size
