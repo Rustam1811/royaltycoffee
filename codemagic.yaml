@@ -179,11 +179,14 @@ workflows:
 
     scripts:
       - name: Install Node dependencies
-        script: npm ci
+        script: |
+          npm ci
+          cd admin && npm ci
+          cd ../workshop && npm ci || true
+          cd ../landing && npm ci || true
 
       - name: Build web assets
         script: npm run cap:build:ios
-        # builds web dist and syncs to iOS
 
       - name: Set up code signing
         script: |
@@ -269,7 +272,11 @@ workflows:
 
     scripts:
       - name: Install Node dependencies
-        script: npm ci
+        script: |
+          npm ci
+          cd admin && npm ci
+          cd ../workshop && npm ci || true
+          cd ../landing && npm ci || true
 
       - name: Build web assets
         script: npm run cap:build:ios
