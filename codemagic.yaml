@@ -25,7 +25,7 @@ workflows:
         - firebase             # VITE_FIREBASE_API_KEY, etc.
       vars:
         PACKAGE_NAME: "com.royalcoffee.app"
-        GOOGLE_PLAY_TRACK: internal
+        GOOGLE_PLAY_TRACK: production
 
     cache:
       cache_paths:
@@ -77,10 +77,9 @@ workflows:
       google_play:
         credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
         track: $GOOGLE_PLAY_TRACK
-        submit_as_draft: true
       email:
         recipients:
-          - $CM_COMMITTER_EMAIL
+          - manarbekov18999@gmail.com
         notify:
           success: true
           failure: true
@@ -133,7 +132,7 @@ workflows:
     publishing:
       email:
         recipients:
-          - $CM_COMMITTER_EMAIL
+          - manarbekov18999@gmail.com
         notify:
           success: true
           failure: true
