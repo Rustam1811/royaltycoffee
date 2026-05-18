@@ -1,0 +1,139 @@
+workflows:
+
+  # ─────────────────────────────────────────────────────────────
+  # Android Release → Google Play (Internal Track)
+  # ─────────────────────────────────────────────────────────────
+  android-release:
+    name: Android Release (AAB → Google Play)
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
+
+    environment:
+      java: 21
+      node: 20
+      groups:
+        - google_play          # GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        - android_signing      # CM_KEYSTORE, CM_KEYSTORE_PASSWORD, CM_KEY_ALIAS, CM_KEY_PASSWORD
+        - firebase             # VITE_FIREBASE_API_KEY, etc.
+      vars:
+        PACKAGE_NAME: "com.royalcoffee.app"
+        GOOGLE_PLAY_TRACK: internal
+
+    cache:
+      cache_paths:
+        - $HOME/.gradle/caches
+        - $HOME/.gradle/wrapper
+        - $CM_BUILD_DIR/node_modules
+        - $CM_BUILD_DIR/android/.gradle
+
+    scripts:
+      - name: Install Node dependencies
+        script: npm ci
+
+      - name: Build web assets (all sub-apps)
+        script: npm run cap:build:android
+
+      - name: Set up Android keystore
+        script: |
+          echo $CM_KEYSTORE | base64 --decode > $CM_BUILD_DIR/android/release.jks
+          cat >> $CM_BUILD_DIR/android/signing.properties << EOF
+          storeFile=release.jks
+          storePassword=$CM_KEYSTORE_PASSWORD
+          keyAlias=$CM_KEY_ALIAS
+          keyPassword=$CM_KEY_PASSWORD
+          EOF
+
+      - name: Build Android AAB (release)
+        script: |
+          cd android
+          ./gradlew bundleRelease \
+            -PversionCode=$PROJECT_BUILD_NUMBER \
+            --no-daemon \
+            --stacktrace
+
+      - name: Verify AAB exists
+        script: |
+          AAB="android/app/build/outputs/bundle/release/app-release.aab"
+          if [ ! -f "$AAB" ]; then
+            echo "ERROR: AAB not found at $AAB"
+            exit 1
+          fi
+          echo "AAB size: $(du -sh $AAB | cut -f1)"
+
+    artifacts:
+      - android/app/build/outputs/bundle/**/*.aab
+      - android/app/build/outputs/mapping/release/mapping.txt
+      - android/build/reports/**
+
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: $GOOGLE_PLAY_TRACK
+        submit_as_draft: true
+      email:
+        recipients:
+          - $CM_COMMITTER_EMAIL
+        notify:
+          success: true
+          failure: true
+
+  # ─────────────────────────────────────────────────────────────
+  # Android Debug → artifact only (PR / feature branch)
+  # ─────────────────────────────────────────────────────────────
+  android-debug:
+    name: Android Debug Build (APK)
+    max_build_duration: 30
+    instance_type: mac_mini_m2
+
+    triggering:
+      events:
+        - pull_request
+      branch_patterns:
+        - pattern: "*"
+          include: true
+          source: true
+
+    environment:
+      java: 21
+      node: 20
+      groups:
+        - firebase
+      vars:
+        PACKAGE_NAME: "com.royalcoffee.app"
+
+    cache:
+      cache_paths:
+        - $HOME/.gradle/caches
+        - $HOME/.gradle/wrapper
+        - $CM_BUILD_DIR/node_modules
+
+    scripts:
+      - name: Install Node dependencies
+        script: npm ci
+
+      - name: Build web assets
+        script: npm run cap:build:android
+
+      - name: Build debug APK
+        script: |
+          cd android
+          ./gradlew assembleDebug --no-daemon
+
+    artifacts:
+      - android/app/build/outputs/apk/debug/*.apk
+
+    publishing:
+      email:
+        recipients:
+          - $CM_COMMITTER_EMAIL
+        notify:
+          success: true
+          failure: true
