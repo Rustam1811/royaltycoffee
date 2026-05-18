@@ -182,8 +182,8 @@ workflows:
         script: npm ci
 
       - name: Build web assets
-        script: npm run cap:build:android
-        # cap:build:android also copies web dist; for iOS we just need the web build
+        script: npm run cap:build:ios
+        # builds web dist and syncs to iOS
 
       - name: Set up code signing
         script: |
@@ -272,7 +272,7 @@ workflows:
         script: npm ci
 
       - name: Build web assets
-        script: npm run cap:build:android
+        script: npm run cap:build:ios
 
       - name: Set up code signing (development)
         script: |
