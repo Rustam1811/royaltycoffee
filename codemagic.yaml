@@ -144,6 +144,8 @@ workflows:
     name: iOS Release (IPA → TestFlight)
     max_build_duration: 90
     instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: Royalty Coffee
 
     triggering:
       events:
@@ -157,8 +159,6 @@ workflows:
       xcode: latest
       node: 20
       cocoapods: default
-      integrations:
-        app_store_connect: Royalty Coffee
       groups:
         - firebase             # VITE_FIREBASE_API_KEY, etc.
       vars:
