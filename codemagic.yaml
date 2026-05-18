@@ -158,7 +158,7 @@ workflows:
       node: 20
       cocoapods: default
       integrations:
-        app_store_connect: App Store Connect
+        app_store_connect: Royalty Coffee
       groups:
         - firebase             # VITE_FIREBASE_API_KEY, etc.
       vars:
