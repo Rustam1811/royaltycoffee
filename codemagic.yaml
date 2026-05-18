@@ -189,6 +189,8 @@ workflows:
       - name: Set up code signing
         script: |
           keychain initialize
+          # Remove any cached profiles to force re-fetch with current App ID capabilities
+          rm -rf ~/Library/MobileDevice/Provisioning\ Profiles/* 2>/dev/null || true
           app-store-connect fetch-signing-files $BUNDLE_ID \
             --type IOS_APP_STORE \
             --create
