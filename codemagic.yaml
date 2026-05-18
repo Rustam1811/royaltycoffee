@@ -18,7 +18,7 @@ workflows:
 
     environment:
       java: 21
-      node: 20
+      node: 22
       groups:
         - google_play          # GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
         - android_signing      # CM_KEYSTORE, CM_KEYSTORE_PASSWORD, CM_KEY_ALIAS, CM_KEY_PASSWORD
@@ -102,7 +102,7 @@ workflows:
 
     environment:
       java: 21
-      node: 20
+      node: 22
       groups:
         - firebase
       vars:
@@ -157,7 +157,7 @@ workflows:
 
     environment:
       xcode: latest
-      node: 20
+      node: 22
       cocoapods: default
       vars:
         BUNDLE_ID: "com.royalcoffee.app"
@@ -250,7 +250,7 @@ workflows:
 
     environment:
       xcode: latest
-      node: 20
+      node: 22
       cocoapods: default
       vars:
         BUNDLE_ID: "com.royalcoffee.app"
