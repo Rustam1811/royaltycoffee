@@ -158,7 +158,6 @@ workflows:
     environment:
       xcode: latest
       node: 22
-      cocoapods: default
       vars:
         BUNDLE_ID: "com.royalcoffee.app"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
@@ -174,7 +173,6 @@ workflows:
 
     cache:
       cache_paths:
-        - $HOME/Library/Caches/CocoaPods
         - $CM_BUILD_DIR/node_modules
 
     scripts:
@@ -196,11 +194,6 @@ workflows:
             --create
           keychain add-certificates
           xcode-project use-profiles
-
-      - name: Install CocoaPods
-        script: |
-          cd ios/App
-          pod install
 
       - name: Increment build number
         script: |
@@ -251,7 +244,6 @@ workflows:
     environment:
       xcode: latest
       node: 22
-      cocoapods: default
       vars:
         BUNDLE_ID: "com.royalcoffee.app"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
@@ -267,7 +259,6 @@ workflows:
 
     cache:
       cache_paths:
-        - $HOME/Library/Caches/CocoaPods
         - $CM_BUILD_DIR/node_modules
 
     scripts:
@@ -289,11 +280,6 @@ workflows:
             --create
           keychain add-certificates
           xcode-project use-profiles
-
-      - name: Install CocoaPods
-        script: |
-          cd ios/App
-          pod install
 
       - name: Build IPA (debug)
         script: |
