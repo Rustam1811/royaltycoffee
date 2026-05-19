@@ -8,18 +8,27 @@ const CategoryModal: React.FC<CategoryModalProps> = ({
   onClose,
   onSave,
 }) => {
-  const empty: LocalizedString = { ru: "", kz: "", en: "" };
-  const [title, setTitle] = useState<LocalizedString>(empty);
+  const emptyString: LocalizedString = { ru: "", kz: "", en: "" };
+  const [title, setTitle] = useState<LocalizedString>(emptyString);
   const [image, setImage] = useState<string>(initialData?.image || '');
 
   useEffect(() => {
-    if (initialData) {
-      setTitle(initialData.title);
-      setImage(initialData.image || '');
-    } else {
-      setTitle(empty);
-      setImage("");
+    let isMounted = true;
+    
+    if (isMounted) {
+      if (initialData) {
+        setTitle(initialData.title);
+        setImage(initialData.image || '');
+      } else {
+        setTitle(emptyString);
+        setImage("");
+      }
     }
+
+    return () => {
+      isMounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialData]);
 
   const handleSubmit = (e: React.FormEvent) => {

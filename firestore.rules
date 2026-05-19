@@ -1,0 +1,211 @@
+// Firestore Security Rules
+// Copy this to Firebase Console → Firestore → Rules
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+             (request.auth.token.admin == true || 
+              request.auth.token.owner == true ||
+              request.auth.token.superowner == true ||
+              request.auth.token.role == 'admin' ||
+              request.auth.token.role == 'owner' ||
+              request.auth.token.role == 'superowner' ||
+              request.auth.token.email in ['admin121@gmail.com', 'barista121@gmail.com', 'owner121@gmail.com', 'superowner121@royal.com', 'rustam.mukaev@gmail.com']);
+    }
+    
+    function isBarista() {
+      return isAuthenticated() && 
+             (request.auth.token.barista == true ||
+              request.auth.token.role == 'barista' ||
+              request.auth.token.email in ['barista121@gmail.com']);
+    }
+    
+    function isStaff() {
+      return isAdmin() || isBarista();
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Stories collection - public read, admin write only
+    match /stories/{storyId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Orders collection - admin and barista full access, users can read their own
+    match /orders/{orderId} {
+      allow read: if isStaff() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow write: if isStaff();
+      
+      // Status history subcollection
+      match /statusHistory/{historyId} {
+        allow read: if isStaff() || (isAuthenticated() && get(/databases/$(database)/documents/orders/$(orderId)).data.userId == request.auth.uid);
+        allow write: if isStaff();
+      }
+    }
+    
+    // Users collection - admin access + user can manage own data
+    match /users/{userId} {
+      // Allow any authenticated user to read (for leaderboard etc)
+      allow read: if isAuthenticated();
+      
+      // Allow user to create their own document with required fields
+      allow create: if request.auth != null && 
+        request.auth.uid == userId &&
+        request.resource.data.keys().hasAny(['phone', 'email', 'name']);
+      
+      allow update: if isOwner(userId) && 
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['phone', 'name', 'email', 'avatar', 'updatedAt', 'pushOptIn', 'marketingOptIn', 'subscribePromotions', 'subscribeStories', 'lastOrderAt', 'fcmToken', 'notificationsEnabled', 'lastTokenUpdate']);
+      
+      // User FCM tokens subcollection
+      match /tokens/{tokenId} {
+        allow read, write, delete: if isOwner(userId);
+      }
+      
+      // Notifications suppress settings
+      match /notifications_suppress/{type} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+    
+    // Categories collection - admin write, public read
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Menu Categories - public read, admin write
+    match /menuCategories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Menu Items - public read, admin write
+    match /menuItems/{itemId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Achievements - public read, admin write
+    match /achievements/{achievementId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Promotions collection - admin write, public read
+    match /promotions/{promoId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // News collection - admin write, public read
+    match /news/{newsId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Bonus settings - admin write, public read
+    match /settings/bonus {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Bonuses collection - any auth user can read (leaderboard), admin/staff write
+    match /bonuses/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isStaff();
+    }
+    
+    // Bonus history - user can read own, staff can write
+    match /bonusHistory/{docId} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow write: if isStaff();
+    }
+    
+    // Bonus settings doc (bonusSettings collection)
+    match /bonusSettings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Counters (order counters etc) - staff access
+    match /counters/{docId} {
+      allow read: if isStaff();
+      allow write: if isStaff();
+    }
+    
+    // Notifications log - admin read, functions write
+    match /notifications_log/{logId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+    
+    // ─── Workshop collections ───
+    // Workshop Settings — authenticated read, admin write
+    match /workshop_settings/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Workshop Outlets — authenticated read, admin write
+    match /workshop_outlets/{outletId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Workshop Products — public read, admin/owner write
+    match /workshop_products/{productId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    // Workshop Categories — public read, admin/owner write
+    match /workshop_categories/{categoryId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    // Workshop Orders — auth read, admin/owner write, clients can create & update own pending orders
+    match /workshop_orders/{orderId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAdmin() || 
+                       (isAuthenticated() && resource.data.clientId != null && resource.data.status == 'pending');
+      allow delete: if isAdmin();
+    }
+    
+    // Workshop Clients — admin full access, client can read/update own document
+    match /workshop_clients/{clientId} {
+      allow read: if isAuthenticated();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || 
+                       (isAuthenticated() && resource.data.uid == request.auth.uid);
+    }
+    
+    // Workshop Quick Order Templates
+    match /workshop_quick_orders/{templateId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Locations collection - public read, owner/superowner write
+    match /locations/{locationId} {
+      allow read: if true;
+      allow write: if isAuthenticated() && 
+                     (request.auth.token.role == 'owner' || 
+                      request.auth.token.role == 'superowner' ||
+                      request.auth.token.owner == true ||
+                      request.auth.token.superowner == true);
+    }
+  }
+}

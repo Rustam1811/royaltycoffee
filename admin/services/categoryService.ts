@@ -15,14 +15,24 @@ const COLL = "categories";
 export const listenCategories = (
   callback: (cats: DrinkCategoryLocal[]) => void
 ): Unsubscribe => {
+  let isActive = true;
   const colRef = collection(db, COLL);
-  return onSnapshot(colRef, snap => {
+  
+  const unsubscribe = onSnapshot(colRef, snap => {
+    if (!isActive) return; // Don't call callback if already unsubscribed
+    
     const cats = snap.docs.map(d => ({
       id: d.id,
       ...(d.data() as Omit<DrinkCategoryLocal, "id">),
     }));
     callback(cats);
   });
+
+  // Return wrapped unsubscribe that also sets flag
+  return () => {
+    isActive = false;
+    unsubscribe();
+  };
 };
 
 export const addCategory = (data: Omit<DrinkCategoryLocal, "id">) =>

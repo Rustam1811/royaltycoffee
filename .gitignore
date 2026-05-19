@@ -1,27 +1,36 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# === Node/JS monorepo ignore (api, admin, client) ===
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
+# secrets
+*.env
+*.key
+*.pem
+*.p12
+*service-account*.json
+api-server/firebase-service-account.json
+service-account.json.json
 
-.env
-firebase-key.json
-# testing
-/coverage
+# Builds / caches
+**/node_modules/
+**/dist/
+**/build/
+**/out/
+**/.next/
+**/.nuxt/
+**/.output/
+**/.cache/
+**/.turbo/
+**/.vite/
+**/coverage/
+**/tmp/
+**/temp/
+**/.vercel/output/
+**/.firebase/
+**/.functions/
 
-# production
-/dist
-
-# misc
-.DS_Store
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-/.nx
-/.nx/cache
-/.vscode/*
+# Env & secrets
+**/.env
+**/.env.*
+!**/.env.example
 !/.vscode/extensions.json
 .idea
 
@@ -32,3 +41,51 @@ yarn-error.log*
 # Optional eslint cache
 .eslintcache
 .vercel
+
+*.js
+*.jsx
+*.js.map
+*.jsx.map
+
+# Firebase / Google Cloud service accounts
+service-account.json
+service-account.json.json
+api-server/firebase-service-account.json
+*service-account*.json
+serviceAccountKey.json
+
+# Android keystore & signing secrets
+*.keystore
+*.jks
+android/keystore.properties
+android/signing.properties
+android/local.properties
+*-firebase-adminsdk-*.json
+
+# All private keys
+*.key
+*.pem
+*.p12
+*.secret.json
+
+# Mobile platform secrets
+**/google-services.json
+**/GoogleService-Info.plist
+
+# Local env files
+.env
+.env.*
+
+# Node / build
+node_modules/
+dist/
+.vercel/
+# Allow Vercel API handlers
+!api/**/*.js
+
+!admin/postcss.config.js
+!admin/tailwind.config.js
+
+# Generated reports (contain local paths)
+reports/
+scripts/inventory.json

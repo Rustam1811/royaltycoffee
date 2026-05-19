@@ -1,27 +1,30 @@
 {
-  "short_name": "Addict App",
-  "name": "Addict Coffee App",
+  "short_name": "Royalty Coffee",
+  "name": "Royalty Coffee",
   "icons": [
     {
-      "src": "assets/icon/favicon.png",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "assets/icon/icon-192.png",
-      "type": "image/png",
-      "sizes": "192x192"
-    },
-    {
-      "src": "assets/icon/icon-512.png",
-      "type": "image/png",
+      "src": "/icon-512.png",
       "sizes": "512x512",
-      "purpose": "maskable any"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
-  "start_url": ".",
+  "start_url": "/app/",
+  "scope": "/",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff",
+  "theme_color": "#3D0A11",
+  "background_color": "#F4EDE4",
   "orientation": "portrait"
 }

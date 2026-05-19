@@ -2,34 +2,77 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Coffee App</title>
+    <title>Royalty Coffee</title>
     
     <base href="/" />
     
-    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#F4EDE4" />
+<!-- Для iOS ярлыка: -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+
     <meta
       name="viewport"
       content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
     <meta name="format-detection" content="telephone=no" />
     <meta name="msapplication-tap-highlight" content="no" />
-    
+    <!-- Prefetch 3D thermos model so it's in browser cache when Three.js requests it -->
+    <link rel="prefetch" href="/images/3Dcup_tiny.glb" as="fetch" crossorigin="anonymous" />
+
     <link rel="manifest" href="/manifest.json" />
     <script>
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("/sw.js");
-      }
+      // Register SW only on web (not native Capacitor) and outside localhost
+      (function() {
+        if (!('serviceWorker' in navigator)) return;
+        if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) return;
+        var isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+        if (!isLocalhost) {
+          navigator.serviceWorker.register('/sw.js');
+        }
+      })();
     </script>
-    
-    <link rel="shortcut icon" type="image/png" href="/favicon.png" />
-    
-    <!-- add to homescreen for ios -->
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="Ionic App" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+
+    <link rel="shortcut icon" type="image/png" href="/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png" />
+
+    <!-- 2GIS Maps API — loaded async; on Capacitor native, loaded dynamically by map component -->
+    <script>
+      (function() {
+        // Skip blocking 2GIS on native Capacitor — map component loads it on demand
+        if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) return;
+        var s = document.createElement('script');
+        s.src = 'https://maps.api.2gis.ru/2.0/loader.js?pkg=full&skin=dark';
+        s.async = true;
+        document.head.appendChild(s);
+      })();
+    </script>
+
+
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Splash screen: visible instantly while JS bundles load -->
+      <style>
+        #splash{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#F4EDE4}
+        @keyframes fadeUp{0%{opacity:0;transform:translateY(12px)}100%{opacity:1;transform:translateY(0)}}
+        @keyframes pulse{0%,100%{opacity:.3}50%{opacity:.7}}
+        #splash h2{color:#3D0A11;font:bold 1.25rem/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin-top:1.25rem;animation:fadeUp .6s ease-out .2s both}
+        #splash p{color:rgba(61,10,17,.35);font:.875rem/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin-top:.5rem;animation:fadeUp .6s ease-out .4s both}
+        #splash .dots{display:flex;gap:6px;margin-top:1.25rem;animation:fadeUp .6s ease-out .6s both}
+        #splash .dots span{width:6px;height:6px;border-radius:50%;background:#D4AF37;opacity:.3;animation:pulse 1.2s ease-in-out infinite}
+        #splash .dots span:nth-child(2){animation-delay:.2s}
+        #splash .dots span:nth-child(3){animation-delay:.4s}
+      </style>
+      <div id="splash">
+        <!-- /public/royalty-cup.svg — exact geometry from src/components/RoyaltyCup.tsx -->
+        <object data="/royalty-cup.svg" type="image/svg+xml" width="124" height="270" style="overflow:hidden;display:block"></object>
+        <h2>Royalty Coffee</h2>
+        <p>Загружаем...</p>
+        <div class="dots"><span></span><span></span><span></span></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

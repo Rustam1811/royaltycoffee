@@ -1,381 +1,224 @@
 {
+  "ui": {
+    "menu": "Menu",
+    "size": "Size",
+    "milk": "Milk",
+    "syrups": "Syrups",
+    "toppings": "Toppings",
+    "together": "Better Together",
+    "customize": "Customize your drink easily.",
+    "add": "Add",
+    "none": "None",
+    "base": "Base"
+  },
+  "options": {
+    "milk": {
+      "regular": "Regular",
+      "oat": "Oat",
+      "almond": "Almond",
+      "coconut": "Coconut",
+      "lactosefree": "Lactose-free"
+    },
+    "syrup": {
+      "vanilla": "Vanilla",
+      "caramel": "Caramel",
+      "hazelnut": "Hazelnut",
+      "coconut": "Coconut",
+      "mint": "Mint",
+      "banana": "Banana"
+    },
+    "topping": {
+      "cinnamon": "Cinnamon",
+      "cocoa": "Cocoa",
+      "choco": "Chocolate",
+      "marsh": "Marshmallow"
+    }
+  },
   "menu": {
     "categories": {
-      "black_coffee": "Black Coffee",
-      "seasonal": "Seasonal",
-      "milk_coffee": "Coffee with Milk",
-      "childrens": "Kids Menu",
-      "cold_coffee": "Cold Coffee",
-      "non_coffee": "Non-Coffee",
-      "cold_drinks": "Cold Drinks",
-      "lemonades": "Lemonades",
+      "coffee": "Coffee",
+      "raf_royal": "Raf Royal",
+      "lemonade": "Lemonade",
+      "ice_coffee": "ICE Coffee",
+      "milkshake": "Milkshake",
       "breakfasts": "Breakfasts",
       "hearty_croissants": "Hearty Croissants",
       "paninis": "Paninis",
       "pastries": "Pastries"
     },
-    "espresso": {
-      "name": "Espresso",
-      "description": "Classic espresso with rich flavor and dense crema",
-      "ingredients": [
-        "100% Arabica coffee",
-        "Filtered water"
-      ],
-      "recommendation": "Perfect for morning awakening"
-    },
-    "americano": {
-      "name": "Americano",
-      "description": "Espresso with hot water added for a milder taste",
-      "ingredients": [
-        "Espresso",
-        "Hot water"
-      ],
-      "recommendation": "Goes perfectly with breakfast"
-    },
-    "batch_brew": {
-      "name": "Batch Brew",
-      "description": "Slow extraction coffee to reveal all flavor notes",
-      "ingredients": [
-        "Filter grind coffee"
-      ],
-      "recommendation": "For true coffee connoisseurs"
-    },
-    "lungo_aeropress": {
-      "name": "Lungo/Aeropress",
-      "description": "Extended espresso or coffee brewed in an aeropress",
-      "ingredients": [
-        "Coffee beans",
-        "Aeropress brewing method"
-      ],
-      "recommendation": "For those who love to experiment"
-    },
-    "barista_set": {
-      "name": "Barista Set (espresso, cappuccino/flat white, batch brew + something else)",
-      "description": "Tasting set to explore different brewing methods",
-      "ingredients": [
-        "Espresso",
-        "Cappuccino or flat white",
-        "Batch brew",
-        "Additional treats"
-      ],
-      "recommendation": "Perfect for first-time visit to our coffee shop"
-    },
-    "cola_bro_strawberry_blueberry": {
-      "name": "Cola Bro Strawberry/Blueberry",
-      "description": "Refreshing drink with natural berry syrups",
-      "ingredients": [
-        "Cola",
-        "Strawberry syrup",
-        "Blueberry syrup"
-      ],
-      "recommendation": "Great addition to a summer day"
-    },
-    "cardamom_syrup": {
-      "name": "Cardamom Syrup",
-      "description": "Aromatic syrup with spicy cardamom flavor",
-      "ingredients": [
-        "Cardamom",
-        "Sugar syrup"
-      ],
-      "recommendation": "Add to any drink for an oriental aroma"
-    },
-    "lavender_mint": {
-      "name": "Lavender Mint",
-      "description": "Calming drink with lavender and fresh mint",
-      "ingredients": [
-        "Dried lavender",
-        "Fresh mint",
-        "Hot water"
-      ],
-      "recommendation": "Perfect for relaxing after a workday"
-    },
-    "tropical_mix": {
-      "name": "Tropical Mix",
-      "description": "Exotic cocktail with tropical fruits",
-      "ingredients": [
-        "Pineapple",
-        "Mango",
-        "Passion fruit"
-      ],
-      "recommendation": "Feel like you're on a tropical island"
-    },
-    "affogato": {
-      "name": "Affogato",
-      "description": "Italian dessert - vanilla ice cream with espresso",
-      "ingredients": [
-        "Vanilla ice cream",
-        "Espresso",
-        "Optional: amaretto"
-      ],
-      "recommendation": "Perfect dessert for a romantic evening"
-    },
     "cappuccino": {
       "name": "Cappuccino",
-      "description": "Classic Italian drink with milk foam",
-      "ingredients": [
-        "Espresso",
-        "Steamed milk"
-      ],
-      "recommendation": "Morning classic for a good mood"
-    },
-    "flat_white": {
-      "name": "Flat White",
-      "description": "Australian coffee with microfoam and rich flavor",
-      "ingredients": [
-        "Double espresso",
-        "Milk with microfoam"
-      ],
-      "recommendation": "For those who love strong coffee with milk"
+      "description": "Classic Italian drink with velvety milk foam",
+      "ingredients": ["Espresso", "Steamed milk"],
+      "recommendation": "Morning classic for a great mood"
     },
     "latte": {
       "name": "Latte",
-      "description": "Gentle coffee with a large amount of milk",
-      "ingredients": [
-        "Espresso",
-        "Hot milk"
-      ],
-      "recommendation": "Mild taste for milk beverage lovers"
+      "description": "Gentle coffee with plenty of milk and thin foam",
+      "ingredients": ["Espresso", "Hot milk"],
+      "recommendation": "Smooth taste for milk lovers"
+    },
+    "caramelatte": {
+      "name": "Caramelatte",
+      "description": "Latte with caramel syrup and caramel topping",
+      "ingredients": ["Espresso", "Milk", "Caramel syrup"],
+      "recommendation": "For sweet coffee lovers"
+    },
+    "americano": {
+      "name": "Americano",
+      "description": "Espresso with hot water for a milder taste",
+      "ingredients": ["Espresso", "Hot water"],
+      "recommendation": "Goes perfectly with breakfast"
     },
     "raf_coffee": {
       "name": "Raf Coffee",
-      "description": "Russian coffee drink with cream and vanilla syrup",
-      "ingredients": [
-        "Espresso",
-        "Cream",
-        "Vanilla syrup"
-      ],
-      "recommendation": "Tender and sweet, like a hug"
+      "description": "Creamy coffee drink with vanilla syrup",
+      "ingredients": ["Espresso", "Cream", "Vanilla syrup"],
+      "recommendation": "Gentle and sweet like a hug"
     },
-    "coconut_milk": {
-      "name": "With Coconut Milk",
-      "description": "Alternative milk for vegans and exotic lovers",
-      "ingredients": [
-        "Espresso",
-        "Coconut milk",
-        "Natural coconut notes"
-      ],
-      "recommendation": "Tropical taste in every sip"
+    "mokkachino": {
+      "name": "Mochaccino",
+      "description": "Espresso with chocolate, milk and chocolate topping",
+      "ingredients": ["Espresso", "Chocolate", "Milk"],
+      "recommendation": "Dessert coffee for chocolate lovers"
     },
-    "oat_milk": {
-      "name": "+ Oat Milk",
-      "description": "Oat milk addition to any drink",
-      "ingredients": [
-        "Oat milk"
-      ],
-      "recommendation": "Eco-friendly alternative to regular milk"
+    "flat_white": {
+      "name": "Flat White",
+      "description": "Double espresso with microfoam for rich flavor",
+      "ingredients": ["Double espresso", "Microfoam milk"],
+      "recommendation": "For those who love strong coffee with milk"
     },
-    "lactose_free": {
-      "name": "+ Lactose-Free",
-      "description": "Lactose-free milk for people with lactose intolerance",
-      "ingredients": [
-        "Lactose-free milk"
-      ],
-      "recommendation": "We care about your comfort"
+    "masala_coffee": {
+      "name": "Masala Coffee",
+      "description": "Spiced coffee with cardamom, ginger and cinnamon",
+      "ingredients": ["Espresso", "Milk", "Eastern spices"],
+      "recommendation": "Warming drink with Eastern character"
     },
-    "syrup": {
-      "name": "+ Syrup",
-      "description": "Additional syrup of your choice",
-      "ingredients": [
-        "Syrup of choice"
-      ],
-      "recommendation": "Personalize your drink"
+    "glintveyn_coffee": {
+      "name": "Mulled Coffee",
+      "description": "Hot non-alcoholic coffee with spices and fruits",
+      "ingredients": ["Espresso", "Orange", "Spices, honey"],
+      "recommendation": "Winter drink for cozy moments"
     },
-    "milkshake_vanilla_strawberry": {
-      "name": "Milkshake Vanilla/Strawberry",
-      "description": "Kids' milkshake with natural flavors",
-      "ingredients": [
-        "Milk",
-        "Vanilla ice cream",
-        "Strawberry syrup"
-      ],
-      "recommendation": "Favorite drink of our little guests"
+    "matcha_latte": {
+      "name": "Matcha Latte",
+      "description": "Japanese green matcha tea with milk",
+      "ingredients": ["Matcha powder", "Milk", "Sweetener"],
+      "recommendation": "Healthy alternative to coffee"
     },
-    "espresso_tonic": {
-      "name": "Espresso Tonic",
-      "description": "Refreshing mix of espresso with tonic and citrus",
-      "ingredients": [
-        "Chilled espresso",
-        "Tonic",
-        "Lemon"
-      ],
-      "recommendation": "Energizing drink for a hot day"
+    "chai_tea": {
+      "name": "Chai / Tea",
+      "description": "Premium loose leaf tea — black, green or herbal",
+      "ingredients": ["Tea leaves"],
+      "recommendation": "Tea ceremony classic"
     },
-    "bumble_coffee": {
-      "name": "Bumble Coffee",
-      "description": "Cold coffee with honey notes",
-      "ingredients": [
-        "Cold coffee",
-        "Natural honey",
-        "Milk"
-      ],
-      "recommendation": "Sweet energy for the whole day"
+    "raf_arahis": {
+      "name": "Peanut Raf",
+      "description": "Signature raf with peanut butter and cream",
+      "ingredients": ["Espresso", "Cream", "Peanut butter"],
+      "recommendation": "Rich nutty flavor"
     },
-    "finnish_latte": {
-      "name": "Finnish Latte",
-      "description": "Scandinavian recipe of cold coffee with milk",
-      "ingredients": [
-        "Cold espresso",
-        "Milk",
-        "Scandinavian spices"
-      ],
-      "recommendation": "Nordic freshness in every sip"
+    "raf_lavanda": {
+      "name": "Lavender Raf",
+      "description": "Delicate raf with floral lavender aroma",
+      "ingredients": ["Espresso", "Cream", "Lavender syrup"],
+      "recommendation": "Relaxing floral aroma"
     },
-    "aff_latte": {
-      "name": "Aff Latte",
-      "description": "Cold latte with special blend",
-      "ingredients": [
-        "Cold espresso",
-        "Cold milk"
-      ],
-      "recommendation": "Simplicity and perfection of taste"
+    "raf_medovik": {
+      "name": "Honey Cake & Raspberry Raf",
+      "description": "Signature raf with honey cake flavor and raspberry sauce",
+      "ingredients": ["Espresso", "Cream", "Honey syrup, raspberry"],
+      "recommendation": "Dessert in a cup"
     },
-    "mint_latte": {
-      "name": "Mint Latte",
-      "description": "Refreshing caffeine-free drink with mint",
-      "ingredients": [
-        "Hot milk",
-        "Mint syrup"
-      ],
-      "recommendation": "Refreshing alternative to coffee"
+    "raf_melon_cactus": {
+      "name": "Melon-Cactus Raf",
+      "description": "Exotic raf with melon and cactus syrup",
+      "ingredients": ["Espresso", "Cream", "Melon syrup, cactus"],
+      "recommendation": "Unusual fresh taste"
     },
-    "cocoa_classic_chocolate": {
-      "name": "Cocoa (Hot Chocolate)",
-      "description": "Classic hot chocolate made from natural cocoa",
-      "ingredients": [
-        "Cocoa powder",
-        "Milk"
-      ],
+    "raf_pistachio": {
+      "name": "Pistachio Raf",
+      "description": "Premium raf with natural pistachio paste",
+      "ingredients": ["Espresso", "Cream", "Pistachio paste"],
+      "recommendation": "Nutty tenderness in every sip"
+    },
+    "lemonade_kiwi_mint": {
+      "name": "Kiwi-Mint",
+      "description": "Fresh lemonade with kiwi and mint",
+      "ingredients": ["Kiwi", "Mint", "Sparkling water"],
+      "recommendation": "Refreshing and invigorating"
+    },
+    "lemonade_mango_passion": {
+      "name": "Mango-Passion Fruit",
+      "description": "Tropical lemonade with mango and passion fruit",
+      "ingredients": ["Mango", "Passion fruit", "Sparkling water"],
+      "recommendation": "Tropical paradise"
+    },
+    "lemonade_mango_strawberry": {
+      "name": "Mango-Strawberry",
+      "description": "Berry-fruit lemonade with mango and strawberry",
+      "ingredients": ["Mango", "Strawberry", "Sparkling water"],
+      "recommendation": "Bright and juicy flavor"
+    },
+    "lemonade_raspberry_lychee": {
+      "name": "Raspberry-Lychee",
+      "description": "Exotic lemonade with raspberry and lychee",
+      "ingredients": ["Raspberry", "Lychee", "Sparkling water"],
+      "recommendation": "Exquisite berry combination"
+    },
+    "lemonade_peach_grapefruit": {
+      "name": "Peach-Grapefruit",
+      "description": "Lemonade with peach and a touch of grapefruit bitterness",
+      "ingredients": ["Peach", "Grapefruit", "Sparkling water"],
+      "recommendation": "Balance of sweetness and freshness"
+    },
+    "ice_latte": {
+      "name": "Iced Latte",
+      "description": "Cold latte with ice",
+      "ingredients": ["Espresso", "Cold milk", "Ice"],
+      "recommendation": "Refreshing coffee for a hot day"
+    },
+    "ice_americano": {
+      "name": "Iced Americano",
+      "description": "Cold americano with ice",
+      "ingredients": ["Espresso", "Cold water", "Ice"],
+      "recommendation": "Energizes and cools"
+    },
+    "ice_raf": {
+      "name": "Iced Raf",
+      "description": "Cold raf with ice and cream",
+      "ingredients": ["Espresso", "Cold cream", "Ice"],
+      "recommendation": "Creamy coolness"
+    },
+    "ice_matcha": {
+      "name": "Iced Matcha",
+      "description": "Cold matcha latte with ice",
+      "ingredients": ["Matcha", "Cold milk", "Ice"],
+      "recommendation": "Healthy iced alternative"
+    },
+    "bamble": {
+      "name": "Bumble",
+      "description": "Layered iced coffee with orange juice and espresso",
+      "ingredients": ["Espresso", "Orange juice", "Caramel", "Ice"],
+      "recommendation": "Bright citrus coffee"
+    },
+    "milk_duet": {
+      "name": "Milk Duet",
+      "description": "Gentle milk drink for kids and adults",
+      "ingredients": ["Milk", "Natural additions"],
+      "recommendation": "Soft and wholesome"
+    },
+    "cocoa": {
+      "name": "Cocoa",
+      "description": "Classic hot cocoa from natural powder",
+      "ingredients": ["Cocoa powder", "Milk", "Marshmallow"],
       "recommendation": "Warming drink for cold days"
     },
-    "black_tea_green_tea": {
-      "name": "Black/Green Leaf Tea",
-      "description": "Premium leaf tea of your choice",
-      "ingredients": [
-        "Highest grade tea leaves"
-      ],
-      "recommendation": "Classic tea ceremony"
-    },
-    "ginger_sea_buckthorn": {
-      "name": "Ginger Sea Buckthorn Tea",
-      "description": "Warming vitamin tea",
-      "ingredients": [
-        "Fresh ginger",
-        "Sea buckthorn",
-        "Honey"
-      ],
-      "recommendation": "Immune support during cold season"
-    },
-    "mint_tea_with_honey": {
-      "name": "Mint Tea with Honey",
-      "description": "Calming herbal drink",
-      "ingredients": [
-        "Fresh mint",
-        "Natural honey",
-        "Hot water"
-      ],
-      "recommendation": "Relaxation after a stressful day"
-    },
-    "masala_chai": {
-      "name": "Masala Chai",
-      "description": "Indian spiced tea with milk and spices",
-      "ingredients": [
-        "Black tea",
-        "Milk",
-        "Indian spices"
-      ],
-      "recommendation": "Journey to India through taste"
-    },
-    "raspberry_tea_with_ginger_lemon": {
-      "name": "Raspberry Tea with Ginger and Lemon",
-      "description": "Berry tea with warming additions",
-      "ingredients": [
-        "Raspberry",
-        "Ginger",
-        "Lemon"
-      ],
-      "recommendation": "Vitamin boost and great mood"
-    },
-    "cranberry_tea": {
-      "name": "Cranberry Tea",
-      "description": "Sweet and sour drink with northern berries",
-      "ingredients": [
-        "Cranberry",
-        "Hot water"
-      ],
-      "recommendation": "Healthy and very tasty"
-    },
-    "jasmine_raspberry_elderflower": {
-      "name": "Jasmine Raspberry Elderflower",
-      "description": "Floral-berry cold tea",
-      "ingredients": [
-        "Jasmine tea",
-        "Raspberry",
-        "Elderflower"
-      ],
-      "recommendation": "Exquisite taste for special moments"
-    },
-    "sencha_elderflower": {
-      "name": "Sencha Elderflower",
-      "description": "Japanese green tea with floral notes",
-      "ingredients": [
-        "Sencha",
-        "Elderflower"
-      ],
-      "recommendation": "Refinement of Japanese traditions"
-    },
-    "mint_strawberry_basil": {
-      "name": "Mint Strawberry Tonic",
-      "description": "Refreshing cocktail with herbs and berries",
-      "ingredients": [
-        "Mint",
-        "Strawberry",
-        "Basil"
-      ],
-      "recommendation": "Summer freshness in a glass"
-    },
-    "mint_watermelon": {
-      "name": "Mint Basil",
-      "description": "Minimalist drink with herbal notes",
-      "ingredients": [
-        "Mint",
-        "Basil"
-      ],
-      "recommendation": "Simplicity and freshness"
-    },
-    "orange_elderflower": {
-      "name": "Classic Orange",
-      "description": "Citrus lemonade with floral notes",
-      "ingredients": [
-        "Orange",
-        "Elderflower"
-      ],
-      "recommendation": "Bright taste of a sunny day"
-    },
-    "classic_lemonade": {
-      "name": "Classic Lemonade",
-      "description": "Traditional refreshing lemonade",
-      "ingredients": [
-        "Lemon",
-        "Sugar syrup"
-      ],
-      "recommendation": "Classic that never gets old"
-    },
-    "kiwi_lime": {
-      "name": "Kiwi Lime",
-      "description": "Exotic lemonade with tropical notes",
-      "ingredients": [
-        "Kiwi",
-        "Lime"
-      ],
-      "recommendation": "Exotic freshness"
-    },
-    "apple_apple": {
-      "name": "Apple Apple",
-      "description": "Double concentration apple fresh",
-      "ingredients": [
-        "Apple"
-      ],
-      "recommendation": "Double portion of apple goodness"
+    "hot_chocolate": {
+      "name": "Hot Chocolate",
+      "description": "Rich hot chocolate from real Belgian chocolate",
+      "ingredients": ["Belgian chocolate", "Milk", "Whipped cream"],
+      "recommendation": "Winter fairy tale in a cup"
     },
     "granola_with_yogurt": {
       "name": "+ Granola with Yogurt",

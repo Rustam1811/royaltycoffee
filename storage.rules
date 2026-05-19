@@ -1,0 +1,59 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+             (request.auth.token.admin == true ||
+              request.auth.token.owner == true ||
+              request.auth.token.superowner == true ||
+              request.auth.token.role == 'admin' ||
+              request.auth.token.role == 'owner' ||
+              request.auth.token.role == 'superowner');
+    }
+    
+    function isValidImage() {
+      return request.resource.size < 10 * 1024 * 1024 &&
+             request.resource.contentType.matches('image/.*');
+    }
+    
+    function isValidVideo() {
+      return request.resource.size < 100 * 1024 * 1024 &&
+             request.resource.contentType.matches('video/.*');
+    }
+    
+    // Stories media - admin write only, public read
+    match /stories/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin() && (isValidImage() || isValidVideo());
+    }
+    
+    // User avatars - users can upload their own avatar
+    match /avatars/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAuthenticated() && 
+                   request.auth.uid == userId && 
+                   isValidImage();
+    }
+    
+    // Uploads folder - admin only
+    match /uploads/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin() && (isValidImage() || isValidVideo());
+    }
+    
+    // Menu items images - admin write, public read
+    match /menu/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidImage();
+    }
+    
+    // Deny all other paths
+    match /{allPaths=**} { 
+      allow read, write: if false; 
+    }
+  }
+}

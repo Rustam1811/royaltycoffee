@@ -1,405 +1,497 @@
-export interface Recommendation {
-    id: number;
-    title: string;
-    image: string;
-  }
-  
-  export interface FoodProduct {
-    id: number;
-    name: string;
-    price: number;
-    description: string;
-    ingredients: string[];
-    recommendation: string;
-    recommendations?: Recommendation[];
-    image: string;
-  }
-  
-  export interface FoodCategory {
-    id: number;
-    title: string;
-    image: string;
-    products: FoodProduct[];
-  }
-  
-  export const foodCategories: FoodCategory[] = [
-    {
-      id: 1,
-      title: 'Выпечка',
-      image:
-        'https://imageproxy.wolt.com/menu/menu-images/611e47cdfd7110b1ffc868c6/e3cb72f2-dab7-11ed-b001-a68c99edf6e7_______________________.jpeg',
-      products: [
-        {
-          id: 101,
-          name: 'Круассан с маслом',
-          price: 250,
-          description:
-            'Ароматный круассан с хрустящей корочкой и сливочным маслом.',
-          ingredients: ['Мука', 'Масло', 'Дрожжи', 'Соль'],
-          recommendation: 'Идеально сочетается с крепким эспрессо или американо.',
-          image: 'https://source.unsplash.com/featured/?croissant',
-          recommendations: [
-            {
-              id: 201,
-              title: 'Эспрессо (600 ₸)',
-              image: 'https://source.unsplash.com/featured/?espresso'
-            },
-            {
-              id: 203,
-              title: 'Американо (950 ₸)',
-              image:
-                'https://imageproxy.wolt.com/menu/menu-images/611e47cdfd7110b1ffc868c6/e213b760-22f7-11ef-85cf-e29a9b60cccb_sbx_wol_1440x810_americano.jpg'
-            }
-          ]
-        },
-        {
-          id: 102,
-          name: 'Маффин с ягодами',
-          price: 300,
-          description: 'Нежный маффин, наполненный свежими ягодами.',
-          ingredients: ['Мука', 'Ягоды', 'Сахар', 'Яйца', 'Молоко'],
-          recommendation: 'Отлично сочетается с мягким латте или флэт уайт.',
-          image: 'https://source.unsplash.com/featured/?muffin',
-          recommendations: [
-            {
-              id: 205,
-              title: 'Латте (950 ₸)',
-              image:
-                'https://imageproxy.wolt.com/menu/menu-images/611e47cdfd7110b1ffc868c6/181c4058-df73-11ed-82bd-9a5933180c6e______.jpeg'
-            },
-            {
-              id: 202,
-              title: 'Флэт Уайт (950 ₸)',
-              image:
-                'https://imageproxy.wolt.com/menu/menu-images/611e47cdfd7110b1ffc868c6/181c4058-df73-11ed-82bd-9a5933180c6e______.jpeg'
-            }
-          ]
-        }
-      ]
-    },
-    {
-      id: 2,
-      title: 'Сэндвичи',
-      image:
-        'https://imageproxy.wolt.com/menu/menu-images/611e47cdfd7110b1ffc868c6/e3cb72f2-dab7-11ed-b001-a68c99edf6e7_______________________.jpeg',
-      products: [
-        {
-          id: 201,
-          name: 'Куриный сэндвич',
-          price: 450,
-          description: 'Сочный куриный сэндвич с овощами и соусом.',
-          ingredients: ['Курица', 'Хлеб', 'Овощи', 'Соус'],
-          recommendation: 'Подойдёт с капучино – для сбалансированного вкуса.',
-          image:
-            'https://imageproxy.wolt.com/menu/menu-images/611e47cdfd7110b1ffc868c6/e3cb72f2-dab7-11ed-b001-a68c99edf6e7_______________________.jpeg',
-          recommendations: [
-            {
-              id: 204,
-              title: 'Капучино (990 ₸)',
-              image:
-                'https://imageproxy.wolt.com/menu/menu-images/611e47cdfd7110b1ffc868c6/181c4058-df73-11ed-82bd-9a5933180c6e______.jpeg'
-            },
-            {
-              id: 201,
-              title: 'Эспрессо (600 ₸)',
-              image: 'https://source.unsplash.com/featured/?espresso'
-            }
-          ]
-        },
-        {
-          id: 202,
-          name: 'Вегетарианский сэндвич',
-          price: 400,
-          description: 'Лёгкий сэндвич с овощами и хумусом.',
-          ingredients: ['Хлеб', 'Овощи', 'Хумус'],
-          recommendation: 'Подойдёт с лёгким американо.',
-          image: 'https://source.unsplash.com/featured/?veggie,sandwich',
-          recommendations: [
-            {
-              id: 203,
-              title: 'Американо (950 ₸)',
-              image:
-                'https://imageproxy.wolt.com/menu/menu-images/611e47cdfd7110b1ffc868c6/e213b760-22f7-11ef-85cf-e29a9b60cccb_sbx_wol_1440x810_americano.jpg'
-            },
-            {
-              id: 202,
-              title: 'Флэт Уайт (950 ₸)',
-              image:
-                'https://imageproxy.wolt.com/menu/menu-images/611e47cdfd7110b1ffc868c6/181c4058-df73-11ed-82bd-9a5933180c6e______.jpeg'
-            }
-          ]
-        }
-      ]
-    },
-    {
-      id: 3,
-      title: 'Десерты',
-      image:
-        'https://imageproxy.wolt.com/menu/menu-images/611e47cdfd7110b1ffc868c6/aa659f80-e01e-11ed-b33d-f278011f66d4___________.jpeg',
-      products: [
-        {
-          id: 301,
-          name: 'Карамельное печенье',
-          price: 350,
-          description: 'Хрустящее печенье с насыщенным карамельным вкусом.',
-          ingredients: ['Мука', 'Сахар', 'Карамель'],
-          recommendation: 'Идеально сочетается с американо для сбалансированного вкуса.',
-          image: 'https://example.com/caramelcookie_food.jpeg',
-          recommendations: [
-            {
-              id: 203,
-              title: 'Американо (950 ₸)',
-              image:
-                'https://imageproxy.wolt.com/menu/menu-images/611e47cdfd7110b1ffc868c6/e213b760-22f7-11ef-85cf-e29a9b60cccb_sbx_wol_1440x810_americano.jpg'
-            }
-          ]
-        },
-        {
-          id: 302,
-          name: 'Брауни',
-          price: 300,
-          description: 'Насыщенный шоколадный десерт с нежной текстурой.',
-          ingredients: ['Шоколад', 'Мука', 'Яйца', 'Сахар'],
-          recommendation: 'Отлично дополняется с нежным латте.',
-          image: 'https://example.com/brownie_food.jpeg',
-          recommendations: [
-            {
-              id: 205,
-              title: 'Латте (950 ₸)',
-              image:
-                'https://imageproxy.wolt.com/menu/menu-images/611e47cdfd7110b1ffc868c6/181c4058-df73-11ed-82bd-9a5933180c6e______.jpeg'
-            }
-          ]
-        },
-        {
-          id: 1001,
-          name: 'Чизкейк',
-          price: 800,
-          description: 'Нежный чизкейк с воздушной текстурой.',
-          ingredients: ['Творог', 'Сахар', 'Яйца', 'Ваниль'],
-          recommendation: 'Идеально сочетается с латте.',
-          image: 'https://example.com/cheesecake.jpeg',
-          recommendations: [
-            {
-              id: 205,
-              title: 'Латте (950 ₸)',
-              image:
-                'https://imageproxy.wolt.com/menu/menu-images/611e47cdfd7110b1ffc868c6/181c4058-df73-11ed-82bd-9a5933180c6e______.jpeg'
-            }
-          ]
-        },
-        {
-          id: 1003,
-          name: 'Капкейк',
-          price: 700,
-          description: 'Нежный капкейк с кремовой начинкой.',
-          ingredients: ['Мука', 'Сахар', 'Яйца', 'Крем'],
-          recommendation: 'Отлично сочетается с флэт уайт.',
-          image: 'https://example.com/cupcake.jpeg',
-          recommendations: [
-            {
-              id: 202,
-              title: 'Флэт Уайт (950 ₸)',
-              image:
-                'https://imageproxy.wolt.com/menu/menu-images/611e47cdfd7110b1ffc868c6/181c4058-df73-11ed-82bd-9a5933180c6e______.jpeg'
-            }
-          ]
-        },
-        {
-          id: 1005,
-          name: 'Тирамису',
-          price: 1200,
-          description: 'Классический итальянский десерт с маскарпоне.',
-          ingredients: ['Маскарпоне', 'Кофе', 'Бисквит'],
-          recommendation: 'Идеально сочетается с капучино.',
-          image: 'https://example.com/tiramisu.jpeg',
-          recommendations: [
-            {
-              id: 204,
-              title: 'Капучино (990 ₸)',
-              image:
-                'https://imageproxy.wolt.com/menu/menu-images/611e47cdfd7110b1ffc868c6/181c4058-df73-11ed-82bd-9a5933180c6e______.jpeg'
-            }
-          ]
-        },
-        {
-          id: 1006,
-          name: 'Шоколадный торт',
-          price: 1500,
-          description: 'Насыщенный торт с шоколадным кремом.',
-          ingredients: ['Шоколад', 'Мука', 'Яйца', 'Сливки'],
-          recommendation: 'Отлично с американо.',
-          image: 'https://example.com/chocolatetart.jpeg',
-          recommendations: [
-            {
-              id: 203,
-              title: 'Американо (950 ₸)',
-              image:
-                'https://imageproxy.wolt.com/menu/menu-images/611e47cdfd7110b1ffc868c6/e213b760-22f7-11ef-85cf-e29a9b60cccb_sbx_wol_1440x810_americano.jpg'
-            }
-          ]
-        },
-        {
-          id: 1007,
-          name: 'Имбирное печенье',
-          price: 400,
-          description: 'Ароматное печенье с имбирем.',
-          ingredients: ['Мука', 'Имбирь', 'Сахар', 'Масло'],
-          recommendation: 'Подойдёт с глитвейном.',
-          image: 'https://example.com/gingercookie.jpeg',
-          recommendations: [
-            {
-              id: 207,
-              title: 'Латте M&M’s (1450 ₸)',
-              image:
-                'https://imageproxy.wolt.com/menu/menu-images/611e47cdfd7110b1ffc868c6/181c4058-df73-11ed-82bd-9a5933180c6e______.jpeg'
-            }
-          ]
-        },
-        {
-          id: 1008,
-          name: 'Штрудель',
-          price: 500,
-          description: 'Классический штрудель с яблоками.',
-          ingredients: ['Яблоки', 'Мука', 'Сахар', 'Корица'],
-          recommendation: 'Отлично с глитвейном.',
-          image: 'https://example.com/strudel.jpeg',
-          recommendations: [
-            {
-              id: 207,
-              title: 'Латте M&M’s (1450 ₸)',
-              image:
-                'https://imageproxy.wolt.com/menu/menu-images/611e47cdfd7110b1ffc868c6/181c4058-df73-11ed-82bd-9a5933180c6e______.jpeg'
-            }
-          ]
-        },
-        {
-          id: 1015,
-          name: 'Макароны',
-          price: 600,
-          description: 'Классическое блюдо макарон с соусом.',
-          ingredients: ['Макароны', 'Соус'],
-          recommendation: 'Сочетается с латте.',
-          image: 'https://example.com/pasta.jpeg',
-          recommendations: [
-            {
-              id: 205,
-              title: 'Латте (950 ₸)',
-              image:
-                'https://imageproxy.wolt.com/menu/menu-images/611e47cdfd7110b1ffc868c6/181c4058-df73-11ed-82bd-9a5933180c6e______.jpeg'
-            }
-          ]
-        },
-        {
-          id: 1016,
-          name: 'Ореховый штрудель',
-          price: 700,
-          description: 'Штрудель с орехами.',
-          ingredients: ['Мука', 'Орехи', 'Сахар'],
-          recommendation: 'Подойдёт с ореховым латте.',
-          image: 'https://example.com/nutstrudel.jpeg',
-          recommendations: [
-            {
-              id: 206,
-              title: 'Ореховый латте с корицей (1300 ₸)',
-              image:
-                'https://imageproxy.wolt.com/menu/menu-images/611e47cdfd7110b1ffc868c6/181c4058-df73-11ed-82bd-9a5933180c6e______.jpeg'
-            }
-          ]
-        },
-        {
-          id: 1017,
-          name: 'Булочка с корицей',
-          price: 350,
-          description: 'Нежная булочка с корицей.',
-          ingredients: ['Мука', 'Корица', 'Сахар', 'Масло'],
-          recommendation: 'Отлично с ореховым латте.',
-          image: 'https://example.com/cinnamonroll.jpeg',
-          recommendations: [
-            {
-              id: 206,
-              title: 'Ореховый латте с корицей (1300 ₸)',
-              image:
-                'https://imageproxy.wolt.com/menu/menu-images/611e47cdfd7110b1ffc868c6/181c4058-df73-11ed-82bd-9a5933180c6e______.jpeg'
-            }
-          ]
-        },
-        {
-          id: 1018,
-          name: 'Донаты',
-          price: 450,
-          description: 'Сладкие пончики с глазурью.',
-          ingredients: ['Мука', 'Сахар', 'Яйца', 'Масло'],
-          recommendation: 'Идеально с латте M&M’s.',
-          image: 'https://example.com/donuts.jpeg',
-          recommendations: [
-            {
-              id: 207,
-              title: 'Латте M&M’s (1450 ₸)',
-              image:
-                'https://imageproxy.wolt.com/menu/menu-images/611e47cdfd7110b1ffc868c6/181c4058-df73-11ed-82bd-9a5933180c6e______.jpeg'
-            }
-          ]
-        },
-        {
-          id: 1019,
-          name: 'Шоколадные маффины',
-          price: 500,
-          description: 'Маффины с кусочками шоколада.',
-          ingredients: ['Мука', 'Сахар', 'Шоколад'],
-          recommendation: 'Отлично с латте M&M’s.',
-          image: 'https://example.com/chocolatemuffin.jpeg',
-          recommendations: [
-            {
-              id: 207,
-              title: 'Латте M&M’s (1450 ₸)',
-              image:
-                'https://imageproxy.wolt.com/menu/menu-images/611e47cdfd7110b1ffc868c6/181c4058-df73-11ed-82bd-9a5933180c6e______.jpeg'
-            }
-          ]
-        }
-      ]
-    },
-    {
-      id: 5,
-      title: 'Завтраки',
-      image:
-        'https://imageproxy.wolt.com/menu/menu-images/611e47cdfd7110b1ffc868c6/e213b760-22f7-11ef-85cf-e29a9b60cccb_sbx_wol_1440x810_americano.jpg',
-      products: [
-        {
-          id: 401,
-          name: 'Овсяная каша с фруктами',
-          price: 200,
-          description: 'Питательная овсяная каша, украшенная свежими фруктами.',
-          ingredients: ['Овсянка', 'Молоко', 'Фрукты'],
-          recommendation: 'Сбалансирует вкус лёгким флэт уайт.',
-          image: 'https://example.com/oatmeal.jpeg',
-          recommendations: [
-            {
-              id: 202,
-              title: 'Флэт Уайт (950 ₸)',
-              image:
-                'https://imageproxy.wolt.com/menu/menu-images/611e47cdfd7110b1ffc868c6/181c4058-df73-11ed-82bd-9a5933180c6e______.jpeg'
-            }
-          ]
-        },
-        {
-          id: 402,
-          name: 'Бутерброд с авокадо',
-          price: 300,
-          description: 'Полезный бутерброд с авокадо и яйцом для энергичного утра.',
-          ingredients: ['Хлеб', 'Авокадо', 'Яйцо'],
-          recommendation: 'Идеален с крепким эспрессо для бодрости.',
-          image: 'https://example.com/avocadosandwich.jpeg',
-          recommendations: [
-            {
-              id: 201,
-              title: 'Эспрессо (600 ₸)',
-              image: 'https://source.unsplash.com/featured/?espresso'
-            }
-          ]
-        }
-      ]
-    }
-  ];
-  
+export interface EatsProduct {
+  id: number;
+  name: string;
+  price: number;
+  description: string;
+  image: string;
+  energy: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+  badges: string[];
+  weight?: string;
+}
+
+export interface EatsCategory {
+  id: number;
+  title: string;
+  image: string;
+  products: EatsProduct[];
+}
+
+export const eatsCategories: EatsCategory[] = [
+  // ─── 1. Круассаны (10 позиций) ─────────────────────────────
+  {
+    id: 1,
+    title: 'Круассаны',
+    image: '/eats/eat-01.webp',
+    products: [
+      {
+        id: 5001,
+        name: 'Круассан классический',
+        price: 890,
+        description: 'Воздушный слоёный круассан с хрустящей золотистой корочкой и нежным маслом внутри.',
+        image: '/eats/eat-01.webp',
+        energy: 320, protein: 6.2, fat: 18.5, carbs: 34.0,
+        badges: ['HIT'],
+        weight: '85г',
+      },
+      {
+        id: 5002,
+        name: 'Круассан с шоколадом',
+        price: 990,
+        description: 'Классический круассан с нежной шоколадной начинкой из бельгийского шоколада.',
+        image: '/eats/eat-02.webp',
+        energy: 380, protein: 7.0, fat: 21.0, carbs: 40.5,
+        badges: ['HIT'],
+        weight: '95г',
+      },
+      {
+        id: 5003,
+        name: 'Круассан миндальный',
+        price: 1090,
+        description: 'Круассан с миндальным кремом, посыпанный лепестками миндаля и сахарной пудрой.',
+        image: '/eats/eat-03.webp',
+        energy: 410, protein: 9.5, fat: 24.0, carbs: 38.0,
+        badges: ['NEW'],
+        weight: '110г',
+      },
+      {
+        id: 5004,
+        name: 'Круассан с сыром и ветчиной',
+        price: 1190,
+        description: 'Сытный круассан с мягким сыром и нежной ветчиной — идеальный завтрак.',
+        image: '/eats/eat-04.webp',
+        energy: 450, protein: 18.0, fat: 26.0, carbs: 32.0,
+        badges: [],
+        weight: '130г',
+      },
+      {
+        id: 5005,
+        name: 'Круассан с лососем',
+        price: 1490,
+        description: 'Круассан со слабосолёным лососем, сливочным сыром и рукколой.',
+        image: '/eats/eat-05.webp',
+        energy: 420, protein: 20.0, fat: 22.0, carbs: 30.0,
+        badges: ['PREMIUM'],
+        weight: '140г',
+      },
+      {
+        id: 5006,
+        name: 'Круассан с фисташковым кремом',
+        price: 1290,
+        description: 'Круассан с нежным фисташковым кремом — премиальный десерт.',
+        image: '/eats/eat-06.webp',
+        energy: 395, protein: 8.0, fat: 23.0, carbs: 36.0,
+        badges: ['NEW'],
+        weight: '105г',
+      },
+      {
+        id: 5007,
+        name: 'Круассан с малиновым джемом',
+        price: 950,
+        description: 'Круассан с домашним малиновым джемом — сладкое начало дня.',
+        image: '/eats/eat-07.webp',
+        energy: 350, protein: 5.8, fat: 17.0, carbs: 42.0,
+        badges: [],
+        weight: '95г',
+      },
+      {
+        id: 5008,
+        name: 'Круассан с карамелью',
+        price: 1050,
+        description: 'Круассан с солёной карамелью и сливочным кремом.',
+        image: '/eats/eat-08.webp',
+        energy: 400, protein: 6.5, fat: 22.0, carbs: 44.0,
+        badges: ['HIT'],
+        weight: '100г',
+      },
+      {
+        id: 5009,
+        name: 'Круассан с курицей и песто',
+        price: 1290,
+        description: 'Сытный круассан с куриным филе, соусом песто и вялеными томатами.',
+        image: '/eats/eat-09.webp',
+        energy: 460, protein: 22.0, fat: 24.0, carbs: 34.0,
+        badges: [],
+        weight: '145г',
+      },
+      {
+        id: 5010,
+        name: 'Мини-круассаны ассорти',
+        price: 1490,
+        description: 'Набор из 4 мини-круассанов: классический, шоколад, миндаль, ягоды.',
+        image: '/eats/eat-10.webp',
+        energy: 340, protein: 7.0, fat: 19.0, carbs: 36.0,
+        badges: ['SET'],
+        weight: '4×50г',
+      },
+    ],
+  },
+
+  // ─── 2. Выпечка (10 позиций) ──────────────────────────────
+  {
+    id: 2,
+    title: 'Выпечка',
+    image: '/eats/eat-11.webp',
+    products: [
+      {
+        id: 5011,
+        name: 'Синнабон классический',
+        price: 1190,
+        description: 'Легендарная булочка с корицей, покрытая сливочной глазурью.',
+        image: '/eats/eat-11.webp',
+        energy: 520, protein: 8.0, fat: 22.0, carbs: 68.0,
+        badges: ['HIT'],
+        weight: '140г',
+      },
+      {
+        id: 5012,
+        name: 'Датская булочка с заварным кремом',
+        price: 890,
+        description: 'Нежная слоёная булочка с ванильным заварным кремом.',
+        image: '/eats/eat-12.webp',
+        energy: 380, protein: 7.0, fat: 18.0, carbs: 45.0,
+        badges: [],
+        weight: '110г',
+      },
+      {
+        id: 5013,
+        name: 'Маффин шоколадный',
+        price: 790,
+        description: 'Шоколадный маффин с жидким шоколадным центром.',
+        image: '/eats/eat-13.webp',
+        energy: 440, protein: 6.5, fat: 20.0, carbs: 55.0,
+        badges: [],
+        weight: '120г',
+      },
+      {
+        id: 5014,
+        name: 'Маффин с ягодами',
+        price: 750,
+        description: 'Нежный маффин с лесными ягодами — голубика, малина, ежевика.',
+        image: '/eats/eat-14.webp',
+        energy: 360, protein: 5.5, fat: 14.0, carbs: 50.0,
+        badges: ['NEW'],
+        weight: '115г',
+      },
+      {
+        id: 5015,
+        name: 'Кекс лимонный',
+        price: 690,
+        description: 'Влажный лимонный кекс с цитрусовой глазурью.',
+        image: '/eats/eat-15.webp',
+        energy: 340, protein: 5.0, fat: 16.0, carbs: 42.0,
+        badges: [],
+        weight: '100г',
+      },
+      {
+        id: 5016,
+        name: 'Печенье овсяное с шоколадом',
+        price: 490,
+        description: 'Хрустящее овсяное печенье с кусочками тёмного шоколада.',
+        image: '/eats/eat-16.webp',
+        energy: 280, protein: 5.0, fat: 12.0, carbs: 38.0,
+        badges: [],
+        weight: '70г',
+      },
+      {
+        id: 5017,
+        name: 'Брауни',
+        price: 890,
+        description: 'Тягучий шоколадный брауни с грецким орехом.',
+        image: '/eats/eat-17.webp',
+        energy: 460, protein: 6.0, fat: 24.0, carbs: 52.0,
+        badges: ['HIT'],
+        weight: '100г',
+      },
+      {
+        id: 5018,
+        name: 'Эклер ванильный',
+        price: 790,
+        description: 'Классический эклер с ванильным кремом и шоколадной глазурью.',
+        image: '/eats/eat-18.webp',
+        energy: 350, protein: 6.0, fat: 18.0, carbs: 40.0,
+        badges: [],
+        weight: '90г',
+      },
+      {
+        id: 5019,
+        name: 'Шу с кремом',
+        price: 690,
+        description: 'Профитроль с нежным кремом патисьер.',
+        image: '/eats/eat-19.webp',
+        energy: 310, protein: 5.5, fat: 16.0, carbs: 34.0,
+        badges: ['NEW'],
+        weight: '80г',
+      },
+      {
+        id: 5020,
+        name: 'Тарт с ягодами',
+        price: 990,
+        description: 'Песочный тарт со свежими ягодами и заварным кремом.',
+        image: '/eats/eat-20.webp',
+        energy: 320, protein: 5.0, fat: 15.0, carbs: 40.0,
+        badges: [],
+        weight: '110г',
+      },
+    ],
+  },
+
+  // ─── 3. Сэндвичи и Панини (9 позиций) ─────────────────────
+  {
+    id: 3,
+    title: 'Сэндвичи',
+    image: '/eats/eat-21.webp',
+    products: [
+      {
+        id: 5021,
+        name: 'Панини с моцареллой и песто',
+        price: 1490,
+        description: 'Горячий панини с моцареллой, вялеными томатами и соусом песто.',
+        image: '/eats/eat-21.webp',
+        energy: 420, protein: 18.0, fat: 20.0, carbs: 38.0,
+        badges: ['HIT'],
+        weight: '200г',
+      },
+      {
+        id: 5022,
+        name: 'Сэндвич с индейкой',
+        price: 1390,
+        description: 'Сэндвич с копчёной индейкой, авокадо и зеленью на чиабатте.',
+        image: '/eats/eat-22.webp',
+        energy: 380, protein: 22.0, fat: 16.0, carbs: 32.0,
+        badges: [],
+        weight: '210г',
+      },
+      {
+        id: 5023,
+        name: 'Клаб-сэндвич',
+        price: 1590,
+        description: 'Трёхслойный сэндвич с курицей, беконом, яйцом и салатом.',
+        image: '/eats/eat-23.webp',
+        energy: 520, protein: 28.0, fat: 24.0, carbs: 42.0,
+        badges: ['HIT'],
+        weight: '280г',
+      },
+      {
+        id: 5024,
+        name: 'Тост с авокадо и яйцом',
+        price: 1290,
+        description: 'Хрустящий тост с авокадо, яйцом пашот и микрозеленью.',
+        image: '/eats/eat-24.webp',
+        energy: 340, protein: 14.0, fat: 18.0, carbs: 28.0,
+        badges: ['NEW'],
+        weight: '180г',
+      },
+      {
+        id: 5025,
+        name: 'Панини с лососем',
+        price: 1690,
+        description: 'Горячий панини со слабосолёным лососем, сливочным сыром и каперсами.',
+        image: '/eats/eat-25.webp',
+        energy: 410, protein: 24.0, fat: 20.0, carbs: 30.0,
+        badges: ['PREMIUM'],
+        weight: '220г',
+      },
+      {
+        id: 5026,
+        name: 'Сэндвич с тунцом',
+        price: 1290,
+        description: 'Сэндвич с тунцом, кукурузой, огурцом и лёгким майонезом.',
+        image: '/eats/eat-26.webp',
+        energy: 360, protein: 20.0, fat: 14.0, carbs: 34.0,
+        badges: [],
+        weight: '200г',
+      },
+      {
+        id: 5027,
+        name: 'Бейгл с ветчиной и сыром',
+        price: 1190,
+        description: 'Классический бейгл с ветчиной, сыром чеддер и салатом.',
+        image: '/eats/eat-27.webp',
+        energy: 400, protein: 20.0, fat: 18.0, carbs: 36.0,
+        badges: [],
+        weight: '190г',
+      },
+      {
+        id: 5028,
+        name: 'Врап с курицей',
+        price: 1190,
+        description: 'Тортилья с куриным филе, овощами и соусом цезарь.',
+        image: '/eats/eat-28.webp',
+        energy: 390, protein: 24.0, fat: 16.0, carbs: 36.0,
+        badges: [],
+        weight: '220г',
+      },
+      {
+        id: 5029,
+        name: 'Кесадилья с курицей и сыром',
+        price: 1390,
+        description: 'Хрустящая кесадилья с куриным филе, сыром и сальсой.',
+        image: '/eats/eat-29.webp',
+        energy: 470, protein: 26.0, fat: 22.0, carbs: 38.0,
+        badges: ['NEW'],
+        weight: '230г',
+      },
+    ],
+  },
+
+  // ─── 4. Десерты (9 позиций) ────────────────────────────────
+  {
+    id: 4,
+    title: 'Десерты',
+    image: '/eats/eat-30.webp',
+    products: [
+      {
+        id: 5030,
+        name: 'Чизкейк Нью-Йорк',
+        price: 1290,
+        description: 'Классический сливочный чизкейк с бисквитной основой.',
+        image: '/eats/eat-30.webp',
+        energy: 380, protein: 7.0, fat: 24.0, carbs: 34.0,
+        badges: ['HIT'],
+        weight: '150г',
+      },
+      {
+        id: 5031,
+        name: 'Тирамису',
+        price: 1390,
+        description: 'Итальянский десерт с маскарпоне, кофе и какао.',
+        image: '/eats/eat-31.webp',
+        energy: 350, protein: 7.5, fat: 20.0, carbs: 36.0,
+        badges: ['HIT'],
+        weight: '140г',
+      },
+      {
+        id: 5032,
+        name: 'Медовик',
+        price: 990,
+        description: 'Нежный медовый торт со сметанным кремом — домашний рецепт.',
+        image: '/eats/eat-32.webp',
+        energy: 340, protein: 5.5, fat: 16.0, carbs: 44.0,
+        badges: [],
+        weight: '130г',
+      },
+      {
+        id: 5033,
+        name: 'Наполеон',
+        price: 1090,
+        description: 'Хрустящий слоёный торт с нежным заварным кремом.',
+        image: '/eats/eat-33.webp',
+        energy: 370, protein: 6.0, fat: 20.0, carbs: 40.0,
+        badges: [],
+        weight: '140г',
+      },
+      {
+        id: 5034,
+        name: 'Панна котта с манго',
+        price: 890,
+        description: 'Итальянский сливочный десерт с манговым кули.',
+        image: '/eats/eat-34.webp',
+        energy: 260, protein: 4.0, fat: 16.0, carbs: 26.0,
+        badges: ['NEW'],
+        weight: '120г',
+      },
+      {
+        id: 5035,
+        name: 'Макарон ассорти (6 шт)',
+        price: 1990,
+        description: 'Набор из 6 макарон: фисташка, малина, шоколад, ваниль, лаванда, манго.',
+        image: '/eats/eat-35.webp',
+        energy: 180, protein: 3.5, fat: 8.0, carbs: 24.0,
+        badges: ['SET'],
+        weight: '6×18г',
+      },
+      {
+        id: 5036,
+        name: 'Трайфл ягодный',
+        price: 890,
+        description: 'Слоёный десерт с ягодами, кремом и бисквитной крошкой.',
+        image: '/eats/eat-36.webp',
+        energy: 280, protein: 5.0, fat: 14.0, carbs: 32.0,
+        badges: [],
+        weight: '150г',
+      },
+      {
+        id: 5037,
+        name: 'Кейк-попс (3 шт)',
+        price: 690,
+        description: 'Мини-кейки на палочке: шоколад, ваниль, ягодный.',
+        image: '/eats/eat-37.webp',
+        energy: 220, protein: 3.0, fat: 12.0, carbs: 26.0,
+        badges: [],
+        weight: '3×35г',
+      },
+      {
+        id: 5038,
+        name: 'Сорбет фруктовый',
+        price: 790,
+        description: 'Освежающий фруктовый сорбет — манго-маракуйя.',
+        image: '/eats/eat-38.webp',
+        energy: 120, protein: 0.5, fat: 0.2, carbs: 28.0,
+        badges: ['NEW'],
+        weight: '130г',
+      },
+    ],
+  },
+
+  // ─── 5. Новинки (5 позиций) ────────────────────────────────
+  {
+    id: 5,
+    title: 'Новинки',
+    image: '/eats/eat-39.webp',
+    products: [
+      {
+        id: 5039,
+        name: 'Новинка 1', // TODO: заполнить название
+        price: 990,
+        description: 'Описание нового блюда.', // TODO: заполнить описание
+        image: '/eats/eat-39.webp',
+        energy: 0, protein: 0, fat: 0, carbs: 0,
+        badges: ['NEW'],
+        weight: '',
+      },
+      {
+        id: 5040,
+        name: 'Новинка 2', // TODO: заполнить название
+        price: 990,
+        description: 'Описание нового блюда.', // TODO: заполнить описание
+        image: '/eats/eat-40.webp',
+        energy: 0, protein: 0, fat: 0, carbs: 0,
+        badges: ['NEW'],
+        weight: '',
+      },
+      {
+        id: 5041,
+        name: 'Новинка 3', // TODO: заполнить название
+        price: 990,
+        description: 'Описание нового блюда.', // TODO: заполнить описание
+        image: '/eats/eat-41.webp',
+        energy: 0, protein: 0, fat: 0, carbs: 0,
+        badges: ['NEW'],
+        weight: '',
+      },
+      {
+        id: 5042,
+        name: 'Новинка 4', // TODO: заполнить название
+        price: 990,
+        description: 'Описание нового блюда.', // TODO: заполнить описание
+        image: '/eats/eat-42.webp',
+        energy: 0, protein: 0, fat: 0, carbs: 0,
+        badges: ['NEW'],
+        weight: '',
+      },
+      {
+        id: 5043,
+        name: 'Новинка 5', // TODO: заполнить название
+        price: 990,
+        description: 'Описание нового блюда.', // TODO: заполнить описание
+        image: '/eats/eat-43.webp',
+        energy: 0, protein: 0, fat: 0, carbs: 0,
+        badges: ['NEW'],
+        weight: '',
+      },
+    ],
+  },
+];

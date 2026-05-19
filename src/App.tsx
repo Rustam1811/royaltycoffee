@@ -1,147 +1,157 @@
-// src/App.tsx
-
-import React from 'react';
-import { BrowserRouter, Switch, Route, Redirect, NavLink, useRouteMatch, useHistory, useLocation } from "react-router-dom";
-import { motion } from 'framer-motion';
-import { HomeIcon, Squares2X2Icon, ShoppingBagIcon, CalendarDaysIcon, UserCircleIcon } from '@heroicons/react/24/solid';
-import { useSwipe } from './hooks/useSwipe';
-
-// Импорты страниц с правильными именами
-import Home from './pages/Home';
-import Profile from './pages/Profile';
-import Menu from './pages/menu/Drinks';
-import Order from './pages/Order';
-import Booking from './pages/Booking';
-
-// Контексты
+import React, { useEffect, lazy } from 'react';
+import { BrowserRouter, Switch, Route, Redirect, useLocation } from 'react-router-dom';
+import { motion, useReducedMotion } from 'framer-motion';
+import { Capacitor } from '@capacitor/core';
 import { CartProvider } from './contexts/CartContext';
-import { LanguageProvider } from './contexts/LanguageContext';
+import { LocationProvider } from './contexts/LocationContext';
+import { AuthProvider, useAuth } from './auth/AuthContext';
+import { RoyalLoader } from './components/RoyalLoader';
+import { FirstVisitGate } from './components/FirstVisitGate';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { pageVariants } from './ui/motion';
+import './lib/env';
+import './index.css';
 
-import "./index.css";
+// Lazy load pages
+const Home = lazy(() => import('./pages/Home'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Menu = lazy(() => import('./pages/menu/Menu'));
+const Locations = lazy(() => import('./pages/Locations'));
+const MyQRCode = lazy(() => import('./pages/MyQRCode'));
+const Login = lazy(() => import('./pages/Login'));
 
-// ===================================================================
-//  КОМПОНЕНТЫ НАВИГАЦИИ
-// ===================================================================
-const navItems = [
-    { to: "/home", icon: HomeIcon, label: "Главная" },
-    { to: "/menu", icon: Squares2X2Icon, label: "Меню" },
-    { to: "/order", icon: ShoppingBagIcon, label: "Заказ" },
-    { to: "/booking", icon: CalendarDaysIcon, label: "Бронь" },
-    { to: "/profile", icon: UserCircleIcon, label: "Профиль" },
-];
+// Bottom navigation
+import { BottomNavBar } from './app/navigation/BottomNavBar';
 
-// Компонент с поддержкой свайпов
-const SwipeableMain = () => {
-    const history = useHistory();
-    const location = useLocation();
-    
-    const getCurrentIndex = () => {
-        const currentPath = location.pathname;
-        return navItems.findIndex(item => item.to === currentPath);
-    };
-    
-    const navigateToIndex = (index: number) => {
-        if (index >= 0 && index < navItems.length) {
-            history.push(navItems[index].to);
-        }
-    };
-    
-    const swipeHandlers = useSwipe({
-        onSwipeLeft: () => {
-            const currentIndex = getCurrentIndex();
-            navigateToIndex(currentIndex + 1);
-        },
-        onSwipeRight: () => {
-            const currentIndex = getCurrentIndex();
-            navigateToIndex(currentIndex - 1);
-        },
-    }, { threshold: 100 });
-    
-    return (
-        <main {...swipeHandlers} className="touch-pan-y">
-            <Switch>
-                <Route exact path="/home" component={Home} />
-                <Route exact path="/menu" component={Menu} />
-                <Route exact path="/profile" component={Profile} />
-                <Route exact path="/booking" component={Booking} />
-                <Route exact path="/order" component={Order} />
-                <Route exact path="/"><Redirect to="/home" /></Route>
-            </Switch>
-        </main>
-    );
+const initPushNotifications = () => import('./services/capacitor-push').then(m => m.initPushNotifications());
+const initCapacitorApp = () => import('./services/capacitor-app').then(m => m.initCapacitorApp());
+const createPWAUpdater = () => import('./pwa/pwa-updater').then(m => m.createPWAUpdater);
+
+const PrivateRoute: React.FC<{ component: React.ComponentType<any>; exact?: boolean; path: string }> = ({ component: Component, ...rest }) => {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+  const prefersReduced = useReducedMotion();
+
+  return (
+    <Route
+      {...rest}
+      render={(props) => {
+        if (loading) return <RoyalLoader />;
+        if (!user) return <Redirect to={{ pathname: '/login', state: { redirect: location.pathname } }} />;
+        
+        return (
+          <motion.div
+            variants={pageVariants(!!prefersReduced)}
+            initial="initial"
+            animate="enter"
+            exit="exit"
+            className="w-full min-h-screen"
+          >
+            <Component {...props} />
+          </motion.div>
+        );
+      }}
+    />
+  );
 };
 
-const NavItem = ({ to, icon: Icon, label }: { to: string, icon: React.ElementType, label: string }) => {
-    const match = useRouteMatch({ path: to, exact: true });
-    const isActive = !!match;
+const AppContent: React.FC = () => {
+  const location = useLocation();
+  const prefersReduced = useReducedMotion();
+  const { user } = useAuth();
+  const isLogin = location.pathname === '/login';
 
-    return (
-        <NavLink to={to} className="relative flex flex-col items-center justify-center py-2 px-1 rounded-xl text-zinc-500 hover:text-amber-500 transition-colors duration-200 min-w-0 flex-1 group">
-            <>
-                <Icon className={`w-6 h-6 transition-colors ${isActive ? 'text-amber-400' : 'text-zinc-500 group-hover:text-zinc-300'}`} />
-                <span className={`text-xs mt-1 transition-colors ${isActive ? 'font-bold text-white' : 'font-medium text-zinc-400 group-hover:text-zinc-200'}`}>
-                    {label}
-                </span>
-                {isActive && (
-                    <motion.div
-                        layoutId="active-nav-indicator"
-                        className="absolute bottom-[-8px] h-1 w-6 bg-amber-400 rounded-full"
-                        transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-                    />
-                )}
-            </>
-        </NavLink>
-    );
-};
+  useEffect(() => {
+    // Init Capacitor native plugins (StatusBar, Keyboard, BackButton)
+    initCapacitorApp();
 
-const BottomNavBar = () => {
-    const location = useLocation();
-    const getCurrentIndex = () => {
-        const currentPath = location.pathname;
-        return navItems.findIndex(item => item.to === currentPath);
-    };
+    // PWA updater only on web — Service Worker not used in native Capacitor
+    if (!Capacitor.isNativePlatform()) {
+      createPWAUpdater().then((factory) => {
+        const pwaUpdater = factory({ autoReload: true });
+        pwaUpdater.init();
+        return () => pwaUpdater.destroy();
+      });
+    }
+  }, []);
 
-    const currentIndex = getCurrentIndex();
+  useEffect(() => {
+    if (!user) return;
+
+    // Workshop users should never be in the coffee app — redirect to workshop
+    // Unless they just logged out from workshop (prevent redirect loop)
+    const workshopRoles = ['workshop_admin', 'workshop_client', 'workshop_owner'];
+    if (workshopRoles.includes(user.role)) {
+      const justLoggedOut = localStorage.getItem('workshop_just_logged_out');
+      if (!justLoggedOut) {
+        window.location.href = Capacitor.isNativePlatform() ? '/workshop/index.html' : '/workshop/';
+        return;
+      }
+    }
+
+    const hasAskedForNotifications = localStorage.getItem('notifications-asked');
     
-    return (
-        <div className="fixed bottom-0 left-0 right-0 z-50 p-3">
-            {/* Swipe Indicator */}
-            <div className="flex justify-center mb-2">
-                <div className="flex gap-1">
-                    {navItems.map((_, index) => (
-                        <div
-                            key={index}
-                            className={`w-2 h-1 rounded-full transition-all duration-300 ${
-                                index === currentIndex 
-                                    ? 'bg-amber-400 w-6' 
-                                    : 'bg-zinc-600'
-                            }`}
-                        />
-                    ))}
-                </div>
-            </div>
+    if (!hasAskedForNotifications) {
+      setTimeout(() => {
+        initPushNotifications().then(() => {
+          localStorage.setItem('notifications-asked', 'true');
+        });
+      }, 3000);
+    } else {
+      initPushNotifications();
+    }
+  }, [user]);
+  
+  return (
+    <>
+      <main className={isLogin ? 'min-h-screen' : 'pb-20 overflow-hidden min-h-screen'}>
+        <FirstVisitGate>
+          <Switch location={location}>
+            <Route exact path="/login" render={() => (
+              <motion.div
+                variants={pageVariants(!!prefersReduced)}
+                initial="initial"
+                animate="enter"
+                exit="exit"
+                className="w-full"
+              >
+                <Login />
+              </motion.div>
+            )} />
+
+            <PrivateRoute exact path="/home" component={Home} />
+            <PrivateRoute exact path="/menu" component={Menu} />
+            <PrivateRoute exact path="/profile" component={Profile} />
+            <PrivateRoute exact path="/qr" component={MyQRCode} />
+            <PrivateRoute exact path="/locations" component={Locations} />
             
-            <div className="bg-zinc-800/70 backdrop-blur-lg rounded-2xl shadow-xl mx-auto px-2 py-1 flex justify-around w-full max-w-md border border-zinc-700/80">
-                {navItems.map(item => <NavItem key={item.to} {...item} />)}
-            </div>
-        </div>
-    );
+            <Route exact path="/"><Redirect to="/home" /></Route>
+            <Route path="*"><Redirect to="/home" /></Route>
+          </Switch>
+        </FirstVisitGate>
+      </main>
+      <BottomNavBar />
+    </>
+  );
 };
 
-// ===================================================================
-//  ГЛАВНЫЙ КОМПОНЕНТ ПРИЛОЖЕНИЯ
-// ===================================================================
 const App: React.FC = () => (
-    <CartProvider>
-        <LanguageProvider>
-            <BrowserRouter>
-                <>
-                    <SwipeableMain />
-                    <BottomNavBar />
-                </>
-            </BrowserRouter>
-        </LanguageProvider>
-    </CartProvider>
+  <ErrorBoundary>
+    <BrowserRouter basename={Capacitor.isNativePlatform() ? '/' : '/app'}>
+      <AuthProvider>
+        <LocationProvider>
+          <CartProvider>
+            {/* Desktop: dark background sides, centered mobile-width content */}
+            <div className="min-h-screen bg-[#F4EDE4] md:bg-[#0D0205] md:flex md:justify-center">
+              <div className="w-full md:max-w-[440px] min-h-screen bg-[#F4EDE4] text-slate-900 md:shadow-[0_0_80px_rgba(0,0,0,0.7)]">
+                <AppContent />
+              </div>
+            </div>
+          </CartProvider>
+        </LocationProvider>
+      </AuthProvider>
+    </BrowserRouter>
+  </ErrorBoundary>
 );
 
 export default App;

@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Static SVG — exact geometry from src/components/RoyaltyCup.tsx
+     W=210, H=278, steamPad=180, viewBox="0 -180 210 458"
+     bTop=63 bBot=252 topRx=63 topRy=13.5 botRx=48 botRy=10.5
+     CSS translateY in this file uses SVG user units (1:1 since no viewBox scale on self) -->
+<svg xmlns="http://www.w3.org/2000/svg" width="210" height="458" viewBox="0 -180 210 458" fill="none">
+  <style>
+    /* Rise: outer group handles Y — identical to RoyalLoader waveFill timing */
+    @keyframes liqRise {
+      0%   { transform: translateY(189px) }
+      65%  { transform: translateY(40px) }
+      83%  { transform: translateY(40px) }
+      100% { transform: translateY(189px) }
+    }
+    /* Sway: inner rect swings left-right — matches Framer Motion x:[0,-1.5,0,1.5,0] in RoyaltyCup */
+    @keyframes liqSway {
+      0%   { transform: translateX(0px) }
+      20%  { transform: translateX(-10px) }
+      45%  { transform: translateX(10px) }
+      70%  { transform: translateX(-8px) }
+      85%  { transform: translateX(6px) }
+      100% { transform: translateX(0px) }
+    }
+    @keyframes steamDraw {
+      0%   { stroke-dashoffset: 120; opacity: 0 }
+      15%  { opacity: .45 }
+      70%  { stroke-dashoffset: 0; opacity: .2 }
+      100% { stroke-dashoffset: 0; opacity: 0 }
+    }
+    @keyframes shimmer {
+      0%, 100% { opacity: .03 }
+      50%       { opacity: .18 }
+    }
+    .liq-rise { animation: liqRise 3.6s cubic-bezier(.42,0,.18,1) infinite }
+    .liq-sway { animation: liqSway 2.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center center }
+    .s1  { stroke-dasharray:120; stroke-dashoffset:120; animation: steamDraw 2.8s ease-out 0.4s infinite }
+    .s2  { stroke-dasharray:120; stroke-dashoffset:120; animation: steamDraw 2.8s ease-out 1.0s infinite }
+    .s3  { stroke-dasharray:120; stroke-dashoffset:120; animation: steamDraw 2.8s ease-out 1.6s infinite }
+    .sh1 { animation: shimmer 4s ease-in-out infinite }
+    .sh2 { animation: shimmer 5s ease-in-out 1.5s infinite }
+  </style>
+  <defs>
+    <linearGradient id="rc-liq" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#7A1020"/>
+      <stop offset="35%"  stop-color="#5A0D17"/>
+      <stop offset="100%" stop-color="#3D0A11"/>
+    </linearGradient>
+    <linearGradient id="rc-glass" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#FFF" stop-opacity=".22"/>
+      <stop offset="12%"  stop-color="#FFF" stop-opacity=".08"/>
+      <stop offset="50%"  stop-color="#FFF" stop-opacity=".03"/>
+      <stop offset="85%"  stop-color="#FFF" stop-opacity=".06"/>
+      <stop offset="100%" stop-color="#FFF" stop-opacity=".18"/>
+    </linearGradient>
+    <linearGradient id="rc-gshadow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#000" stop-opacity="0"/>
+      <stop offset="70%"  stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity=".08"/>
+    </linearGradient>
+    <linearGradient id="rc-ref" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#FFF" stop-opacity=".5"/>
+      <stop offset="40%"  stop-color="#FFF" stop-opacity=".15"/>
+      <stop offset="100%" stop-color="#FFF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="rc-ref2" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#FFF" stop-opacity="0"/>
+      <stop offset="60%"  stop-color="#FFF" stop-opacity=".08"/>
+      <stop offset="100%" stop-color="#FFF" stop-opacity=".2"/>
+    </linearGradient>
+    <linearGradient id="rc-lid" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#FFF"/>
+      <stop offset="25%"  stop-color="#F5F0E8"/>
+      <stop offset="60%"  stop-color="#E8E0D2"/>
+      <stop offset="100%" stop-color="#D5CDB8"/>
+    </linearGradient>
+    <linearGradient id="rc-lidsh" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#C8BDA6" stop-opacity=".4"/>
+      <stop offset="50%"  stop-color="#C8BDA6" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#C8BDA6" stop-opacity=".3"/>
+    </linearGradient>
+    <radialGradient id="rc-sh" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%"   stop-color="#000" stop-opacity=".15"/>
+      <stop offset="60%"  stop-color="#000" stop-opacity=".06"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="rc-dhi" cx="0.35" cy="0.25" r="0.6">
+      <stop offset="0%"   stop-color="#FFF" stop-opacity=".7"/>
+      <stop offset="100%" stop-color="#FFF" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Cup body clip -->
+    <clipPath id="rc-bc">
+      <path d="M42,63 L57,252 A48,10.5 0 0,0 153,252 L168,63 A63,13.5 0 0,0 42,63 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- Drop shadow -->
+  <ellipse cx="105" cy="267" rx="54" ry="7" fill="url(#rc-sh)"/>
+
+  <!-- Steam wisps — translate(0, domeTop-2) = translate(0,13) -->
+  <g transform="translate(0,13)" opacity="0.7">
+    <path class="s1" d="M100,0 Q98.5,-25 102.5,-55 T98,-95"
+          stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" fill="none"/>
+    <path class="s2" d="M108,0 Q109.2,-25 106,-55 T109.6,-95"
+          stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+    <path class="s3" d="M104,0 Q101.9,-25 107.5,-55 T101.2,-95"
+          stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+  </g>
+
+  <!-- Glass body fill (transparent glass) -->
+  <path d="M42,63 L57,252 A48,10.5 0 0,0 153,252 L168,63 A63,13.5 0 0,0 42,63 Z"
+        fill="url(#rc-glass)" opacity="0.36"/>
+  <!-- Right-side shadow for volume -->
+  <path d="M42,63 L57,252 A48,10.5 0 0,0 153,252 L168,63 A63,13.5 0 0,0 42,63 Z"
+        fill="url(#rc-gshadow)" opacity="0.5"/>
+
+  <!-- Liquid fill (animated rising) clipped to cup body -->
+  <g clip-path="url(#rc-bc)">
+    <rect class="liq" x="30" y="63" width="160" height="200" fill="url(#rc-liq)"/>
+  </g>
+
+  <!-- Glass shimmer overlay on top of liquid -->
+  <path d="M42,63 L57,252 A48,10.5 0 0,0 153,252 L168,63 Z"
+        fill="url(#rc-glass)" opacity="0.5"/>
+
+  <!-- Left reflection — wide soft (bTL+2=44, bTL+19=61, bBL+14=71, bBL=57) -->
+  <path d="M44,67 L61,67 L71,249 L57,249 Z" fill="url(#rc-ref)" opacity="0.7"/>
+  <!-- Sharp thin highlight -->
+  <path d="M48,75 L52,75 L64,240 L61,240 Z" fill="white" opacity="0.3"/>
+  <!-- Right soft reflection -->
+  <path d="M156,72 L166,72 L153,248 L144,248 Z" fill="url(#rc-ref2)" opacity="0.5"/>
+
+  <!-- Edge lines -->
+  <line x1="42" y1="63" x2="57" y2="252" stroke="#B8AE96" stroke-width="2.2" opacity="0.6"/>
+  <line x1="168" y1="63" x2="153" y2="252" stroke="#C0B8A4" stroke-width="1.8" opacity="0.45"/>
+
+  <!-- Bottom ellipse -->
+  <ellipse cx="105" cy="252" rx="48" ry="10.5" fill="none" stroke="#B8AE96" stroke-width="1.8" opacity="0.5"/>
+  <ellipse cx="105" cy="253.5" rx="44" ry="8.5" fill="none" stroke="#D0C8B8" stroke-width="0.8" opacity="0.25"/>
+
+  <!-- Top ellipse rim (back arc) -->
+  <path d="M42,63 A63,13.5 0 0,1 168,63" fill="none" stroke="#B8AE96" stroke-width="1.6" opacity="0.4"/>
+
+  <!-- ROYALTY vertical text (ly = bTop+21 + i*22.5) -->
+  <text x="105" y="84"    text-anchor="middle" dominant-baseline="middle"
+        fill="#E0D8CC" font-size="21" font-weight="800"
+        font-family="Georgia,'Times New Roman',serif" letter-spacing="3" opacity="0.3">R</text>
+  <text x="105" y="106.5" text-anchor="middle" dominant-baseline="middle"
+        fill="#E0D8CC" font-size="21" font-weight="800"
+        font-family="Georgia,'Times New Roman',serif" letter-spacing="3" opacity="0.3">O</text>
+  <text x="105" y="129"   text-anchor="middle" dominant-baseline="middle"
+        fill="#E0D8CC" font-size="21" font-weight="800"
+        font-family="Georgia,'Times New Roman',serif" letter-spacing="3" opacity="0.3">Y</text>
+  <text x="105" y="151.5" text-anchor="middle" dominant-baseline="middle"
+        fill="#E0D8CC" font-size="21" font-weight="800"
+        font-family="Georgia,'Times New Roman',serif" letter-spacing="3" opacity="0.3">A</text>
+  <text x="105" y="174"   text-anchor="middle" dominant-baseline="middle"
+        fill="#E0D8CC" font-size="21" font-weight="800"
+        font-family="Georgia,'Times New Roman',serif" letter-spacing="3" opacity="0.3">L</text>
+  <text x="105" y="196.5" text-anchor="middle" dominant-baseline="middle"
+        fill="#E0D8CC" font-size="21" font-weight="800"
+        font-family="Georgia,'Times New Roman',serif" letter-spacing="3" opacity="0.3">T</text>
+  <text x="105" y="219"   text-anchor="middle" dominant-baseline="middle"
+        fill="#E0D8CC" font-size="21" font-weight="800"
+        font-family="Georgia,'Times New Roman',serif" letter-spacing="3" opacity="0.3">Y</text>
+
+  <!-- ═══ LID ═══ -->
+  <!-- Lid body (topCx-topRx-1.5=40.5, lidTop=36, lidBot=63) -->
+  <path d="M40.5,63 L46.5,36 L163.5,36 L169.5,63 Z" fill="url(#rc-lid)"/>
+  <!-- Lid side shadow -->
+  <path d="M40.5,63 L46.5,36 L163.5,36 L169.5,63 Z" fill="url(#rc-lidsh)"/>
+  <!-- Dome curve (topCx-topRx+9=51 to topCx+topRx-9=159, domeTop=15) -->
+  <path d="M51,36 Q105,15 159,36" fill="url(#rc-lid)" stroke="#C0B8A6" stroke-width="0.8"/>
+  <!-- Dome highlight -->
+  <path d="M78,33 Q98,18 132,33" fill="url(#rc-dhi)"/>
+  <!-- Lip/rim (topCx-topRx-4.5=37.5, lidBot-6=57, width=135, height=9) -->
+  <rect x="37.5" y="57" width="135" height="9" rx="3"
+        fill="url(#rc-lid)" stroke="#B8AE96" stroke-width="0.7"/>
+  <!-- Rim bottom shadow -->
+  <line x1="39" y1="66" x2="171" y2="66" stroke="#B0A890" stroke-width="0.8" opacity="0.4"/>
+  <!-- Sip hole (topCx-12=93, lidTop+3=39) -->
+  <ellipse cx="93" cy="39" rx="8" ry="3.3" fill="#3A1A10" opacity="0.6"/>
+  <ellipse cx="94.5" cy="38.2" rx="3.8" ry="1.5" fill="#2A0E08" opacity="0.3"/>
+  <!-- Lid ridges (topCx-topRx+7=49, topCx+topRx-7=161) -->
+  <line x1="49" y1="43"   x2="161" y2="43"   stroke="#C0B8A4" stroke-width="0.8" opacity="0.4"/>
+  <line x1="48" y1="48"   x2="162" y2="48"   stroke="#C8C0AC" stroke-width="0.6" opacity="0.3"/>
+  <line x1="47" y1="52.5" x2="163" y2="52.5" stroke="#D0C8B4" stroke-width="0.5" opacity="0.2"/>
+  <!-- Front half of top ellipse (over lid) -->
+  <path d="M42,63 A63,13.5 0 0,0 168,63" fill="none" stroke="#A8A090" stroke-width="1.8" opacity="0.45"/>
+
+  <!-- Animated shine streaks -->
+  <line class="sh1" x1="48" y1="78" x2="61" y2="243"
+        stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.08"/>
+  <line class="sh2" x1="159" y1="85" x2="147" y2="237"
+        stroke="white" stroke-width="1.5" stroke-linecap="round" opacity="0.04"/>
+</svg>

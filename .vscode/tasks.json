@@ -1,0 +1,23 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Start local dev (API+WEB+ADMIN)",
+			"type": "shell",
+			"command": "npm run dev:local",
+			"isBackground": true
+		},
+		{
+			"label": "Start local dev (API+WEB+ADMIN)",
+			"type": "shell",
+			"command": "npm run dev:local",
+			"isBackground": true
+		},
+		{
+			"label": "Start Simple API Server",
+			"type": "shell",
+			"command": "npm run dev:api",
+			"isBackground": true
+		}
+	]
+}

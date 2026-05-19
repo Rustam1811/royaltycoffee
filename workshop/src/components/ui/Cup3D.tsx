@@ -1,0 +1,90 @@
+/**
+ * 3D Cup / Thermos — spin-then-pause animation for Workshop loader
+ * Quick 360° spin → 1.5 s pause → repeat
+ */
+
+import React, { useRef, useMemo, Suspense } from 'react';
+import { Canvas, useFrame, useLoader } from '@react-three/fiber';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'meshoptimizer';
+import { Environment } from '@react-three/drei';
+import * as THREE from 'three';
+
+/* ── Spin-pause constants ── */
+const SPIN_DURATION = 0.9;
+const PAUSE_DURATION = 1.5;
+const CYCLE = SPIN_DURATION + PAUSE_DURATION;
+
+/** Front-face angle — the Y-rotation at which the thermos label faces the camera */
+const FRONT_ANGLE = Math.PI * 1.5;
+
+/** Smooth ease-in-out */
+const easeInOut = (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+
+const CupModel: React.FC<{ url: string }> = ({ url }) => {
+  const groupRef = useRef<THREE.Group>(null);
+  const gltf = useLoader(GLTFLoader, url, (loader) => {
+    loader.setMeshoptDecoder(MeshoptDecoder);
+  });
+  const elapsed = useRef(0);
+
+  const clonedScene = useMemo(() => {
+    const clone = gltf.scene.clone(true);
+    const box = new THREE.Box3().setFromObject(clone);
+    const center = box.getCenter(new THREE.Vector3());
+    clone.position.sub(center);
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    clone.scale.setScalar(1.8 / maxDim);
+    return clone;
+  }, [gltf]);
+
+  useFrame((_, delta) => {
+    if (!groupRef.current) return;
+    elapsed.current += delta;
+    const t = elapsed.current % CYCLE;
+    if (t <= SPIN_DURATION) {
+      groupRef.current.rotation.y = FRONT_ANGLE + easeInOut(t / SPIN_DURATION) * Math.PI * 2;
+    } else {
+      groupRef.current.rotation.y = FRONT_ANGLE;
+    }
+  });
+
+  return (
+    <group ref={groupRef}>
+      <primitive object={clonedScene} />
+    </group>
+  );
+};
+
+const LoadingFallback: React.FC = () => (
+  <mesh>
+    <cylinderGeometry args={[0.3, 0.25, 0.8, 32]} />
+    <meshStandardMaterial color="#D4AF37" opacity={0.5} transparent />
+  </mesh>
+);
+
+interface Cup3DProps { className?: string }
+
+export const Cup3D: React.FC<Cup3DProps> = ({ className = '' }) => (
+  <div className={className} style={{ minWidth: 1, minHeight: 1 }}>
+    <Canvas
+      camera={{ position: [0, 0.3, 3.2], fov: 42 }}
+      style={{ width: '100%', height: '100%', background: 'transparent' }}
+      gl={{ alpha: true, antialias: true }}
+      dpr={[1, 1.5]}
+      resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}
+    >
+      <ambientLight intensity={0.8} />
+      <directionalLight position={[5, 5, 5]} intensity={1} />
+      <directionalLight position={[-3, -3, -3]} intensity={0.25} />
+      <pointLight position={[0, 2, 0]} intensity={0.5} color="#D4AF37" />
+      <Environment preset="city" />
+      <Suspense fallback={<LoadingFallback />}>
+        <CupModel url="/images/3Dcup_tiny.glb" />
+      </Suspense>
+    </Canvas>
+  </div>
+);
+
+export default Cup3D;

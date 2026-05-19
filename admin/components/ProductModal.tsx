@@ -22,7 +22,15 @@ const ProductModal: React.FC<Props> = ({
   const [paymentLink, setPaymentLink] = useState(initialData?.paymentLink || "");
 
   useEffect(() => {
-    if (initialData) setPaymentLink(initialData.paymentLink || "");
+    let isMounted = true;
+    
+    if (isMounted && initialData) {
+      setPaymentLink(initialData.paymentLink || "");
+    }
+
+    return () => {
+      isMounted = false;
+    };
   }, [initialData]);
 
   const save = async () => {

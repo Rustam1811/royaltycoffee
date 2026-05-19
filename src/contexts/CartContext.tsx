@@ -1,7 +1,7 @@
 import React, { createContext, useReducer, useContext, ReactNode, useEffect } from 'react';
 
 export interface CartItem {
-    id: number;
+    id: string;
     name: string;
     price: number;
     quantity: number;
@@ -18,10 +18,10 @@ export interface CartItem {
 // ✨ ИСПРАВЛЕНО: Добавлены новые типы действий
 type Action =
     | { type: 'ADD_ITEM'; payload: CartItem }
-    | { type: 'REMOVE_ITEM'; payload: { id: number } }
+    | { type: 'REMOVE_ITEM'; payload: { id: string } }
     | { type: 'CLEAR_CART' }
-    | { type: 'INCREASE_QUANTITY'; payload: number } // payload - это id товара
-    | { type: 'DECREASE_QUANTITY'; payload: number }; // payload - это id товара
+    | { type: 'INCREASE_QUANTITY'; payload: string } // payload - это id товара
+    | { type: 'DECREASE_QUANTITY'; payload: string }; // payload - это id товара
 
 function reducer(state: CartItem[], action: Action): CartItem[] {
     switch (action.type) {

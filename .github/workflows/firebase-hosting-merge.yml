@@ -23,6 +23,6 @@ jobs:
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_COFFEE }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_ROYAL_COFFEE }}
           channelId: live
-          projectId: coffeeaddict-c9d70
+          projectId: royal-coffee-b1ce9

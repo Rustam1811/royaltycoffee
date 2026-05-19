@@ -1,0 +1,315 @@
+workflows:
+
+  # ─────────────────────────────────────────────────────────────
+  # Android Release → Google Play (Internal Track)
+  # ─────────────────────────────────────────────────────────────
+  android-release:
+    name: Android Release (AAB → Google Play)
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
+
+    environment:
+      java: 21
+      node: 20
+      groups:
+        - google_play          # GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        - android_signing      # CM_KEYSTORE, CM_KEYSTORE_PASSWORD, CM_KEY_ALIAS, CM_KEY_PASSWORD
+        - firebase             # VITE_FIREBASE_API_KEY, etc.
+      vars:
+        PACKAGE_NAME: "com.royalcoffee.app"
+        GOOGLE_PLAY_TRACK: production
+
+    cache:
+      cache_paths:
+        - $HOME/.gradle/caches
+        - $HOME/.gradle/wrapper
+        - $CM_BUILD_DIR/node_modules
+        - $CM_BUILD_DIR/android/.gradle
+
+    scripts:
+      - name: Install Node dependencies
+        script: npm ci
+
+      - name: Build web assets (all sub-apps)
+        script: npm run cap:build:android
+
+      - name: Set up Android keystore
+        script: |
+          echo $CM_KEYSTORE | base64 --decode > $CM_BUILD_DIR/android/release.jks
+          cat >> $CM_BUILD_DIR/android/signing.properties << EOF
+          storeFile=release.jks
+          storePassword=$CM_KEYSTORE_PASSWORD
+          keyAlias=$CM_KEY_ALIAS
+          keyPassword=$CM_KEY_PASSWORD
+          EOF
+
+      - name: Build Android AAB (release)
+        script: |
+          cd android
+          ./gradlew bundleRelease \
+            -PversionCode=$PROJECT_BUILD_NUMBER \
+            --no-daemon \
+            --stacktrace
+
+      - name: Verify AAB exists
+        script: |
+          AAB="android/app/build/outputs/bundle/release/app-release.aab"
+          if [ ! -f "$AAB" ]; then
+            echo "ERROR: AAB not found at $AAB"
+            exit 1
+          fi
+          echo "AAB size: $(du -sh $AAB | cut -f1)"
+
+    artifacts:
+      - android/app/build/outputs/bundle/**/*.aab
+      - android/app/build/outputs/mapping/release/mapping.txt
+      - android/build/reports/**
+
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: $GOOGLE_PLAY_TRACK
+      email:
+        recipients:
+          - manarbekov18999@gmail.com
+        notify:
+          success: true
+          failure: true
+
+  # ─────────────────────────────────────────────────────────────
+  # Android Debug → artifact only (PR / feature branch)
+  # ─────────────────────────────────────────────────────────────
+  android-debug:
+    name: Android Debug Build (APK)
+    max_build_duration: 30
+    instance_type: mac_mini_m2
+
+    triggering:
+      events:
+        - pull_request
+      branch_patterns:
+        - pattern: "*"
+          include: true
+          source: true
+
+    environment:
+      java: 21
+      node: 20
+      groups:
+        - firebase
+      vars:
+        PACKAGE_NAME: "com.royalcoffee.app"
+
+    cache:
+      cache_paths:
+        - $HOME/.gradle/caches
+        - $HOME/.gradle/wrapper
+        - $CM_BUILD_DIR/node_modules
+
+    scripts:
+      - name: Install Node dependencies
+        script: npm ci
+
+      - name: Build web assets
+        script: npm run cap:build:android
+
+      - name: Build debug APK
+        script: |
+          cd android
+          ./gradlew assembleDebug --no-daemon
+
+    artifacts:
+      - android/app/build/outputs/apk/debug/*.apk
+
+    publishing:
+      email:
+        recipients:
+          - manarbekov18999@gmail.com
+        notify:
+          success: true
+          failure: true
+
+  # ─────────────────────────────────────────────────────────────
+  # iOS Release → TestFlight / App Store
+  # ─────────────────────────────────────────────────────────────
+  ios-release:
+    name: iOS Release (IPA → TestFlight)
+    max_build_duration: 90
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: Royalty Coffee
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
+
+    environment:
+      xcode: latest
+      node: 20
+      cocoapods: default
+      vars:
+        BUNDLE_ID: "com.royalcoffee.app"
+        XCODE_PROJECT: "ios/App/App.xcodeproj"
+        XCODE_SCHEME: "App"
+        VITE_FIREBASE_API_KEY: AIzaSyBBtbHO8K_JgMfcsOW2lZO8RGhL4BJiCRU
+        VITE_FIREBASE_AUTH_DOMAIN: royal-coffee-b1ce9.firebaseapp.com
+        VITE_FIREBASE_PROJECT_ID: royal-coffee-b1ce9
+        VITE_FIREBASE_STORAGE_BUCKET: royal-coffee-b1ce9.firebasestorage.app
+        VITE_FIREBASE_MESSAGING_SENDER_ID: "443047563074"
+        VITE_FIREBASE_APP_ID: 1:443047563074:web:31bfd1e43f509e4d42c2db
+        VITE_FIREBASE_MEASUREMENT_ID: G-3EFFMQJ57E
+        VITE_API_BASE: /api
+
+    cache:
+      cache_paths:
+        - $HOME/Library/Caches/CocoaPods
+        - $CM_BUILD_DIR/node_modules
+
+    scripts:
+      - name: Install Node dependencies
+        script: |
+          npm ci
+          cd admin && npm ci
+          cd ../workshop && npm ci || true
+          cd ../landing && npm ci || true
+
+      - name: Build web assets
+        script: npm run cap:build:ios
+
+      - name: Set up code signing
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files $BUNDLE_ID \
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
+
+      - name: Install CocoaPods
+        script: |
+          cd ios/App
+          pod install
+
+      - name: Increment build number
+        script: |
+          cd ios/App
+          agvtool new-version -all $PROJECT_BUILD_NUMBER
+
+      - name: Build IPA
+        script: |
+          xcode-project build-ipa \
+            --project "$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME"
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: false
+      email:
+        recipients:
+          - manarbekov18999@gmail.com
+        notify:
+          success: true
+          failure: true
+
+  # ─────────────────────────────────────────────────────────────
+  # iOS Debug → IPA artifact only (PR / feature branch)
+  # ─────────────────────────────────────────────────────────────
+  ios-debug:
+    name: iOS Debug Build (IPA)
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: Royalty Coffee
+
+    triggering:
+      events:
+        - pull_request
+      branch_patterns:
+        - pattern: "*"
+          include: true
+          source: true
+
+    environment:
+      xcode: latest
+      node: 20
+      cocoapods: default
+      vars:
+        BUNDLE_ID: "com.royalcoffee.app"
+        XCODE_PROJECT: "ios/App/App.xcodeproj"
+        XCODE_SCHEME: "App"
+        VITE_FIREBASE_API_KEY: AIzaSyBBtbHO8K_JgMfcsOW2lZO8RGhL4BJiCRU
+        VITE_FIREBASE_AUTH_DOMAIN: royal-coffee-b1ce9.firebaseapp.com
+        VITE_FIREBASE_PROJECT_ID: royal-coffee-b1ce9
+        VITE_FIREBASE_STORAGE_BUCKET: royal-coffee-b1ce9.firebasestorage.app
+        VITE_FIREBASE_MESSAGING_SENDER_ID: "443047563074"
+        VITE_FIREBASE_APP_ID: 1:443047563074:web:31bfd1e43f509e4d42c2db
+        VITE_FIREBASE_MEASUREMENT_ID: G-3EFFMQJ57E
+        VITE_API_BASE: /api
+
+    cache:
+      cache_paths:
+        - $HOME/Library/Caches/CocoaPods
+        - $CM_BUILD_DIR/node_modules
+
+    scripts:
+      - name: Install Node dependencies
+        script: |
+          npm ci
+          cd admin && npm ci
+          cd ../workshop && npm ci || true
+          cd ../landing && npm ci || true
+
+      - name: Build web assets
+        script: npm run cap:build:ios
+
+      - name: Set up code signing (development)
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files $BUNDLE_ID \
+            --type IOS_APP_DEVELOPMENT \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
+
+      - name: Install CocoaPods
+        script: |
+          cd ios/App
+          pod install
+
+      - name: Build IPA (debug)
+        script: |
+          xcode-project build-ipa \
+            --project "$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME" \
+            --config Debug
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      email:
+        recipients:
+          - manarbekov18999@gmail.com
+        notify:
+          success: true
+          failure: true
