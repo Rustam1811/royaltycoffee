@@ -69,8 +69,11 @@ android/local.properties
 *.secret.json
 
 # Mobile platform secrets
-**/google-services.json
-**/GoogleService-Info.plist
+# NOTE: GoogleService-Info.plist and google-services.json are PUBLIC client configs
+# (not secrets) and must be committed for CI/CD iOS/Android builds to find them.
+# Firebase security is enforced via Firestore Rules + App Check, not by hiding these files.
+# **/google-services.json
+# **/GoogleService-Info.plist
 
 # Local env files
 .env

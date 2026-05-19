@@ -1,0 +1,62 @@
+{
+  "project_info": {
+    "project_number": "443047563074",
+    "project_id": "royal-coffee-b1ce9",
+    "storage_bucket": "royal-coffee-b1ce9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:443047563074:android:74ed4383aa2f2c3042c2db",
+        "android_client_info": {
+          "package_name": "com.royalcoffee.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "443047563074-7km2sjqp2rslg50o65cuojvkl8a8ojd2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.royalcoffee.app",
+            "certificate_hash": "b0a4cc70a4cb19114f6f2c566d350b86861dd680"
+          }
+        },
+        {
+          "client_id": "443047563074-7km2sjqp2rslg50o65cuojvkl8a8ojd2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.royalcoffee.app",
+            "certificate_hash": "92fb12fd31d4f2f95f3150fe77a751211c7ce227"
+          }
+        },
+        {
+          "client_id": "443047563074-ed4ve3p301m884ph8trb2sag28jdr81l.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBL-5cR3bcgYL4aIgFT1R27kSGoKZ5K00Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "443047563074-ed4ve3p301m884ph8trb2sag28jdr81l.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "443047563074-iv2119f533usdn3aleo99hd5sc181045.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.royalcoffee.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
