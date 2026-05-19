@@ -160,6 +160,7 @@ workflows:
       node: 22
       groups:
         - ios_signing            # CM_CERTIFICATE, CM_CERTIFICATE_PASSWORD, CM_PROVISIONING_PROFILE
+        - firebase               # VITE_FIREBASE_* keys
       vars:
         BUNDLE_ID: "com.royalcoffee.app"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
@@ -168,13 +169,6 @@ workflows:
         PROFILE_NAME: "Royal Coffee AppStore"
         CERT_IDENTITY: "Apple Distribution"
         EXPORT_OPTIONS_PLIST: "ios/ExportOptions.plist"
-        VITE_FIREBASE_API_KEY: AIzaSyBBtbHO8K_JgMfcsOW2lZO8RGhL4BJiCRU
-        VITE_FIREBASE_AUTH_DOMAIN: royal-coffee-b1ce9.firebaseapp.com
-        VITE_FIREBASE_PROJECT_ID: royal-coffee-b1ce9
-        VITE_FIREBASE_STORAGE_BUCKET: royal-coffee-b1ce9.firebasestorage.app
-        VITE_FIREBASE_MESSAGING_SENDER_ID: "443047563074"
-        VITE_FIREBASE_APP_ID: 1:443047563074:web:31bfd1e43f509e4d42c2db
-        VITE_FIREBASE_MEASUREMENT_ID: G-3EFFMQJ57E
         VITE_API_BASE: /api
 
     cache:
@@ -279,17 +273,12 @@ workflows:
     environment:
       xcode: latest
       node: 22
+      groups:
+        - firebase               # VITE_FIREBASE_* keys
       vars:
         BUNDLE_ID: "com.royalcoffee.app"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
         XCODE_SCHEME: "App"
-        VITE_FIREBASE_API_KEY: AIzaSyBBtbHO8K_JgMfcsOW2lZO8RGhL4BJiCRU
-        VITE_FIREBASE_AUTH_DOMAIN: royal-coffee-b1ce9.firebaseapp.com
-        VITE_FIREBASE_PROJECT_ID: royal-coffee-b1ce9
-        VITE_FIREBASE_STORAGE_BUCKET: royal-coffee-b1ce9.firebasestorage.app
-        VITE_FIREBASE_MESSAGING_SENDER_ID: "443047563074"
-        VITE_FIREBASE_APP_ID: 1:443047563074:web:31bfd1e43f509e4d42c2db
-        VITE_FIREBASE_MEASUREMENT_ID: G-3EFFMQJ57E
         VITE_API_BASE: /api
 
     cache:
