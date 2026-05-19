@@ -143,7 +143,7 @@ export const setupForegroundMessaging = async (): Promise<(() => void) | null> =
       return;
     }
 
-    const title = notification.title || 'Brewly';
+    const title = notification.title || 'Royalty Coffee';
     const body = notification.body || '';
     const icon = notification.icon || '/icon-192x192.png';
     const badge = '/coffeeaddict.jpg';

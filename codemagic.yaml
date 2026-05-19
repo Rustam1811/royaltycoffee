@@ -175,7 +175,7 @@ workflows:
         XCODE_PROJECT: "ios/App/App.xcodeproj"
         XCODE_SCHEME: "App"
         TEAM_ID: "X63R22FAMX"
-        PROFILE_NAME: "Royal Coffee AppStore"
+        PROFILE_NAME: "Royal Coffee"
         CERT_IDENTITY: "Apple Distribution"
         EXPORT_OPTIONS_PLIST: "ios/ExportOptions.plist"
         VITE_API_BASE: /api
