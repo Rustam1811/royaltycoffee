@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>method</key>
-    <string>app-store</string>
+    <string>app-store-connect</string>
     <key>teamID</key>
     <string>X63R22FAMX</string>
     <key>signingStyle</key>
@@ -13,7 +13,7 @@
     <key>provisioningProfiles</key>
     <dict>
         <key>com.royalcoffee.app</key>
-        <string>Royal Coffee AppStore</string>
+        <string>Royal Coffee</string>
     </dict>
     <key>stripSwiftSymbols</key>
     <true/>
