@@ -89,3 +89,6 @@ dist/
 # Generated reports (contain local paths)
 reports/
 scripts/inventory.json
+
+firebase-debug.log
+*.log
