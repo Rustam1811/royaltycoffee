@@ -18,7 +18,7 @@ workflows:
 
     environment:
       java: 21
-      node: 20
+      node: 22
       groups:
         - google_play          # GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
         - android_signing      # CM_KEYSTORE, CM_KEYSTORE_PASSWORD, CM_KEY_ALIAS, CM_KEY_PASSWORD
@@ -102,7 +102,7 @@ workflows:
 
     environment:
       java: 21
-      node: 20
+      node: 22
       groups:
         - firebase
       vars:
@@ -138,7 +138,7 @@ workflows:
           failure: true
 
   # ─────────────────────────────────────────────────────────────
-  # iOS Release → TestFlight / App Store
+  # iOS Release → TestFlight / App Store (MANUAL signing)
   # ─────────────────────────────────────────────────────────────
   ios-release:
     name: iOS Release (IPA → TestFlight)
@@ -157,12 +157,17 @@ workflows:
 
     environment:
       xcode: latest
-      node: 20
-      cocoapods: default
+      node: 22
+      groups:
+        - ios_signing            # CM_CERTIFICATE, CM_CERTIFICATE_PASSWORD, CM_PROVISIONING_PROFILE
       vars:
         BUNDLE_ID: "com.royalcoffee.app"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
         XCODE_SCHEME: "App"
+        TEAM_ID: "X63R22FAMX"
+        PROFILE_NAME: "Royal Coffee AppStore"
+        CERT_IDENTITY: "Apple Distribution"
+        EXPORT_OPTIONS_PLIST: "ios/ExportOptions.plist"
         VITE_FIREBASE_API_KEY: AIzaSyBBtbHO8K_JgMfcsOW2lZO8RGhL4BJiCRU
         VITE_FIREBASE_AUTH_DOMAIN: royal-coffee-b1ce9.firebaseapp.com
         VITE_FIREBASE_PROJECT_ID: royal-coffee-b1ce9
@@ -174,7 +179,6 @@ workflows:
 
     cache:
       cache_paths:
-        - $HOME/Library/Caches/CocoaPods
         - $CM_BUILD_DIR/node_modules
 
     scripts:
@@ -188,33 +192,57 @@ workflows:
       - name: Build web assets
         script: npm run cap:build:ios
 
-      - name: Set up code signing
+      - name: Install signing certificate (manual)
         script: |
+          set -e
+          # Init clean keychain
           keychain initialize
-          app-store-connect fetch-signing-files $BUNDLE_ID \
-            --type IOS_APP_STORE \
-            --create
-          keychain add-certificates
-          xcode-project use-profiles
 
-      - name: Install CocoaPods
-        script: |
-          cd ios/App
-          pod install
+          # Decode .p12 and import into keychain
+          echo "$CM_CERTIFICATE" | base64 --decode > /tmp/certificate.p12
+          keychain add-certificates --certificate /tmp/certificate.p12 --certificate-password "$CM_CERTIFICATE_PASSWORD"
+
+          # Decode .mobileprovision and install
+          PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROFILE_DIR"
+          echo "$CM_PROVISIONING_PROFILE" | base64 --decode > "$PROFILE_DIR/profile.mobileprovision"
+
+          # Extract UUID and copy with UUID name (Xcode expects this)
+          PROFILE_UUID=$(security cms -D -i "$PROFILE_DIR/profile.mobileprovision" | plutil -extract UUID raw -)
+          cp "$PROFILE_DIR/profile.mobileprovision" "$PROFILE_DIR/${PROFILE_UUID}.mobileprovision"
+          echo "Profile UUID: $PROFILE_UUID"
+          echo "PROFILE_UUID=$PROFILE_UUID" >> $CM_ENV
 
       - name: Increment build number
         script: |
           cd ios/App
           agvtool new-version -all $PROJECT_BUILD_NUMBER
 
-      - name: Build IPA
+      - name: Build IPA (manual signing)
         script: |
-          xcode-project build-ipa \
-            --project "$XCODE_PROJECT" \
-            --scheme "$XCODE_SCHEME"
+          set -e
+          cd ios/App
+          xcodebuild \
+            -project App.xcodeproj \
+            -scheme "$XCODE_SCHEME" \
+            -configuration Release \
+            -archivePath "$CM_BUILD_DIR/build/App.xcarchive" \
+            -destination "generic/platform=iOS" \
+            archive \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            CODE_SIGN_IDENTITY="$CERT_IDENTITY" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
+            COMPILER_INDEX_STORE_ENABLE=NO
+
+          xcodebuild \
+            -exportArchive \
+            -archivePath "$CM_BUILD_DIR/build/App.xcarchive" \
+            -exportPath "$CM_BUILD_DIR/build/ipa" \
+            -exportOptionsPlist "$CM_BUILD_DIR/$EXPORT_OPTIONS_PLIST"
 
     artifacts:
-      - build/ios/ipa/*.ipa
+      - build/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
       - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
 
@@ -250,8 +278,7 @@ workflows:
 
     environment:
       xcode: latest
-      node: 20
-      cocoapods: default
+      node: 22
       vars:
         BUNDLE_ID: "com.royalcoffee.app"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
@@ -267,7 +294,6 @@ workflows:
 
     cache:
       cache_paths:
-        - $HOME/Library/Caches/CocoaPods
         - $CM_BUILD_DIR/node_modules
 
     scripts:
@@ -289,11 +315,6 @@ workflows:
             --create
           keychain add-certificates
           xcode-project use-profiles
-
-      - name: Install CocoaPods
-        script: |
-          cd ios/App
-          pod install
 
       - name: Build IPA (debug)
         script: |
