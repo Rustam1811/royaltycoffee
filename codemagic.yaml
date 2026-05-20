@@ -103,6 +103,13 @@ workflows:
       # VITE_* env vars
       groups:
         - ios_signing
+        - api
+        - app_id
+        - auth_domain
+        - measurement_id
+        - project_id
+        - sender_id
+        - storage_bucket
       vars:
         XCODE_PROJECT: ios/App/App.xcodeproj
         XCODE_SCHEME: App
