@@ -6,6 +6,7 @@ import {
   ArrowPathIcon,
   MapPinIcon,
   BuildingStorefrontIcon,
+  ShieldExclamationIcon,
 } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { collection, query, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
@@ -35,7 +36,7 @@ interface Order {
   orderNumberDisplay?: string;
   items: OrderItem[];
   amount: number;
-  status: 'pending' | 'accepted' | 'ready' | 'completed' | 'preparing' | 'assigned' | 'picked_up' | 'on_the_way' | 'delivered' | 'cancelled';
+  status: 'pending' | 'accepted' | 'ready' | 'completed' | 'preparing' | 'assigned' | 'picked_up' | 'on_the_way' | 'delivered' | 'cancelled' | 'awaiting_approval';
   date: string;
   customerName?: string;
   customerPhone?: string;
@@ -43,6 +44,9 @@ interface Order {
   deliveryType?: 'pickup' | 'delivery' | 'dine_in';
   courierId?: string;
   locationId?: string;
+  needsApproval?: boolean;
+  approvedBy?: string;
+  totalPrice?: number;
 }
 
 /**
@@ -60,6 +64,7 @@ const mapToOrderStatus = (status: string): OrderStatus => {
     'delivered': OrderStatus.DELIVERED,
     'completed': OrderStatus.COMPLETED,
     'cancelled': OrderStatus.CANCELLED,
+    'awaiting_approval': OrderStatus.NEW,
   };
   return mapping[status] || OrderStatus.NEW;
 };
@@ -108,7 +113,7 @@ type ApiOrder = {
  */
 const OrderManagement: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [activeTab, setActiveTab] = useState<'pending' | 'preparing' | 'ready'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'preparing' | 'ready' | 'awaiting_approval'>('pending');
   const [refreshing, setRefreshing] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [lastSuccessfulUpdate, setLastSuccessfulUpdate] = useState<Date>(new Date());
@@ -117,6 +122,28 @@ const OrderManagement: React.FC = () => {
   const userRole: Role = user?.role || 'user';
   const prefersReducedMotion = useReducedMotion();
   const { locations, selectedLocationId, selectLocation, isOwner, isAllLocationsSelected } = useLocation();
+
+  // Handle order approval/rejection
+  const handleApproval = async (orderId: string, action: 'approve' | 'reject') => {
+    try {
+      const res = await fetch('/api/order-approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId,
+          action,
+          approvedBy: user?.name || user?.email || 'owner',
+        }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Ошибка');
+      }
+      // Real-time listener will update UI automatically
+    } catch (err: any) {
+      setApiError(`Ошибка одобрения: ${err.message}`);
+    }
+  };
 
   // Real-time Firestore listener (replaces polling)
   useEffect(() => {
@@ -168,6 +195,9 @@ const OrderManagement: React.FC = () => {
             deliveryType: data.deliveryType || 'pickup',
             courierId: data.courierId,
             locationId: data.locationId,
+            needsApproval: data.needsApproval || false,
+            approvedBy: data.approvedBy || null,
+            totalPrice: data.totalPrice || data.amount || 0,
           };
         });
 
@@ -200,6 +230,7 @@ const OrderManagement: React.FC = () => {
       case 'preparing': return 'bg-blue-50 text-blue-700 border-blue-200';
       case 'ready': return 'bg-green-50 text-green-700 border-green-200';
       case 'completed': return 'bg-slate-50 text-slate-600 border-slate-200';
+      case 'awaiting_approval': return 'bg-red-50 text-red-700 border-red-200';
       default: return 'bg-slate-50 text-slate-600 border-slate-200';
     }
   };
@@ -209,6 +240,7 @@ const OrderManagement: React.FC = () => {
       case 'pending': return <ClockIcon className="w-5 h-5" />;
       case 'preparing': return <CheckCircleIcon className="w-5 h-5" />;
       case 'ready': return <BellIcon className="w-5 h-5" />;
+      case 'awaiting_approval': return <ShieldExclamationIcon className="w-5 h-5" />;
       default: return <ClockIcon className="w-5 h-5" />;
     }
   };
@@ -219,6 +251,7 @@ const OrderManagement: React.FC = () => {
       case 'preparing': return 'Готовится';
       case 'ready': return 'Готов';
       case 'completed': return 'Выдан';
+      case 'awaiting_approval': return '⚠️ Одобрение';
       default: return status;
     }
   };
@@ -322,6 +355,41 @@ const OrderManagement: React.FC = () => {
           className="flex gap-2 mb-4 overflow-x-auto pb-2 w-full"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
+          {/* Awaiting approval tab — only for owner/superowner */}
+          {isOwner && (() => {
+            const approvalCount = locationFilteredOrders.filter((o) => o.status === 'awaiting_approval').length;
+            const isActive = activeTab === 'awaiting_approval';
+            return (
+              <motion.button
+                onClick={() => setActiveTab('awaiting_approval')}
+                whileHover={prefersReducedMotion ? undefined : { y: -2 }}
+                whileTap={prefersReducedMotion ? undefined : { scale: 0.98 }}
+                className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-all ${
+                  isActive
+                    ? 'bg-red-600 text-white shadow-lg'
+                    : approvalCount > 0
+                      ? 'bg-red-50 text-red-700 border border-red-300 shadow-sm hover:shadow-md animate-pulse'
+                      : 'bg-white text-slate-700 border border-slate-200 hover:border-slate-300 shadow-sm hover:shadow-md'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <ShieldExclamationIcon className="w-5 h-5" />
+                  <span>Одобрение</span>
+                  {approvalCount > 0 && (
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-xs font-semibold ${
+                        isActive 
+                          ? 'bg-white/20 text-white' 
+                          : 'bg-red-200 text-red-800'
+                      }`}
+                    >
+                      {approvalCount}
+                    </span>
+                  )}
+                </div>
+              </motion.button>
+            );
+          })()}
           {(['pending', 'preparing', 'ready'] as const).map((status) => {
             const count = locationFilteredOrders.filter((o) => o.status === status).length;
             const isActive = activeTab === status;
@@ -485,28 +553,54 @@ const OrderManagement: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Status Control - Smart Action Button */}
+                  {/* Status Control / Approval Buttons */}
                   <div className="mt-3">
-                    <OrderStatusControl
-                      orderId={order.id}
-                      currentStatus={mapToOrderStatus(order.status)}
-                      orderType={mapToOrderType(order.deliveryType)}
-                      courierId={order.courierId}
-                      onOptimisticUpdate={(nextStatus) => {
-                        // 🚀 Мгновенное обновление UI - без ожидания сервера!
-                        setOrders(prevOrders => 
-                          prevOrders.map(o => 
-                            o.id === order.id 
-                              ? { ...o, status: nextStatus.toLowerCase() as Order['status'] }
-                              : o
-                          )
-                        );
-                      }}
-                      onStatusChanged={() => {
-                        // Real-time listener handles updates automatically
-                        console.log('✅ Status updated - real-time listener will sync');
-                      }}
-                    />
+                    {order.status === 'awaiting_approval' && isOwner ? (
+                      <div className="space-y-2">
+                        <div className="text-center text-sm text-red-600 font-medium mb-2">
+                          ⚠️ Сумма заказа: {order.totalPrice || order.amount} ₸ — требуется одобрение
+                        </div>
+                        <div className="flex gap-2">
+                          <motion.button
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => handleApproval(order.id, 'approve')}
+                            className="flex-1 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
+                          >
+                            ✅ Одобрить
+                          </motion.button>
+                          <motion.button
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => handleApproval(order.id, 'reject')}
+                            className="flex-1 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors"
+                          >
+                            ❌ Отклонить
+                          </motion.button>
+                        </div>
+                      </div>
+                    ) : order.status === 'awaiting_approval' ? (
+                      <div className="text-center text-sm text-amber-600 font-medium py-3 bg-amber-50 rounded-lg">
+                        ⏳ Ожидает одобрения владельца
+                      </div>
+                    ) : (
+                      <OrderStatusControl
+                        orderId={order.id}
+                        currentStatus={mapToOrderStatus(order.status)}
+                        orderType={mapToOrderType(order.deliveryType)}
+                        courierId={order.courierId}
+                        onOptimisticUpdate={(nextStatus) => {
+                          setOrders(prevOrders => 
+                            prevOrders.map(o => 
+                              o.id === order.id 
+                                ? { ...o, status: nextStatus.toLowerCase() as Order['status'] }
+                                : o
+                            )
+                          );
+                        }}
+                        onStatusChanged={() => {
+                          console.log('✅ Status updated - real-time listener will sync');
+                        }}
+                      />
+                    )}
                   </div>
                 </motion.div>
               ))

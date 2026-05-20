@@ -39,7 +39,7 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1A0A10] via-[#2D0F1A] to-[#4A1A2C] px-4">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#3D0A11] via-[#4D0E16] to-[#5A0D17] px-4">
           <div className="max-w-md w-full bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl p-8 text-center">
             <div className="text-5xl mb-4">☕</div>
             <h2 className="text-2xl font-black text-white mb-2" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
@@ -60,7 +60,7 @@ export class ErrorBoundary extends Component<Props, State> {
             )}
             <button
               onClick={this.handleReset}
-              className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-black font-bold py-3 px-6 rounded-2xl transition-all shadow-lg shadow-amber-500/30"
+              className="w-full bg-gradient-to-r from-[#D4AF37] to-[#C9A632] hover:from-[#C9A632] hover:to-[#BF9F2D] text-black font-bold py-3 px-6 rounded-2xl transition-all shadow-lg shadow-[#D4AF37]/30"
             >
               Вернуться на главную
             </button>

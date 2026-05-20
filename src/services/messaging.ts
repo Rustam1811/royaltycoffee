@@ -1,6 +1,7 @@
-import { getMessaging, getToken, onMessage, deleteToken } from 'firebase/messaging';
+import { getMessaging, getToken, onMessage, deleteToken, isSupported } from 'firebase/messaging';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+import { Capacitor } from '@capacitor/core';
 import app from '../lib/firebase';
 import { db } from '../firebase';
 
@@ -9,15 +10,18 @@ const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY as string;
 let currentToken: string | null = null;
 let messaging: ReturnType<typeof getMessaging> | null = null;
 
-const initMessaging = () => {
-  if (!messaging && typeof window !== 'undefined') {
-    try {
-      messaging = getMessaging(app);
-    } catch {
-      return null;
-    }
+const initMessaging = async () => {
+  if (Capacitor.isNativePlatform()) return null; // Use native push on mobile
+  if (messaging) return messaging;
+  if (typeof window === 'undefined') return null;
+  try {
+    const supported = await isSupported();
+    if (!supported) return null;
+    messaging = getMessaging(app);
+    return messaging;
+  } catch {
+    return null;
   }
-  return messaging;
 };
 
 export const requestNotificationPermission = async (): Promise<NotificationPermission> => {
@@ -28,7 +32,7 @@ export const requestNotificationPermission = async (): Promise<NotificationPermi
 };
 
 export const getFCMToken = async (): Promise<string | null> => {
-  const msg = initMessaging();
+  const msg = await initMessaging();
   if (!msg) return null;
 
   const permission = await requestNotificationPermission();
@@ -108,7 +112,7 @@ export const saveFCMTokenToFirestore = async (token: string): Promise<void> => {
 };
 
 export const refreshFCMToken = async (): Promise<string | null> => {
-  const msg = initMessaging();
+  const msg = await initMessaging();
   if (!msg) return null;
 
   try {
@@ -123,8 +127,8 @@ export const refreshFCMToken = async (): Promise<string | null> => {
   }
 };
 
-export const setupForegroundMessaging = (): (() => void) | null => {
-  const msg = initMessaging();
+export const setupForegroundMessaging = async (): Promise<(() => void) | null> => {
+  const msg = await initMessaging();
   if (!msg) return null;
 
   console.log('🔔 [FCM] Setting up foreground message listener');
@@ -181,7 +185,7 @@ export const initializeFCM = async (): Promise<void> => {
   await getFCMToken();
   
   // Setup foreground message handler
-  const unsubscribe = setupForegroundMessaging();
+  const unsubscribe = await setupForegroundMessaging();
   
   // Store unsubscribe function globally if needed for cleanup
   if (unsubscribe && typeof window !== 'undefined') {

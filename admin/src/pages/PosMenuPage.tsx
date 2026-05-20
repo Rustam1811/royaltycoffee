@@ -7,6 +7,7 @@ import { QRScanner } from '../components/QRScanner';
 import { PremiumMenuModal } from '../components/PremiumMenuModal';
 import { parseLoyaltyPayload } from '@/utils/parseLoyaltyPayload';
 import { UserContext } from '../contexts/UserContext';
+import { useLocation } from '@/contexts/LocationContext';
 
 // Helper for authenticated API calls
 async function callApi(path: string, body: unknown) {
@@ -60,7 +61,10 @@ const getMilkLabel = (key: string | undefined) => {
 export default function PosMenuPage() {
   const { items: cartItems, dispatch } = useCart();
   const { user: adminUser } = useContext(UserContext);
-  const posLocationId = adminUser?.locationId || 'royal-main';
+  const { selectedLocationId, selectedLocation } = useLocation();
+  // Для owner/superowner берём выбранную локацию, для баристы — его привязанную
+  const posLocationId = adminUser?.locationId || (selectedLocationId !== '__all__' ? selectedLocationId : null) || 'royal-main';
+  const posLocationName = selectedLocation?.name || null;
 
   // ─── Firestore data ───
   const [categories, setCategories] = useState<MenuCategory[]>([]);
@@ -356,6 +360,7 @@ export default function PosMenuPage() {
     callApi('/placeOrder', {
       userId: currentTargetUid || 'pos_guest',
       locationId: posLocationId,
+      locationName: posLocationName,
       items: currentCartItems.map((item) => ({
         id: item.id,
         name: item.name,
@@ -398,7 +403,7 @@ export default function PosMenuPage() {
       .catch(() => {
         setOrderNumber('ERROR');
       });
-  }, [cartItems, dispatch, total, customerPhone, customerName, customerBonus, useBonuses, targetUid, posLocationId]);
+  }, [cartItems, dispatch, total, customerPhone, customerName, customerBonus, useBonuses, targetUid, posLocationId, posLocationName]);
 
   // Keep checkoutRef in sync for pistol scanner auto-checkout
   useEffect(() => { checkoutRef.current = handleCheckout; }, [handleCheckout]);

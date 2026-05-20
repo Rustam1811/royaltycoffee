@@ -76,14 +76,19 @@ class PWAUpdater {
    * the fresh index.html with the new chunk URLs.
    */
   private setupStaleChunkListener(): void {
-    let reloading = false;
+    // Use sessionStorage so the flag survives page reload and prevents infinite loops.
+    // A local variable resets after every reload, causing STALE_CHUNK reload loops.
     navigator.serviceWorker.addEventListener('message', (event) => {
-      if (event.data?.type === 'STALE_CHUNK' && !reloading) {
-        reloading = true;
-        // Force a fresh load — bypass cache
-        window.location.reload();
+      if (event.data?.type === 'STALE_CHUNK') {
+        const alreadyReloaded = sessionStorage.getItem('sw_stale_reload');
+        if (!alreadyReloaded) {
+          sessionStorage.setItem('sw_stale_reload', '1');
+          window.location.reload();
+        }
       }
     });
+    // Clear the flag after 30s so a genuine future stale can reload once more
+    setTimeout(() => sessionStorage.removeItem('sw_stale_reload'), 30_000);
   }
 
   private setupVisibilityCheck(): void {

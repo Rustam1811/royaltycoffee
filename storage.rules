@@ -7,8 +7,9 @@ service firebase.storage {
     
     function isAdmin() {
       return isAuthenticated() && 
-             (request.auth.token.email.matches('.*@admin\\..*') ||
-              request.auth.token.email.matches('.*@royal\\..*') ||
+             (request.auth.token.admin == true ||
+              request.auth.token.owner == true ||
+              request.auth.token.superowner == true ||
               request.auth.token.role == 'admin' ||
               request.auth.token.role == 'owner' ||
               request.auth.token.role == 'superowner');

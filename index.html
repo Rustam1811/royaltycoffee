@@ -2,13 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Coffee App</title>
+    <title>Royalty Coffee</title>
     
     <base href="/" />
     
-    <meta name="theme-color" content="#3B0A0A" />
+    <meta name="theme-color" content="#F4EDE4" />
 <!-- Для iOS ярлыка: -->
-<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
     <meta
@@ -17,12 +17,15 @@
     />
     <meta name="format-detection" content="telephone=no" />
     <meta name="msapplication-tap-highlight" content="no" />
-    
+    <!-- Prefetch 3D thermos model so it's in browser cache when Three.js requests it -->
+    <link rel="prefetch" href="/images/3Dcup_tiny.glb" as="fetch" crossorigin="anonymous" />
+
     <link rel="manifest" href="/manifest.json" />
     <script>
-      // Register SW only outside localhost to avoid dev caching issues
+      // Register SW only on web (not native Capacitor) and outside localhost
       (function() {
         if (!('serviceWorker' in navigator)) return;
+        if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) return;
         var isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
         if (!isLocalhost) {
           navigator.serviceWorker.register('/sw.js');
@@ -30,34 +33,41 @@
       })();
     </script>
 
-    <link rel="shortcut icon" type="image/png" href="/coffeeaddict.jpg" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/coffeeaddict.jpg" />
-    <link rel="apple-touch-icon" href="/coffeeaddict.jpg" />
+    <link rel="shortcut icon" type="image/png" href="/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png" />
 
-    <!-- Yandex Maps JS API -->
-    <script src="https://api-maps.yandex.ru/2.1/?apikey=dfefd8cb-c914-4b64-97f3-bd35ad12cc18&lang=ru_RU" type="text/javascript"></script>
+    <!-- 2GIS Maps API — loaded async; on Capacitor native, loaded dynamically by map component -->
+    <script>
+      (function() {
+        // Skip blocking 2GIS on native Capacitor — map component loads it on demand
+        if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) return;
+        var s = document.createElement('script');
+        s.src = 'https://maps.api.2gis.ru/2.0/loader.js?pkg=full&skin=dark';
+        s.async = true;
+        document.head.appendChild(s);
+      })();
+    </script>
+
 
   </head>
   <body>
     <div id="root">
       <!-- Splash screen: visible instantly while JS bundles load -->
       <style>
-        #splash{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;background:url(/images/royal-bg.jpg) center/cover no-repeat #3B0A0A}
-        #splash::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.5),rgba(0,0,0,.3),rgba(0,0,0,.6))}
-        #splash>*{position:relative;z-index:1}
-        @keyframes spin3d{0%{transform:perspective(600px) rotateY(0deg)}100%{transform:perspective(600px) rotateY(360deg)}}
+        #splash{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#F4EDE4}
         @keyframes fadeUp{0%{opacity:0;transform:translateY(12px)}100%{opacity:1;transform:translateY(0)}}
-        #splash img{width:112px;height:112px;object-fit:contain;animation:spin3d 6s linear infinite;filter:drop-shadow(0 0 15px rgba(212,175,55,.3))}
-        #splash h2{color:#fff;font:bold 1.5rem/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin-top:1.25rem;animation:fadeUp .6s ease-out .2s both}
-        #splash p{color:rgba(255,255,255,.4);font:.875rem/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin-top:.5rem;animation:fadeUp .6s ease-out .4s both}
-        #splash .dots{display:flex;gap:6px;margin-top:1.5rem;animation:fadeUp .6s ease-out .6s both}
+        @keyframes pulse{0%,100%{opacity:.3}50%{opacity:.7}}
+        #splash h2{color:#3D0A11;font:bold 1.25rem/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin-top:1.25rem;animation:fadeUp .6s ease-out .2s both}
+        #splash p{color:rgba(61,10,17,.35);font:.875rem/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin-top:.5rem;animation:fadeUp .6s ease-out .4s both}
+        #splash .dots{display:flex;gap:6px;margin-top:1.25rem;animation:fadeUp .6s ease-out .6s both}
         #splash .dots span{width:6px;height:6px;border-radius:50%;background:#D4AF37;opacity:.3;animation:pulse 1.2s ease-in-out infinite}
         #splash .dots span:nth-child(2){animation-delay:.2s}
         #splash .dots span:nth-child(3){animation-delay:.4s}
-        @keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
       </style>
       <div id="splash">
-        <img src="/images/royal-thermos.webp" alt="" />
+        <!-- /public/royalty-cup.svg — exact geometry from src/components/RoyaltyCup.tsx -->
+        <object data="/royalty-cup.svg" type="image/svg+xml" width="124" height="270" style="overflow:hidden;display:block"></object>
         <h2>Royalty Coffee</h2>
         <p>Загружаем...</p>
         <div class="dots"><span></span><span></span><span></span></div>

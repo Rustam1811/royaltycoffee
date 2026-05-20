@@ -3,8 +3,9 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 export default defineConfig(() => {
+  const isCapacitor = process.env.CAPACITOR_BUILD === 'true';
   return {
-    base: '/app/',
+    base: isCapacitor ? './' : '/app/',
     plugins: [
       react(),
       // PWA: используем ручной public/sw.js и public/manifest.json
@@ -79,9 +80,9 @@ export default defineConfig(() => {
       minify: 'esbuild',
       target: 'es2015',
     },
-    // Production: удаляем console.log и debugger
+    // Production: удаляем console.log и debugger (disabled during Capacitor debugging)
     esbuild: {
-      drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : [],
+      drop: process.env.NODE_ENV === 'production' && process.env.CAPACITOR_BUILD !== 'true' ? ['console', 'debugger'] : [],
     },
     // Оптимизация dev сервера
     optimizeDeps: {

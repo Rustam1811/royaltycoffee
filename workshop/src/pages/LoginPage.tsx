@@ -63,7 +63,7 @@ const LoginPage: React.FC = () => {
             transition={{ delay: 0.1, duration: 0.4 }}
             className="text-center mb-8"
           >
-            <div className="w-20 h-20 bg-gradient-to-br from-workshop-500 to-workshop-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-orange-200">
+            <div className="w-20 h-20 bg-gradient-to-br from-[#3D0A11] to-[#5A0D17] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-rose-200">
               <BuildingStorefrontIcon className="w-10 h-10 text-white" />
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Цех</h1>
@@ -140,7 +140,7 @@ const LoginPage: React.FC = () => {
               whileTap={{ scale: 0.98 }}
               type="submit"
               disabled={loading || !email || !password}
-              className="w-full bg-gradient-to-r from-workshop-500 to-workshop-600 text-white font-semibold py-4 px-6 rounded-xl hover:from-workshop-600 hover:to-workshop-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-orange-200 mt-2"
+              className="w-full bg-gradient-to-r from-[#5A0D17] to-[#4D0E16] text-white font-semibold py-4 px-6 rounded-xl hover:from-[#4D0E16] hover:to-[#3D0A11] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-rose-200 mt-2"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">

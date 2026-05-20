@@ -37,7 +37,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({ open, onClose, children, maxH
       {open && (
         <>
           <motion.div
-            className="fixed inset-0 z-40"
+            className="fixed inset-0 z-[55]"
             onClick={onClose}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -53,7 +53,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({ open, onClose, children, maxH
           <motion.div
             ref={panelRef}
             className={[
-              'fixed inset-x-0 bottom-0 z-50 will-change-transform transform-gpu flex flex-col rounded-t-3xl',
+              'fixed inset-x-0 bottom-0 z-[60] will-change-transform transform-gpu flex flex-col rounded-t-3xl',
               isLight ? 'bg-white text-[var(--color-text-primary)]' : 'bg-[#0F1215] text-white',
               'shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.25)]',
               className || ''

@@ -19,7 +19,7 @@ import { RoyalLayout } from '../components/RoyalLayout';
 
 /* ─── constants ─── */
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1531123414780-f74242c2b052?auto=format&fit=crop&w=300&h=300&q=80';
-const MANAGER_PHONE = '77075553322'; // номер менеджера
+const MANAGER_PHONE = '77080008777'; // номер менеджера
 
 const LANGUAGES = [
   { code: 'ru', label: 'Русский', flag: '🇷🇺' },
@@ -181,14 +181,14 @@ interface MenuRowProps {
 const MenuRow: React.FC<MenuRowProps> = ({ icon, label, sublabel, onClick, danger }) => (
   <button
     onClick={onClick}
-    className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl bg-white/[0.08] border border-white/[0.06] hover:bg-white/[0.14] active:scale-[0.98] transition-all"
+    className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl bg-cream-card border border-cream-border hover:bg-cream-muted active:scale-[0.98] transition-all shadow-sm"
   >
-    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${danger ? 'bg-red-500/20' : 'bg-white/10'}`}>
+    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${danger ? 'bg-red-500/15' : 'bg-white/10'}`}>
       {icon}
     </div>
     <div className="flex-1 text-left">
       <p className={`text-sm font-medium ${danger ? 'text-red-400' : 'text-white'}`}>{label}</p>
-      {sublabel && <p className="text-xs text-white/50 mt-0.5">{sublabel}</p>}
+      {sublabel && <p className="text-xs text-white/40 mt-0.5">{sublabel}</p>}
     </div>
     <ChevronRightIcon className={`w-4 h-4 ${danger ? 'text-red-400/50' : 'text-white/30'}`} />
   </button>
@@ -203,7 +203,7 @@ const LegalSheet: React.FC<{ page: LegalKey | null; onClose: () => void }> = ({ 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm"
           onClick={onClose}
         />
         <motion.div
@@ -211,16 +211,16 @@ const LegalSheet: React.FC<{ page: LegalKey | null; onClose: () => void }> = ({ 
           animate={{ y: 0 }}
           exit={{ y: '100%' }}
           transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-          className="fixed inset-x-0 bottom-0 z-50 max-h-[85vh] bg-[#1a1a1a] rounded-t-3xl border-t border-white/10 flex flex-col"
+          className="fixed inset-x-0 bottom-0 z-[60] max-h-[85vh] bg-cream-card rounded-t-3xl border-t border-cream-border flex flex-col"
         >
-          <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 flex-shrink-0">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-cream-border flex-shrink-0">
             <h2 className="text-lg font-bold text-white">{legalPages[page].title}</h2>
-            <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-              <XMarkIcon className="w-5 h-5 text-white/70" />
+            <button onClick={onClose} className="w-8 h-8 rounded-full bg-cream-skel flex items-center justify-center">
+              <XMarkIcon className="w-5 h-5 text-white/50" />
             </button>
           </div>
           <div className="flex-1 overflow-y-auto px-5 py-4 overscroll-contain">
-            <pre className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap font-sans">
+            <pre className="text-sm text-white/60 leading-relaxed whitespace-pre-wrap font-sans">
               {legalPages[page].content}
             </pre>
           </div>
@@ -241,7 +241,7 @@ const LanguageSheet: React.FC<{ open: boolean; current: string; onChange: (code:
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm"
           onClick={onClose}
         />
         <motion.div
@@ -249,12 +249,12 @@ const LanguageSheet: React.FC<{ open: boolean; current: string; onChange: (code:
           animate={{ y: 0 }}
           exit={{ y: '100%' }}
           transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-          className="fixed inset-x-0 bottom-0 z-50 bg-[#1a1a1a] rounded-t-3xl border-t border-white/10"
+          className="fixed inset-x-0 bottom-0 z-[60] bg-cream-card rounded-t-3xl border-t border-cream-border"
         >
-          <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-cream-border">
             <h2 className="text-lg font-bold text-white">Язык приложения</h2>
-            <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-              <XMarkIcon className="w-5 h-5 text-white/70" />
+            <button onClick={onClose} className="w-8 h-8 rounded-full bg-cream-skel flex items-center justify-center">
+              <XMarkIcon className="w-5 h-5 text-white/50" />
             </button>
           </div>
           <div className="p-4 space-y-2 pb-8">
@@ -265,11 +265,11 @@ const LanguageSheet: React.FC<{ open: boolean; current: string; onChange: (code:
                   key={lang.code}
                   onClick={() => { onChange(lang.code); onClose(); }}
                   className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all ${
-                    active ? 'bg-[#D4AF37]/20 ring-1 ring-[#D4AF37]/40' : 'bg-white/[0.06] hover:bg-white/[0.12]'
+                    active ? 'bg-[#D4AF37]/10 ring-1 ring-[#D4AF37]/40' : 'bg-cream-muted border border-cream-border hover:bg-cream-skel'
                   }`}
                 >
                   <span className="text-2xl">{lang.flag}</span>
-                  <span className={`flex-1 text-left text-sm font-medium ${active ? 'text-[#D4AF37]' : 'text-white'}`}>
+                  <span className={`flex-1 text-left text-sm font-medium ${active ? 'text-[#D4AF37]' : 'text-white/70'}`}>
                     {lang.label}
                   </span>
                   {active && <div className="w-2.5 h-2.5 rounded-full bg-[#D4AF37]" />}
@@ -286,11 +286,30 @@ const LanguageSheet: React.FC<{ open: boolean; current: string; onChange: (code:
 /* ═══════════════════════════ PAGE ═══════════════════════════ */
 const ProfilePage: React.FC = () => {
   const { i18n } = useTranslation();
-  const { user, signOut, updateProfile } = useAuth();
+  const { user, signOut, updateProfile, deleteAccount } = useAuth();
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showLang, setShowLang] = useState(false);
   const [legalPage, setLegalPage] = useState<LegalKey | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteAccount();
+    } catch (e: unknown) {
+      const err = e as { code?: string; message?: string };
+      if (err.code === 'auth/requires-recent-login') {
+        setDeleteError('Для удаления аккаунта необходимо выйти и снова войти, затем повторить попытку.');
+      } else {
+        setDeleteError('Не удалось удалить аккаунт. Попробуйте позже.');
+      }
+      setDeleting(false);
+    }
+  };
 
   const handleLanguageChange = (code: string) => {
     i18n.changeLanguage(code);
@@ -301,14 +320,14 @@ const ProfilePage: React.FC = () => {
   return (
     <RoyalLayout>
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-black/40 backdrop-blur-md p-4 border-b border-white/10">
+      <header className="sticky top-0 z-10 bg-gradient-to-br from-[#3D0A11] via-[#4D0E16] to-[#5A0D17] px-4 pb-3 pt-safe">
         <h1 className="text-2xl font-extrabold text-white text-center">Профиль</h1>
       </header>
 
       <main className="p-4 space-y-6 pb-36">
         {/* ─── User card ─── */}
         <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-          <div className="bg-white/[0.08] backdrop-blur-sm rounded-3xl border border-white/10 p-5">
+          <div className="bg-cream-card backdrop-blur-sm rounded-3xl border border-cream-border p-5 shadow-royal-sm">
             <div className="flex items-center gap-4">
               <img
                 src={user?.avatar || DEFAULT_AVATAR}
@@ -331,11 +350,11 @@ const ProfilePage: React.FC = () => {
 
         {/* ─── Settings ─── */}
         <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}>
-          <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-5" />
-          <p className="text-[11px] font-bold text-[#D4AF37]/70 uppercase tracking-[0.15em] mb-3 px-1">Настройки</p>
+          <div className="h-px bg-gradient-to-r from-transparent via-[#3D0A11]/10 to-transparent mb-5" />
+          <p className="text-[11px] font-bold text-[#D4AF37] uppercase tracking-[0.15em] mb-3 px-1">Настройки</p>
           <div className="space-y-2">
             <MenuRow
-              icon={<GlobeAltIcon className="w-5 h-5 text-white/70" />}
+              icon={<GlobeAltIcon className="w-5 h-5 text-white/50" />}
               label="Язык приложения"
               sublabel={currentLangLabel}
               onClick={() => setShowLang(true)}
@@ -345,14 +364,14 @@ const ProfilePage: React.FC = () => {
 
         {/* ─── Feedback ─── */}
         <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
-          <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-5" />
-          <p className="text-[11px] font-bold text-[#D4AF37]/70 uppercase tracking-[0.15em] mb-3 px-1">Обратная связь</p>
+          <div className="h-px bg-gradient-to-r from-transparent via-[#3D0A11]/10 to-transparent mb-5" />
+          <p className="text-[11px] font-bold text-[#D4AF37] uppercase tracking-[0.15em] mb-3 px-1">Обратная связь</p>
           <div className="space-y-2">
             <MenuRow
               icon={<ChatBubbleLeftEllipsisIcon className="w-5 h-5 text-green-400" />}
               label="Написать в WhatsApp"
               sublabel="Отзыв или вопрос менеджеру"
-              onClick={() => window.open(`https://wa.me/${MANAGER_PHONE}?text=${encodeURIComponent('Здравствуйте! Пишу из приложения Royal Coffee.')}`, '_blank')}
+              onClick={() => window.open(`https://wa.me/${MANAGER_PHONE}?text=${encodeURIComponent('Здравствуйте! Пишу из приложения Royalty Coffee.')}`, '_blank')}
             />
             <MenuRow
               icon={<ChatBubbleLeftEllipsisIcon className="w-5 h-5 text-blue-400" />}
@@ -365,16 +384,16 @@ const ProfilePage: React.FC = () => {
 
         {/* ─── Legal ─── */}
         <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}>
-          <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-5" />
-          <p className="text-[11px] font-bold text-[#D4AF37]/70 uppercase tracking-[0.15em] mb-3 px-1">Юридическая информация</p>
+          <div className="h-px bg-gradient-to-r from-transparent via-[#3D0A11]/10 to-transparent mb-5" />
+          <p className="text-[11px] font-bold text-[#D4AF37] uppercase tracking-[0.15em] mb-3 px-1">Юридическая информация</p>
           <div className="space-y-2">
             <MenuRow
-              icon={<DocumentTextIcon className="w-5 h-5 text-white/70" />}
+              icon={<DocumentTextIcon className="w-5 h-5 text-white/50" />}
               label="Публичная оферта"
               onClick={() => setLegalPage('offer')}
             />
             <MenuRow
-              icon={<ShieldCheckIcon className="w-5 h-5 text-white/70" />}
+              icon={<ShieldCheckIcon className="w-5 h-5 text-white/50" />}
               label="Политика конфиденциальности"
               onClick={() => setLegalPage('privacy')}
             />
@@ -384,7 +403,7 @@ const ProfilePage: React.FC = () => {
               onClick={() => setLegalPage('bonus')}
             />
             <MenuRow
-              icon={<DevicePhoneMobileIcon className="w-5 h-5 text-white/70" />}
+              icon={<DevicePhoneMobileIcon className="w-5 h-5 text-white/50" />}
               label="Условия использования"
               onClick={() => setLegalPage('terms')}
             />
@@ -393,7 +412,7 @@ const ProfilePage: React.FC = () => {
 
         {/* ─── Sign out ─── */}
         <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }}>
-          <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-5" />
+          <div className="h-px bg-gradient-to-r from-transparent via-[#3D0A11]/10 to-transparent mb-5" />
           <div className="space-y-2">
             <MenuRow
               icon={<ArrowRightOnRectangleIcon className="w-5 h-5 text-red-400" />}
@@ -406,8 +425,23 @@ const ProfilePage: React.FC = () => {
 
         {/* ─── App version ─── */}
         <div className="text-center pt-2 pb-4">
-          <p className="text-xs text-white/25">Royal Coffee v1.0</p>
+          <p className="text-xs text-[#3D0A11]/30">Royalty Coffee v1.0</p>
         </div>
+
+        {/* ─── Danger zone ─── */}
+        <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.45 }}>
+          <div className="h-px bg-gradient-to-r from-transparent via-red-900/20 to-transparent mb-5" />
+          <div className="rounded-2xl border border-red-900/30 bg-red-950/20 p-4">
+            <p className="text-xs text-red-400/60 mb-3">Опасная зона</p>
+            <MenuRow
+              icon={<XMarkIcon className="w-5 h-5 text-red-400" />}
+              label="Удалить аккаунт"
+              sublabel="Все данные будут удалены безвозвратно"
+              onClick={() => setShowDeleteConfirm(true)}
+              danger
+            />
+          </div>
+        </motion.section>
       </main>
 
       {/* Sheets */}
@@ -420,6 +454,59 @@ const ProfilePage: React.FC = () => {
         onClose={() => setShowEditModal(false)}
         onSave={updateProfile}
       />
+
+      {/* Delete Account Confirmation Sheet */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm"
+              onClick={() => { if (!deleting) { setShowDeleteConfirm(false); setDeleteError(null); } }}
+            />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="fixed inset-x-0 bottom-0 z-[70] rounded-t-3xl overflow-hidden"
+              style={{ background: 'linear-gradient(160deg, #3D0A11 0%, #4D0E16 60%, #5A0D17 100%)', paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 24px)' }}
+            >
+              <div className="flex flex-col items-center px-6 pt-6 pb-2">
+                <div className="w-12 h-12 rounded-full bg-red-900/40 flex items-center justify-center mb-4">
+                  <XMarkIcon className="w-7 h-7 text-red-400" />
+                </div>
+                <h2 className="text-xl font-bold text-white mb-2">Удалить аккаунт?</h2>
+                <p className="text-sm text-white/60 text-center mb-1">Вы уверены, что хотите удалить аккаунт?</p>
+                <p className="text-sm text-red-400/80 text-center mb-6">Все данные, бонусы и история заказов будут удалены безвозвратно.</p>
+
+                {deleteError && (
+                  <div className="w-full bg-red-900/40 border border-red-700/40 rounded-xl px-4 py-3 mb-4">
+                    <p className="text-sm text-red-300 text-center">{deleteError}</p>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={deleting}
+                  className="w-full py-4 rounded-2xl font-bold text-white bg-red-700 active:bg-red-800 disabled:opacity-50 mb-3 transition-all"
+                >
+                  {deleting ? 'Удаление...' : 'Да, удалить аккаунт'}
+                </button>
+                <button
+                  onClick={() => { setShowDeleteConfirm(false); setDeleteError(null); }}
+                  disabled={deleting}
+                  className="w-full py-4 rounded-2xl font-bold text-[#D4AF37] bg-white/5 border border-[#D4AF37]/20 active:bg-white/10 disabled:opacity-50 transition-all"
+                >
+                  Отмена
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </RoyalLayout>
   );
 };

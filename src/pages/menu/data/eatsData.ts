@@ -435,4 +435,63 @@ export const eatsCategories: EatsCategory[] = [
       },
     ],
   },
+
+  // ─── 5. Новинки (5 позиций) ────────────────────────────────
+  {
+    id: 5,
+    title: 'Новинки',
+    image: '/eats/eat-39.webp',
+    products: [
+      {
+        id: 5039,
+        name: 'Новинка 1', // TODO: заполнить название
+        price: 990,
+        description: 'Описание нового блюда.', // TODO: заполнить описание
+        image: '/eats/eat-39.webp',
+        energy: 0, protein: 0, fat: 0, carbs: 0,
+        badges: ['NEW'],
+        weight: '',
+      },
+      {
+        id: 5040,
+        name: 'Новинка 2', // TODO: заполнить название
+        price: 990,
+        description: 'Описание нового блюда.', // TODO: заполнить описание
+        image: '/eats/eat-40.webp',
+        energy: 0, protein: 0, fat: 0, carbs: 0,
+        badges: ['NEW'],
+        weight: '',
+      },
+      {
+        id: 5041,
+        name: 'Новинка 3', // TODO: заполнить название
+        price: 990,
+        description: 'Описание нового блюда.', // TODO: заполнить описание
+        image: '/eats/eat-41.webp',
+        energy: 0, protein: 0, fat: 0, carbs: 0,
+        badges: ['NEW'],
+        weight: '',
+      },
+      {
+        id: 5042,
+        name: 'Новинка 4', // TODO: заполнить название
+        price: 990,
+        description: 'Описание нового блюда.', // TODO: заполнить описание
+        image: '/eats/eat-42.webp',
+        energy: 0, protein: 0, fat: 0, carbs: 0,
+        badges: ['NEW'],
+        weight: '',
+      },
+      {
+        id: 5043,
+        name: 'Новинка 5', // TODO: заполнить название
+        price: 990,
+        description: 'Описание нового блюда.', // TODO: заполнить описание
+        image: '/eats/eat-43.webp',
+        energy: 0, protein: 0, fat: 0, carbs: 0,
+        badges: ['NEW'],
+        weight: '',
+      },
+    ],
+  },
 ];

@@ -1,18 +1,22 @@
 // src/auth/AuthContext.tsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
+  Auth,
   GoogleAuthProvider,
   OAuthProvider,
   signInWithPopup,
   signInWithRedirect,
+  signInWithCredential,
   getRedirectResult,
   signOut as fbSignOut,
   onAuthStateChanged,
   User as FbUser,
   getIdTokenResult,
   signInWithEmailAndPassword,
+  deleteUser,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { Capacitor } from '@capacitor/core';
 import { auth, db } from '../firebase';
 import { PhoneInputModal } from '../components/PhoneInputModal';
 
@@ -36,6 +40,7 @@ type AuthContextType = {
   loginWithEmail: (email: string, password: string) => Promise<void>;
   loginWithToken: (token: string, phone: string) => Promise<void>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   savePhone: (phone: string) => Promise<void>;
   updateProfile: (data: { name: string; phone: string; avatar?: string }) => Promise<void>;
   showPhoneInput: () => void;
@@ -86,33 +91,57 @@ const fbUserToAppUser = (u: FbUser | null): AppUser | null => {
 // ———————————————————————————————————————————————
 // Provider
 // ———————————————————————————————————————————————
+// ── Attempt to restore cached user synchronously so the first render is
+//    already authenticated — prevents a loading flash on iOS cold start.
+const readCachedUser = (): AppUser | null => {
+  try {
+    const raw = localStorage.getItem('user');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as AppUser;
+    // Basic sanity-check: must have a uid
+    if (!parsed?.uid) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<AppUser | null>(null);
+  const cachedUser = readCachedUser();
+  // If we have a cached user, start with loading=false so the app is immediately usable.
+  // onAuthStateChanged will verify / refresh the session in the background.
+  const [loading, setLoading] = useState(!cachedUser);
+  const [user, setUser] = useState<AppUser | null>(cachedUser);
   const [showPhoneModal, setShowPhoneModal] = useState(false);
   const [needsPhone, setNeedsPhone] = useState(false);
 
   useEffect(() => {
-    const handleRedirectResult = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result?.user) {
-          // Redirect authentication completed, onAuthStateChanged will handle the rest
-          console.log('Redirect auth completed for user:', result.user.uid);
-        }
-      } catch (error) {
-        console.error('Redirect result error:', error);
-      }
-    };
+    // Safety net: if onAuthStateChanged never fires (e.g. iOS WKWebView cold start bug),
+    // unblock the app after 5 s. NOT cancelled early — must survive until auth resolves.
+    const hardTimeout = setTimeout(() => setLoading(false), 5000);
 
-    // Handle redirect result first
-    handleRedirectResult();
+    // Handle redirect result — skip on native (redirect auth not supported in WebView)
+    if (!Capacitor.isNativePlatform()) {
+      getRedirectResult(auth)
+        .then(result => {
+          if (result?.user) {
+            console.log('Redirect auth completed for user:', result.user.uid);
+          }
+        })
+        .catch(() => { /* ignore redirect errors */ });
+    }
 
     const unsub = onAuthStateChanged(auth, async (u) => {
+      clearTimeout(hardTimeout);
       if (u) {
         try {
-          // Получаем роль из custom claims Firebase ID токена (force refresh для свежих claims)
-          const tokenResult = await getIdTokenResult(u, true);
+          // getIdTokenResult читает claims из локального кэша (false = без force refresh).
+          // Promise.race(3s) — страховка от зависания на iOS WKWebView (SDK может не бросать
+          // ошибку, а просто молчать). Это главная причина "бесконечной загрузки".
+          const tokenResult = await Promise.race([
+            getIdTokenResult(u, false),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error('token_timeout')), 3000)),
+          ]);
           const claims = tokenResult.claims;
           
           // Валидируем роль из claims
@@ -142,21 +171,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   appUser.phone = userData.phone;
                   appUser.name = userData.name || appUser.name;
                   appUser.avatar = userData.avatar || appUser.avatar;
-                  
-                  // Обновляем состояние с полными данными
-                  setUser({ ...appUser });
-                  localStorage.setItem('user', JSON.stringify(appUser));
-                  
-                  // Начисляем отложенные бонусы в фоне
-                  if (appUser.phone) {
-                    fetch('/api/bonus/claim-pending', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ userId: u.uid, phone: appUser.phone })
-                    }).catch(() => {/* ignore */});
-                  }
+                } else if (u.displayName || u.email) {
+                  // Первый вход через Google/Apple — создаём документ
+                  await setDoc(doc(db, 'users', u.uid), {
+                    name: u.displayName || '',
+                    email: u.email || '',
+                    avatar: u.photoURL || '',
+                    role: 'user',
+                    createdAt: serverTimestamp(),
+                  }, { merge: true });
                 }
-                
+
+                // Обновляем состояние с полными данными
+                setUser({ ...appUser });
+                localStorage.setItem('user', JSON.stringify(appUser));
+
                 setNeedsPhone(!appUser.phone && appUser.role === 'user');
               } catch (firestoreError) {
                 console.warn('Error fetching user data from Firestore:', firestoreError);
@@ -203,7 +232,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(false);
       }
     });
-    return () => unsub();
+    return () => { unsub(); clearTimeout(hardTimeout); };
   }, []);
 
   // ———————————————————————————————————————————————
@@ -212,18 +241,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginWithGoogle = async () => {
     setLoading(true);
     try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({
-        prompt: 'select_account'
-      });
-
-      // Try popup first, fallback to redirect if popup fails
-      try {
-        await signInWithPopup(auth, provider);
-      } catch (popupError) {
-        console.warn('Popup failed, trying redirect:', popupError);
-        // Fallback to redirect method
-        await signInWithRedirect(auth, provider);
+      if (Capacitor.isNativePlatform()) {
+        // Native: use Capacitor Firebase Authentication plugin (native Google Sign-In SDK)
+        const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication');
+        const result = await FirebaseAuthentication.signInWithGoogle();
+        // Get credential and sign in to Firebase JS SDK
+        const idToken = result.credential?.idToken;
+        const accessToken = result.credential?.accessToken;
+        if (!idToken) throw new Error('Google Sign-In не вернул токен. Попробуйте ещё раз.');
+        const credential = GoogleAuthProvider.credential(idToken, accessToken);
+        await signInWithCredential(auth, credential);
+      } else {
+        // Web: try popup, fallback to redirect
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        try {
+          await signInWithPopup(auth, provider);
+        } catch (popupError) {
+          console.warn('Popup failed, trying redirect:', popupError);
+          await signInWithRedirect(auth, provider);
+        }
       }
     } catch (error) {
       console.error('Auth error:', error);
@@ -237,18 +274,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginWithApple = async () => {
     setLoading(true);
     try {
-      const provider = new OAuthProvider('apple.com');
-      provider.setCustomParameters({
-        prompt: 'select_account'
-      });
-
-      // Try popup first, fallback to redirect if popup fails
-      try {
-        await signInWithPopup(auth, provider);
-      } catch (popupError) {
-        console.warn('Popup failed, trying redirect:', popupError);
-        // Fallback to redirect method
-        await signInWithRedirect(auth, provider);
+      if (Capacitor.isNativePlatform()) {
+        // Native: use Capacitor Firebase Authentication plugin (native Apple Sign-In)
+        const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication');
+        const result = await FirebaseAuthentication.signInWithApple();
+        // Get credential and sign in to Firebase JS SDK
+        const idToken = result.credential?.idToken;
+        const nonce = result.credential?.nonce;
+        if (!idToken) throw new Error('Apple Sign-In не вернул токен. Попробуйте ещё раз.');
+        const provider = new OAuthProvider('apple.com');
+        const credential = provider.credential({ idToken, rawNonce: nonce });
+        await signInWithCredential(auth, credential);
+      } else {
+        // Web: try popup, fallback to redirect
+        const provider = new OAuthProvider('apple.com');
+        provider.setCustomParameters({ prompt: 'select_account' });
+        try {
+          await signInWithPopup(auth, provider);
+        } catch (popupError) {
+          console.warn('Popup failed, trying redirect:', popupError);
+          await signInWithRedirect(auth, provider);
+        }
       }
     } catch (error) {
       console.error('Auth error:', error);
@@ -344,6 +390,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('auth_phone');
   };
 
+  const deleteAccount = async () => {
+    if (!user) throw new Error('No user logged in');
+    try {
+      // Delete Firestore user document
+      await deleteDoc(doc(db, 'users', user.uid));
+    } catch (e) {
+      console.warn('Could not delete Firestore user doc:', e);
+    }
+    // Delete Firebase Auth account (requires recent sign-in)
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      await deleteUser(currentUser);
+    }
+    setUser(null);
+    localStorage.removeItem('user');
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_phone');
+  };
+
   const savePhone = async (phone: string) => {
     if (!user) throw new Error('No user logged in');
     
@@ -417,6 +482,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loginWithEmail,
     loginWithToken,
     signOut,
+    deleteAccount,
     savePhone,
     updateProfile,
     showPhoneInput,

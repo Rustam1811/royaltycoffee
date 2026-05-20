@@ -8,27 +8,30 @@ import './index.css';
 
 /**
  * Workshop App - Приложение цеха
- * Логин происходит в основном приложении (/app/login)
+ * Логин происходит в основном приложении (/login)
  * Пользователи с workshop ролями редиректятся сюда автоматически
  */
+
 const App: React.FC = () => {
   return (
     <BrowserRouter basename="/workshop">
       <UserProvider>
         <CartProvider>
           <div className="min-h-screen bg-slate-50 font-sans">
-            <Switch>
-              {/* Редирект на основной логин */}
-              <Route exact path="/login">
-                <RedirectToMainLogin />
-              </Route>
-              <Route path="/">
-                <>
-                  <RoleBasedRouter />
-                  <BottomNavBar />
-                </>
-              </Route>
-            </Switch>
+            <div className="max-w-2xl mx-auto bg-white min-h-screen shadow-sm">
+              <Switch>
+                {/* Редирект на основной логин */}
+                <Route exact path="/login">
+                  <RedirectToMainLogin />
+                </Route>
+                <Route path="/">
+                  <>
+                    <RoleBasedRouter />
+                    <BottomNavBar />
+                  </>
+                </Route>
+              </Switch>
+            </div>
           </div>
         </CartProvider>
       </UserProvider>
@@ -41,7 +44,7 @@ const App: React.FC = () => {
  */
 const RedirectToMainLogin: React.FC = () => {
   React.useEffect(() => {
-    window.location.href = '/app/login';
+    window.location.href = '/login';
   }, []);
   
   return (

@@ -1,18 +1,18 @@
 :root {
-  /* Royalty Coffee Burgundy Theme */
-  --color-bg-base: #5C0E0E; /* burgundy page background */
-  --color-bg-alt: #4A0B0B;  /* darker burgundy strips */
-  --color-bg-elev-1: #6B1212; /* cards - slightly lighter burgundy */
-  --color-bg-elev-2: #7A1515; /* secondary surfaces */
-  --color-bg-glass: rgba(92,14,14,0.75);
-  --color-brand-amber: #D4A574; /* gold/cream accent */
-  --color-brand-amber-rgb: 212 165 116;
-  --color-text-primary: #FFFFFF;
-  --color-text-secondary: #E8D5C4;
-  --color-text-tertiary: #C4A88A;
-  --color-text-invert: #5C0E0E;
-  --color-border: #7A1515;
-  --color-border-strong: #8B1A1A;
+  /* Royalty Coffee Cream Theme (matches Home page) */
+  --color-bg-base: #F4EDE4; /* warm cream page background */
+  --color-bg-alt: #EDE5DA;  /* slightly darker cream for strips */
+  --color-bg-elev-1: #5A1219; /* cards - burgundy surfaces on cream */
+  --color-bg-elev-2: #6B1A24; /* secondary surfaces */
+  --color-bg-glass: rgba(244,237,228,0.85);
+  --color-brand-amber: #D4AF37; /* gold accent */
+  --color-brand-amber-rgb: 212 175 55;
+  --color-text-primary: #3D0A11;
+  --color-text-secondary: #5A2A33;
+  --color-text-tertiary: #8B5A63;
+  --color-text-invert: #3D0A11;
+  --color-border: #6B1A24;
+  --color-border-strong: #7A2030;
   --color-focus: #1C1E21;
   --color-danger: #E54848;
   --color-warning: #FFC53D;

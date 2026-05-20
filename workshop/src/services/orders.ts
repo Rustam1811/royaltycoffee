@@ -19,15 +19,25 @@ const TEMPLATES_COLLECTION = 'workshop_quick_orders';
 
 // Создать заказ
 export async function createOrder(order: Omit<WorkshopOrder, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  // Firestore не принимает undefined — убираем такие поля
+  const clean: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(order)) {
+    if (v !== undefined) clean[k] = v;
+  }
+
   const docRef = await addDoc(collection(db, ORDERS_COLLECTION), {
-    ...order,
+    ...clean,
     status: 'pending',
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
   });
   
-  // Сохраняем как шаблон быстрого заказа
-  await saveQuickOrderTemplate(order.clientId, order.outletId, order.items);
+  // Сохраняем как шаблон быстрого заказа (не блокируем создание заказа при ошибке)
+  try {
+    await saveQuickOrderTemplate(order.clientId, order.outletId, order.items);
+  } catch {
+    // template save failed — non-critical, order already created
+  }
   
   return docRef.id;
 }
@@ -81,7 +91,7 @@ export async function getAllOrders(statusFilter?: OrderStatus): Promise<Workshop
   let q = query(
     collection(db, ORDERS_COLLECTION),
     orderBy('createdAt', 'desc'),
-    limit(200)
+    limit(500)
   );
   
   if (statusFilter) {
@@ -89,7 +99,7 @@ export async function getAllOrders(statusFilter?: OrderStatus): Promise<Workshop
       collection(db, ORDERS_COLLECTION),
       where('status', '==', statusFilter),
       orderBy('createdAt', 'desc'),
-      limit(200)
+      limit(500)
     );
   }
   
@@ -181,6 +191,30 @@ export async function getQuickOrderTemplate(
     items: data.items,
     lastUsed: data.lastUsed?.toDate?.() || new Date(),
   };
+}
+
+// Отменить заказ (только pending)
+export async function cancelOrder(orderId: string): Promise<void> {
+  await updateDoc(doc(db, ORDERS_COLLECTION, orderId), {
+    status: 'cancelled',
+    updatedAt: Timestamp.now(),
+  });
+}
+
+// Обновить позиции заказа (только pending) — редактирование клиентом
+export async function updateOrderItems(
+  orderId: string,
+  items: OrderItem[],
+  totalAmount: number,
+  notes?: string,
+): Promise<void> {
+  const base: { items: OrderItem[]; totalAmount: number; updatedAt: Timestamp; notes?: string | null } = {
+    items,
+    totalAmount,
+    updatedAt: Timestamp.now(),
+  };
+  if (notes !== undefined) base.notes = notes || null;
+  await updateDoc(doc(db, ORDERS_COLLECTION, orderId), base);
 }
 
 // Получить заказ по ID

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { TrophyIcon, CheckIcon } from '@heroicons/react/24/solid';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase';
+import { API_CONFIG } from '../services/apiConfig';
 
 interface Achievement {
   id: string;
@@ -102,7 +103,7 @@ export const AchievementList: React.FC<AchievementListProps> = ({
 
   const loadAchievements = async () => {
     try {
-      const baseRes = await fetch(`/api/promo?action=achievements`);
+      const baseRes = await fetch(`${API_CONFIG.BASE_URL}/promo?action=achievements`);
       if (!baseRes.ok) throw new Error('Failed to fetch achievements');
       const baseJson = await baseRes.json();
       const list: Achievement[] = baseJson.achievements || [];
@@ -126,7 +127,7 @@ export const AchievementList: React.FC<AchievementListProps> = ({
 
       if (userId) {
         const userRes = await fetch(
-          `/api/promo?action=achievements&userId=${userId}`
+          `${API_CONFIG.BASE_URL}/promo?action=achievements&userId=${userId}`
         );
         const userJson = userRes.ok ? await userRes.json() : { achievements: [] };
         const unlocked: any[] = userJson.achievements || [];
@@ -151,7 +152,7 @@ export const AchievementList: React.FC<AchievementListProps> = ({
     if (!currentUser) return;
     try {
       const res = await fetch(
-        `/api/promo?action=achievements&userId=${currentUser}`
+        `${API_CONFIG.BASE_URL}/promo?action=achievements&userId=${currentUser}`
       );
       if (res.ok) {
         const j = await res.json();
@@ -168,7 +169,7 @@ export const AchievementList: React.FC<AchievementListProps> = ({
     if (!currentUser) return;
     try {
       const res = await fetch(
-        `/api/bonus?action=user&userId=${currentUser}`
+        `${API_CONFIG.BASE_URL}/bonus?action=user&userId=${currentUser}`
       );
       if (res.ok) {
         const b = await res.json();
@@ -188,7 +189,7 @@ export const AchievementList: React.FC<AchievementListProps> = ({
     if (!currentUser) return;
     try {
       const res = await fetch(
-        `/api/promo?action=achievements`,
+        `${API_CONFIG.BASE_URL}/promo?action=achievements`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

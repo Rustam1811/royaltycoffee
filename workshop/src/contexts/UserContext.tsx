@@ -78,8 +78,25 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     }
 
-    // Firebase auth listener
+    // Firebase auth listener with timeout
+    console.log('[Workshop] Auth init at', new Date().toISOString());
+    
+    // On Capacitor iOS with browserLocalPersistence, auth.currentUser is available synchronously
+    // before onIdTokenChanged fires. Check it immediately to avoid showing login flash.
+    const currentUser = auth.currentUser;
+    console.log('[Workshop] Immediate auth.currentUser:', currentUser?.uid ?? 'null');
+
+    let timeoutMs = 15000;
+    const timeoutId = setTimeout(() => {
+      console.warn('[Workshop] Auth timeout - no response in', timeoutMs, 'ms');
+      setLoading(false);
+      setUser(null);
+    }, timeoutMs);
+
     const unsubscribe = onIdTokenChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+      console.log('[Workshop] Auth state change:', firebaseUser?.uid || 'null', firebaseUser?.email);
+      clearTimeout(timeoutId);
+      
       if (!firebaseUser) {
         setUser(null);
         setLoading(false);
@@ -87,8 +104,10 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       try {
-        const tokenResult = await getIdTokenResult(firebaseUser, true);
+        console.log('[Workshop] Getting token result...');
+        const tokenResult = await getIdTokenResult(firebaseUser, false);
         const role = resolveRole(firebaseUser.email, tokenResult.claims as Record<string, unknown>);
+        console.log('[Workshop] Role resolved:', role);
         
         const workshopUser: WorkshopUser = {
           uid: firebaseUser.uid,
@@ -99,15 +118,19 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         };
         
         setUser(workshopUser);
+        console.log('[Workshop] User set successfully');
       } catch (error) {
-        console.error("Error getting token:", error);
+        console.error("[Workshop] Error getting token:", error);
         setUser(null);
       } finally {
         setLoading(false);
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      clearTimeout(timeoutId);
+      unsubscribe();
+    };
   }, []);
 
   const logout = async () => {

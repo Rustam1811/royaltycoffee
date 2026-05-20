@@ -1,13 +1,12 @@
-// Service Worker для SunfoodApp — v12: MIME-safe, stale chunk detection
-const CACHE_VERSION = 'v12';
+// Service Worker для SunfoodApp — v18: leaderboard debug
+const CACHE_VERSION = 'v18';
 const CACHE_NAME = `sunfood-cache-${CACHE_VERSION}`;
 
 // Ресурсы для кэширования
 const STATIC_CACHE_URLS = [
   '/',
   '/index.html',
-  '/admin.html',
-  '/manifest.json'
+  '/images/3Dcup_tiny.glb'
 ];
 
 // Паттерны URL, которые нужно пропускать (не кэшировать и не перехватывать)
@@ -22,6 +21,7 @@ const SKIP_CACHE_PATTERNS = [
   '/owner/',
   '/barista/',
   '/courier/',
+  'manifest.json',
   'localhost:3000',
   '127.0.0.1:3000',
   'firebase',

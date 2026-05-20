@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Удаление аккаунта — Royal Coffee</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#1a0508;color:#f5ede8;line-height:1.7;padding:0;min-height:100vh}
+    .hero{background:linear-gradient(160deg,#3D0A11,#4D0E16,#5A0D17);padding:3rem 1.5rem 2.5rem;text-align:center}
+    .logo{font-family:Georgia,'Times New Roman',serif;font-size:1.1rem;color:#D4AF37;letter-spacing:.15em;text-transform:uppercase;margin-bottom:1rem;opacity:.9}
+    h1{font-size:1.7rem;font-weight:800;color:#fff;margin-bottom:.5rem}
+    .subtitle{font-size:.95rem;color:rgba(255,255,255,.55)}
+    .container{max-width:640px;margin:0 auto;padding:2rem 1.25rem 4rem}
+    .card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:1.25rem;padding:1.5rem;margin-bottom:1.25rem}
+    .card-title{font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#D4AF37;margin-bottom:.75rem}
+    ul{padding-left:1.25rem;color:rgba(255,255,255,.65);font-size:.9rem}
+    ul li{margin-bottom:.35rem}
+    .warning{background:rgba(185,28,28,.15);border:1px solid rgba(185,28,28,.3);border-radius:1rem;padding:1.25rem;margin-bottom:1.25rem}
+    .warning p{font-size:.9rem;color:#fca5a5}
+    .steps{counter-reset:step}
+    .step{display:flex;gap:1rem;align-items:flex-start;padding:.75rem 0;border-bottom:1px solid rgba(255,255,255,.06)}
+    .step:last-child{border-bottom:none}
+    .step-num{flex-shrink:0;width:28px;height:28px;border-radius:50%;background:#D4AF37;color:#3D0A11;font-weight:800;font-size:.8rem;display:flex;align-items:center;justify-content:center}
+    .step-text{font-size:.9rem;color:rgba(255,255,255,.7);padding-top:3px}
+    .contact-card{background:rgba(212,175,55,.08);border:1px solid rgba(212,175,55,.2);border-radius:1.25rem;padding:1.5rem;text-align:center}
+    .contact-card a{color:#D4AF37;font-weight:700;text-decoration:none;font-size:1rem}
+    .contact-card p{font-size:.85rem;color:rgba(255,255,255,.5);margin-top:.5rem}
+    .app-btn{display:inline-block;margin-top:1.5rem;background:linear-gradient(135deg,#D4AF37,#c9a227);color:#3D0A11;font-weight:800;font-size:.95rem;border-radius:1rem;padding:.85rem 2rem;text-decoration:none;letter-spacing:.02em}
+  </style>
+</head>
+<body>
+<div class="hero">
+  <p class="logo">Royal Coffee</p>
+  <h1>Удаление аккаунта</h1>
+  <p class="subtitle">Как удалить аккаунт и все связанные данные</p>
+</div>
+
+<div class="container">
+
+  <div class="warning">
+    <p>⚠️ Удаление аккаунта необратимо. Все ваши данные, бонусы и история заказов будут удалены без возможности восстановления.</p>
+  </div>
+
+  <div class="card">
+    <p class="card-title">Способ 1 — через приложение</p>
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text">Откройте приложение Royal Coffee и войдите в свой аккаунт</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text">Перейдите в раздел <strong>Профиль</strong> (иконка внизу экрана)</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text">Прокрутите вниз до раздела <strong>«Опасная зона»</strong></div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-text">Нажмите <strong>«Удалить аккаунт»</strong> и подтвердите действие</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="card-title">Способ 2 — через email</p>
+    <p style="font-size:.9rem;color:rgba(255,255,255,.65);margin-bottom:1rem">Отправьте запрос на удаление на нашу почту поддержки:</p>
+    <div class="contact-card">
+      <a href="mailto:support@royaltycoffee.brewly.asia?subject=Запрос на удаление аккаунта">support@royaltycoffee.brewly.asia</a>
+      <p>Укажите номер телефона или email, привязанный к аккаунту. Мы обработаем запрос в течение 30 дней.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="card-title">Какие данные будут удалены</p>
+    <ul>
+      <li>Данные профиля (имя, email, телефон, фото)</li>
+      <li>История заказов</li>
+      <li>Бонусные баллы и достижения</li>
+      <li>Настройки уведомлений и push-токены</li>
+      <li>Аккаунт в системе авторизации</li>
+    </ul>
+  </div>
+
+  <div style="text-align:center;margin-top:1.5rem">
+    <p style="font-size:.8rem;color:rgba(255,255,255,.3)">По вопросам конфиденциальности: support@royaltycoffee.brewly.asia</p>
+  </div>
+
+</div>
+</body>
+</html>

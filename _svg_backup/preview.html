@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Image Preview</title>
+<style>body{font-family:system-ui;padding:20px;background:#fafafa}
+h2{margin:30px 0 10px;color:#333}.grid{display:flex;flex-wrap:wrap;gap:4px}</style></head>
+<body>
+<h1>☕ Drink & Eats Image Preview</h1>
+<p>Verify that each image matches its assigned name. If wrong, adjust the DRINK_NAMES array in the script and re-run.</p>
+
+<h2>☕ Drinks (42)</h2>
+<div class="grid">
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/cappuccino.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">cappuccino.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14240.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/latte.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">latte.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14241.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/caramelatte.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">caramelatte.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14242.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/americano.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">americano.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14243.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/raf-coffee.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">raf-coffee.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14244.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/mokkachino.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">mokkachino.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14245.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/flat-white.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">flat-white.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14246.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/masala-coffee.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">masala-coffee.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14247.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/glintveyn-coffee.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">glintveyn-coffee.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14248.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/matcha-latte.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">matcha-latte.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14249.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/chai-tea.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">chai-tea.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14250.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/raf-arahis.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">raf-arahis.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14251.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/raf-lavanda.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">raf-lavanda.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14252.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/raf-medovik.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">raf-medovik.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14253.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/raf-melon-cactus.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">raf-melon-cactus.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14254.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/raf-pistachio.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">raf-pistachio.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14255.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/lemonade-kiwi-mint.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">lemonade-kiwi-mint.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14256.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/lemonade-mango-passion.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">lemonade-mango-passion.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14257.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/lemonade-mango-strawberry.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">lemonade-mango-strawberry.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14258.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/lemonade-raspberry-lychee.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">lemonade-raspberry-lychee.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14259.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/lemonade-peach-grapefruit.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">lemonade-peach-grapefruit.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14260.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/ice-latte.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">ice-latte.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14261.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/ice-americano.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">ice-americano.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14262.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/ice-raf.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">ice-raf.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14263.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/ice-matcha.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">ice-matcha.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14264.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/bamble.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">bamble.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14265.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/milk-duet.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">milk-duet.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14266.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/cocoa.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">cocoa.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14267.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/hot-chocolate.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">hot-chocolate.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14268.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/extra-01.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">extra-01.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14269.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/extra-02.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">extra-02.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14270.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/extra-03.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">extra-03.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14271.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/extra-04.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">extra-04.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14272.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/extra-05.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">extra-05.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14273.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/extra-06.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">extra-06.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14274.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/extra-07.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">extra-07.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14275.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/extra-08.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">extra-08.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14276.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/extra-09.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">extra-09.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14277.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/extra-10.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">extra-10.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14278.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/extra-11.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">extra-11.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14279.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/extra-12.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">extra-12.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14280.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/drinks/extra-13.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">extra-13.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14281.svg</div>
+    </div></div>
+
+<h2>🍞 Eats (43)</h2>
+<div class="grid">
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-01.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-01.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14196.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-02.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-02.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14197.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-03.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-03.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14198.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-04.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-04.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14199.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-05.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-05.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14200.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-06.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-06.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14201.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-07.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-07.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14202.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-08.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-08.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14203.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-09.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-09.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14204.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-10.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-10.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14205.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-11.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-11.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14206.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-12.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-12.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14207.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-13.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-13.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14208.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-14.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-14.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14209.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-15.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-15.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14210.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-16.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-16.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14211.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-17.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-17.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14212.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-18.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-18.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14213.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-19.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-19.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14214.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-20.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-20.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14215.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-21.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-21.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14216.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-22.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-22.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14217.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-23.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-23.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14218.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-24.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-24.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14219.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-25.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-25.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14220.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-26.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-26.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14221.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-27.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-27.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14222.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-28.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-28.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14223.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-29.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-29.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14224.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-30.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-30.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14225.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-31.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-31.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14226.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-32.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-32.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14227.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-33.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-33.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14228.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-34.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-34.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14229.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-35.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-35.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14230.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-36.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-36.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14231.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-37.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-37.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14232.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-38.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-38.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14234.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-39.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-39.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14235.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-40.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-40.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14236.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-41.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-41.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14237.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-42.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-42.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14238.svg</div>
+    </div>
+    <div style="text-align:center;margin:8px;width:110px">
+      <img src="../public/eats/eat-43.webp" width="85" height="85"
+           style="border-radius:50%;border:2px solid #ddd;background:#f5f5f5" />
+      <div style="font-size:11px;margin-top:4px;font-weight:600">eat-43.webp</div>
+      <div style="font-size:10px;color:#888">Frame 14239.svg</div>
+    </div></div>
+</body></html>

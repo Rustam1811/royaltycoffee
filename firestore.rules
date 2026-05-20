@@ -151,6 +151,18 @@ service cloud.firestore {
     }
     
     // ─── Workshop collections ───
+    // Workshop Settings — authenticated read, admin write
+    match /workshop_settings/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Workshop Outlets — authenticated read, admin write
+    match /workshop_outlets/{outletId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
     // Workshop Products — public read, admin/owner write
     match /workshop_products/{productId} {
       allow read: if isAuthenticated();
@@ -163,11 +175,13 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     
-    // Workshop Orders — auth read, admin/owner write, clients can create & read own
+    // Workshop Orders — auth read, admin/owner write, clients can create & update own pending orders
     match /workshop_orders/{orderId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
-      allow update, delete: if isAdmin();
+      allow update: if isAdmin() || 
+                       (isAuthenticated() && resource.data.clientId != null && resource.data.status == 'pending');
+      allow delete: if isAdmin();
     }
     
     // Workshop Clients — admin full access, client can read/update own document

@@ -77,6 +77,14 @@
       "collectionGroup": "workshop_orders",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "clientId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "workshop_orders",
+      "queryScope": "COLLECTION",
+      "fields": [
         { "fieldPath": "outletId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]

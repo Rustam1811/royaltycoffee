@@ -1,341 +1,297 @@
-// src/pages/Login.tsx
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+// src/pages/Login.tsx — Clean premium, no gradients
+import React, { useState, useEffect, useRef, lazy, Suspense, Component, ErrorInfo, ReactNode } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
-import { motion, useReducedMotion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../auth/AuthContext';
-import { fadeSlide } from '../ui/motion';
-import PhoneAuth from '../components/PhoneAuth';
-import { EnvelopeIcon, UserIcon } from '@heroicons/react/24/outline';
+import { Capacitor } from '@capacitor/core';
 
 const Cup3D = lazy(() => import('../components/Cup3D'));
 
+/** Local error boundary for 3D content — shows static fallback if WebGL/Three.js fails */
+class Cup3DErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    // eslint-disable-next-line no-console
+    console.warn('[Cup3D] 3D rendering failed, using fallback:', error.message, info.componentStack);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: '#F4EDE4' }}>
+          <span className="text-4xl">☕</span>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 type AuthTab = 'client' | 'business';
-type AuthMethod = 'select' | 'phone';
+
+/*
+  Палитра (flat, zero gradients):
+  ─ Фон:       #F4EDE4  (тёплый крем)
+  ─ Карточка:  #5A0D17  (бордовый)
+  ─ Акцент:    #D4AF37  (золото)
+  ─ Текст:     #3D0A11  (тёмный бордо)
+  ─ Muted:     #C4B8AA  (серо-кремовый)
+*/
 
 const Login: React.FC = () => {
   const { loginWithGoogle, loginWithApple, loginWithEmail, loginWithToken, loading, user } = useAuth();
   const [error, setError] = useState('');
   const [authTab, setAuthTab] = useState<AuthTab>('client');
-  const [authMethod, setAuthMethod] = useState<AuthMethod>('select');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const prefersReduced = useReducedMotion();
+  const [inputFocused, setInputFocused] = useState(false);
   const history = useHistory();
   const location = useLocation();
 
-  // Редирект после успешного входа
-  useEffect(() => {
-    if (user) {
-      const state = location.state as { redirect?: string } | null;
-      
-      // Проверяем workshop роли — редирект на /workshop/
-      const workshopRoles = ['workshop_admin', 'workshop_client', 'workshop_owner'];
-      if (workshopRoles.includes(user.role)) {
-        window.location.href = '/workshop/';
-        return;
-      }
-      
-      const redirectTo = state?.redirect || (user.role === 'admin' ? '/admin' : '/menu');
-      history.replace(redirectTo);
-    }
-  }, [user, history, location.state]);
+  const isNative = Capacitor.isNativePlatform();
 
-  // Если пользователь уже аутентифицирован, сразу редиректим
+  const ease = [0.22, 1, 0.36, 1] as const;
+
+  /* ── Redirects ── */
   useEffect(() => {
     if (user && !loading) {
+      console.log('[Login] Redirect logic, user role:', user.role, 'isNative:', isNative);
       const state = location.state as { redirect?: string } | null;
-      
-      // Проверяем workshop роли — редирект на /workshop/
       const workshopRoles = ['workshop_admin', 'workshop_client', 'workshop_owner'];
       if (workshopRoles.includes(user.role)) {
-        window.location.href = '/workshop/';
+        // Pass uid via URL param so workshop can bootstrap auth immediately
+        const uidParam = user.uid ? `?uid=${encodeURIComponent(user.uid)}` : '';
+        const redirectUrl = isNative ? `/workshop/index.html${uidParam}` : '/workshop/';
+        console.log('[Login] Redirecting to workshop:', redirectUrl);
+        window.location.href = redirectUrl;
         return;
       }
-      
-      const redirectTo = state?.redirect || (user.role === 'admin' ? '/admin' : '/menu');
-      history.replace(redirectTo);
+      history.replace(state?.redirect || (user.role === 'admin' ? '/admin' : '/'));
     }
-  }, [user, loading, history, location.state]);
+  }, [user, loading, history, location.state, isNative]);
 
+  /* ── Auth handlers ── */
   const handleGoogleLogin = async () => {
     setError('');
-    try {
-      await loginWithGoogle();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка входа через Google');
-    }
+    try { await loginWithGoogle(); } catch (err) { setError(err instanceof Error ? err.message : 'Ошибка входа через Google'); }
   };
-
   const handleAppleLogin = async () => {
     setError('');
-    try {
-      await loginWithApple();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка входа через Apple');
-    }
+    try { await loginWithApple(); } catch (err) { setError(err instanceof Error ? err.message : 'Ошибка входа через Apple'); }
   };
-
   const handleEmailLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    
-    if (!email.trim() || !password.trim()) {
-      setError('Введите email и пароль');
-      return;
-    }
-    
-    try {
-      await loginWithEmail(email, password);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка входа');
-    }
+    e.preventDefault(); setError('');
+    if (!email.trim() || !password.trim()) { setError('Введите email и пароль'); return; }
+    try { await loginWithEmail(email, password); } catch (err) { setError(err instanceof Error ? err.message : 'Ошибка входа'); }
   };
 
-  const handlePhoneSuccess = async (token: string, phone: string) => {
-    try {
-      // loginWithToken should be implemented in AuthContext
-      if (loginWithToken) {
-        await loginWithToken(token, phone);
-      } else {
-        // Fallback: store token and reload
-        localStorage.setItem('auth_token', token);
-        localStorage.setItem('auth_phone', phone);
-        window.location.reload();
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка авторизации');
-    }
-  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Royal background */}
-      <div
-        className="fixed inset-0 z-0"
-        style={{
-          backgroundImage: 'url(/images/royal-bg.jpg)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/60" />
-      </div>
+    <div
+      className="flex flex-col min-h-[100dvh]"
+      style={{ backgroundColor: '#F4EDE4' }}
+    >
 
-      <motion.div
-        custom={0}
-        initial="hidden"
-        animate="visible"
-        variants={fadeSlide(!!prefersReduced)}
-        className="w-full max-w-md relative z-10"
-      >
-        <div className="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-8 shadow-2xl shadow-black/50">
-          <motion.div
-            custom={1}
-            initial="hidden"
-            animate="visible"
-            variants={fadeSlide(!!prefersReduced)}
-            className="text-center mb-8"
-          >
-            {/* 3D Thermos */}
-            <div className="w-36 h-36 mx-auto mb-4">
+      {/* ══════ TOP HALF — кремовый фон, логотип, текст ══════ */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 pt-safe">
+
+        {/* 3D Thermos */}
+        <motion.div
+          className="relative mb-6"
+          style={{ width: 160, height: 160 }}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, ease }}
+        >
+          {/* Gold ring */}
+          <div
+            className="absolute inset-0 rounded-full"
+            style={{ border: '1.5px solid #D4AF37', opacity: 0.25 }}
+          />
+          {/* 3D Cup inside circle */}
+          <div className="absolute inset-[6px] rounded-full overflow-hidden">
+            <Cup3DErrorBoundary>
               <Suspense fallback={
-                <div className="w-full h-full flex items-center justify-center">
-                  <img src="/images/royal-thermos.webp" alt="Royalty Coffee" className="w-28 h-28 object-contain animate-pulse" />
+                <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: '#F4EDE4' }}>
+                  <div className="w-16 h-16 rounded-full bg-[#D4AF37]/10 animate-pulse" />
                 </div>
               }>
                 <Cup3D className="w-full h-full" />
               </Suspense>
-            </div>
-            <h1 className="text-3xl font-bold text-white mb-2">Добро пожаловать</h1>
-            <p className="text-white/50">Войдите в свой аккаунт</p>
-          </motion.div>
-
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl mb-6 text-sm"
-            >
-              {error}
-            </motion.div>
-          )}
-
-          {/* Auth Type Tabs */}
-          <div className="flex bg-white/5 rounded-xl p-1 mb-6 border border-white/10">
-            <button
-              onClick={() => { setAuthTab('client'); setAuthMethod('select'); setError(''); }}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-all text-sm ${
-                authTab === 'client' 
-                  ? 'bg-[#D4AF37] text-black shadow-md' 
-                  : 'text-white/50 hover:text-white/80'
-              }`}
-            >
-              <UserIcon className="w-4 h-4" />
-              Клиент
-            </button>
-            <button
-              onClick={() => { setAuthTab('business'); setAuthMethod('select'); setError(''); }}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-all text-sm ${
-                authTab === 'business' 
-                  ? 'bg-[#D4AF37] text-black shadow-md' 
-                  : 'text-white/50 hover:text-white/80'
-              }`}
-            >
-              <EnvelopeIcon className="w-4 h-4" />
-              Для бизнеса
-            </button>
+            </Cup3DErrorBoundary>
           </div>
+        </motion.div>
 
-          <AnimatePresence mode="wait">
-            {/* CLIENT TAB - WhatsApp/Google/Apple */}
-            {authTab === 'client' && authMethod === 'select' && (
-              <motion.div
-                key="client-select"
-                custom={2}
-                initial="hidden"
-                animate="visible"
-                exit={{ opacity: 0, x: -20 }}
-                variants={fadeSlide(!!prefersReduced)}
-                className="space-y-3"
-              >
-                {/* Phone Auth Button */}
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setAuthMethod('phone')}
-                  className="w-full bg-green-500 text-white font-semibold py-4 px-6 rounded-xl hover:bg-green-600 transition-colors flex items-center justify-center gap-3"
+        {/* Заголовок */}
+        <motion.div
+          className="text-center"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2, ease }}
+        >
+          <h1 className="text-[26px] font-extrabold tracking-tight" style={{ color: '#3D0A11' }}>
+            Добро пожаловать
+          </h1>
+          <p className="mt-1.5 text-[13px] tracking-[0.2em] uppercase font-semibold" style={{ color: '#D4AF37' }}>
+            Royalty Coffee
+          </p>
+        </motion.div>
+      </div>
+
+      {/* ══════ BOTTOM HALF — бордовая карточка ══════ */}
+      <motion.div
+        className="px-5 pb-8"
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7, delay: 0.35, ease }}
+      >
+        <div className="rounded-[28px] overflow-hidden" style={{ backgroundColor: '#5A0D17' }}>
+          <div 
+            className="px-6 py-7 space-y-5 transition-all duration-300"
+            style={{ paddingBottom: inputFocused ? '280px' : '28px' }}
+          >
+
+            {/* Tabs */}
+            <div className="flex rounded-2xl p-1" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
+              {(['client', 'business'] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => { setAuthTab(tab); setError(''); }}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all duration-200"
+                  style={authTab === tab
+                    ? { backgroundColor: '#D4AF37', color: '#3D0A11' }
+                    : { color: 'rgba(255,255,255,0.35)' }
+                  }
                 >
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-                  </svg>
-                  Войти через WhatsApp
-                </motion.button>
+                  {tab === 'client' ? 'Клиент' : 'Бизнес'}
+                </button>
+              ))}
+            </div>
 
-                <div className="relative my-4">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-white/10"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-4 bg-transparent text-white/30">или</span>
-                  </div>
-                </div>
-
-                {/* Google Auth Button */}
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleGoogleLogin}
-                  disabled={loading}
-                  className="w-full bg-white/10 border border-white/15 text-white font-medium py-4 px-6 rounded-xl hover:bg-white/15 transition-colors flex items-center justify-center gap-3 disabled:opacity-50 backdrop-blur-sm"
+            {/* Error */}
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="rounded-xl text-sm overflow-hidden px-4 py-3"
+                  style={{ backgroundColor: 'rgba(239,68,68,0.12)', color: '#FCA5A5', border: '1px solid rgba(239,68,68,0.2)' }}
                 >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                  </svg>
-                  {loading ? 'Вход...' : 'Войти через Google'}
-                </motion.button>
+                  {error}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-                {/* Apple Auth Button */}
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleAppleLogin}
-                  disabled={loading}
-                  className="w-full bg-white text-black font-semibold py-4 px-6 rounded-xl hover:bg-white/90 transition-colors flex items-center justify-center gap-3 disabled:opacity-50"
+            <AnimatePresence mode="wait">
+              {/* CLIENT */}
+              {authTab === 'client' && (
+                <motion.div
+                  key="client-select"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3, ease }}
+                  className="space-y-3"
                 >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-                  </svg>
-                  {loading ? 'Вход...' : 'Войти через Apple'}
-                </motion.button>
-              </motion.div>
-            )}
-
-            {/* CLIENT TAB - Phone Auth Form */}
-            {authTab === 'client' && authMethod === 'phone' && (
-              <motion.div
-                key="client-phone"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-              >
-                <PhoneAuth 
-                  onSuccess={handlePhoneSuccess}
-                  onCancel={() => setAuthMethod('select')}
-                />
-              </motion.div>
-            )}
-
-            {/* BUSINESS TAB - Email/Password */}
-            {authTab === 'business' && (
-              <motion.div
-                key="business-email"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-              >
-                <form onSubmit={handleEmailLogin} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-white/60 mb-1.5">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="email@example.com"
-                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/15 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/50 focus:border-[#D4AF37]/50 transition-all"
-                      autoComplete="email"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-white/60 mb-1.5">
-                      Пароль
-                    </label>
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/15 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/50 focus:border-[#D4AF37]/50 transition-all"
-                      autoComplete="current-password"
-                    />
-                  </div>
-
+                  {/* WhatsApp */}
+                  {/* Google */}
                   <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    type="submit"
-                    disabled={loading || !email.trim() || !password.trim()}
-                    className="w-full bg-[#D4AF37] text-black font-semibold py-4 px-6 rounded-xl hover:bg-[#C9A632] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    whileTap={{ scale: 0.97 }}
+                    onClick={handleGoogleLogin}
+                    disabled={loading}
+                    className="w-full py-4 px-6 rounded-2xl flex items-center justify-center gap-3 font-medium text-[15px] disabled:opacity-40 transition-opacity"
+                    style={{ backgroundColor: '#ffffff', color: '#1f1f1f', border: '1px solid #dadce0' }}
                   >
-                    {loading ? 'Вход...' : 'Войти'}
+                    <svg className="w-5 h-5" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    {loading ? 'Вход...' : 'Войти через Google'}
                   </motion.button>
 
-                  <p className="text-center text-sm text-white/30 mt-4">
-                    Для клиентов цеха и партнёров
-                  </p>
-                </form>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                  {/* Apple */}
+                  <motion.button
+                    whileTap={{ scale: 0.97 }}
+                    onClick={handleAppleLogin}
+                    disabled={loading}
+                    className="w-full py-4 px-6 rounded-2xl flex items-center justify-center gap-3 font-semibold text-[15px] disabled:opacity-40 transition-opacity"
+                    style={{ backgroundColor: '#000000', color: '#ffffff', border: '1px solid #000000' }}
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                    </svg>
+                    {loading ? 'Вход...' : 'Войти через Apple'}
+                  </motion.button>
+                </motion.div>
+              )}
 
-          <motion.div
-            custom={3}
-            initial="hidden"
-            animate="visible"
-            variants={fadeSlide(!!prefersReduced)}
-            className="mt-8 text-center"
-          >
-            <p className="text-sm text-white/30">
-              Продолжая, вы соглашаетесь с{' '}
-              <a href="#" className="text-[#D4AF37]/70 hover:text-[#D4AF37] hover:underline">условиями использования</a>
-            </p>
-          </motion.div>
+              {/* BUSINESS: EMAIL */}
+              {authTab === 'business' && (
+                <motion.div
+                  key="business-email"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3, ease }}
+                >
+                  <form onSubmit={handleEmailLogin} className="space-y-4">
+                    <div>
+                      <label className="block text-[10px] font-semibold mb-1.5 uppercase tracking-[0.15em]" style={{ color: 'rgba(212,175,55,0.5)' }}>Email</label>
+                      <input
+                        type="email" value={email} onChange={e => setEmail(e.target.value)}
+                        placeholder="email@example.com"
+                        onFocus={() => isNative && setInputFocused(true)}
+                        onBlur={() => isNative && setInputFocused(false)}
+                        className="w-full px-4 py-3.5 rounded-xl focus:outline-none focus:ring-2 transition-all"
+                        style={{ backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', color: 'white', focusRingColor: 'rgba(212,175,55,0.3)' } as React.CSSProperties}
+                        autoComplete="email"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold mb-1.5 uppercase tracking-[0.15em]" style={{ color: 'rgba(212,175,55,0.5)' }}>Пароль</label>
+                      <input
+                        type="password" value={password} onChange={e => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        onFocus={() => isNative && setInputFocused(true)}
+                        onBlur={() => isNative && setInputFocused(false)}
+                        className="w-full px-4 py-3.5 rounded-xl focus:outline-none focus:ring-2 transition-all"
+                        style={{ backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', color: 'white' } as React.CSSProperties}
+                        autoComplete="current-password"
+                      />
+                    </div>
+                    <motion.button
+                      whileTap={{ scale: 0.97 }}
+                      type="submit"
+                      disabled={loading || !email.trim() || !password.trim()}
+                      className="w-full py-4 px-6 rounded-2xl font-bold text-[15px] disabled:opacity-40 disabled:cursor-not-allowed"
+                      style={{ backgroundColor: '#D4AF37', color: '#3D0A11' }}
+                    >
+                      {loading ? 'Вход...' : 'Войти'}
+                    </motion.button>
+                    <p className="text-center text-[11px]" style={{ color: 'rgba(255,255,255,0.2)' }}>
+                      Для клиентов цеха и партнёров
+                    </p>
+                  </form>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
+
+        {/* Footer */}
+        <motion.p
+          className="mt-5 text-center text-[11px]"
+          style={{ color: '#C4B8AA' }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8, duration: 0.6 }}
+        >
+          Продолжая, вы соглашаетесь с{' '}
+          <a href="#" className="underline" style={{ color: '#A89880' }}>условиями использования</a>
+        </motion.p>
       </motion.div>
     </div>
   );

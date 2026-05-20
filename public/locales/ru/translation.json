@@ -1,4 +1,5 @@
 {
+  "greeting": "ДОБРО ПОЖАЛОВАТЬ",
   "menu": {
     "categories": {
       "black_coffee": "Черный кофе",
@@ -12,7 +13,8 @@
       "breakfasts": "Завтраки",
       "hearty_croissants": "Сытные круассаны",
       "paninis": "Панини",
-      "pastries": "Выпечка"
+      "pastries": "Выпечка",
+      "new_items": "Новинки"
     },
     "espresso": {
       "name": "Эспрессо",

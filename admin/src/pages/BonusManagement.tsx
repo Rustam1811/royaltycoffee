@@ -7,7 +7,8 @@ import {
     CalculatorIcon,
     GiftIcon,
     PlusIcon,
-    TrashIcon
+    TrashIcon,
+    ShieldCheckIcon
 } from '@heroicons/react/24/outline';
 import Button from '@/components/ui/Button';
 
@@ -104,13 +105,44 @@ const BonusManagement: React.FC = () => {
         ]
     });
 
-    const [activeTab, setActiveTab] = useState<'general' | 'rewards' | 'levels'>('general');
+    const [activeTab, setActiveTab] = useState<'general' | 'rewards' | 'levels' | 'approval'>('general');
     const [loading, setLoading] = useState(false);
+    
+    // Approval settings
+    const [approvalThreshold, setApprovalThreshold] = useState('20000');
+    const [approvalEnabled, setApprovalEnabled] = useState(true);
 
     // Загрузка настроек из API
     useEffect(() => {
         fetchBonusSettings();
+        fetchApprovalSettings();
     }, []);
+
+    const fetchApprovalSettings = async () => {
+        try {
+            const data = await api.get<{ ok: boolean; threshold: number; enabled: boolean }>('/approval-settings');
+            if (data?.threshold !== undefined) setApprovalThreshold(String(data.threshold));
+            if (data?.enabled !== undefined) setApprovalEnabled(data.enabled);
+        } catch (error) {
+            console.error('Ошибка загрузки настроек одобрения:', error);
+        }
+    };
+
+    const saveApprovalSettings = async () => {
+        setLoading(true);
+        try {
+            await api.post('/approval-settings', {
+                threshold: Number(approvalThreshold) || 20000,
+                enabled: approvalEnabled,
+            });
+            alert('Настройки одобрения сохранены!');
+        } catch (error) {
+            console.error('Ошибка сохранения:', error);
+            alert('Ошибка сохранения настроек одобрения');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const fetchBonusSettings = async () => {
         try {
@@ -281,7 +313,7 @@ const BonusManagement: React.FC = () => {
                     <Button
                         variant="accent"
                         className="bg-slate-900 hover:bg-black text-white font-bold rounded-full shadow-[0_14px_36px_-14px_rgba(0,0,0,0.55)]"
-                        onClick={saveBonusSettings}
+                        onClick={activeTab === 'approval' ? saveApprovalSettings : saveBonusSettings}
                         disabled={loading}
                         loading={loading}
                     >
@@ -294,11 +326,12 @@ const BonusManagement: React.FC = () => {
                     {[
                         { id: 'general', name: 'Общие настройки', icon: CogIcon },
                         { id: 'rewards', name: 'Награды', icon: GiftIcon },
-                        { id: 'levels', name: 'Уровни', icon: StarIcon }
+                        { id: 'levels', name: 'Уровни', icon: StarIcon },
+                        { id: 'approval', name: 'Одобрение', icon: ShieldCheckIcon }
                     ].map(tab => (
                         <button
                             key={tab.id}
-                            onClick={() => setActiveTab(tab.id as 'general' | 'rewards' | 'levels')}
+                            onClick={() => setActiveTab(tab.id as 'general' | 'rewards' | 'levels' | 'approval')}
                             className={`flex items-center gap-2 px-6 py-3 rounded-full font-semibold transition-all ${
                                 activeTab === tab.id
                                     ? 'bg-slate-900 text-white shadow-[0_14px_36px_-14px_rgba(0,0,0,0.55)]'
@@ -532,6 +565,49 @@ const BonusManagement: React.FC = () => {
                                 </div>
                             </div>
                         ))}
+                    </div>
+                )}
+
+                {/* Approval Tab */}
+                {activeTab === 'approval' && (
+                    <div className="space-y-4">
+                        <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.2)]">
+                            <div className="flex items-center gap-3 mb-4">
+                                <ShieldCheckIcon className="w-6 h-6 text-amber-500" />
+                                <h3 className="text-lg font-bold text-slate-900">Одобрение заказов</h3>
+                            </div>
+                            <p className="text-sm text-slate-500 mb-4">
+                                Если сумма заказа превышает порог — заказ требует одобрения суперовнера. Бариста не сможет подтвердить заказ до одобрения.
+                            </p>
+                            <div className="space-y-4">
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={approvalEnabled}
+                                        onChange={(e) => setApprovalEnabled(e.target.checked)}
+                                        className="w-5 h-5 rounded border-slate-300 text-amber-500 focus:ring-amber-500"
+                                    />
+                                    <span className="text-sm font-medium text-slate-700">Включить одобрение заказов</span>
+                                </label>
+                                {approvalEnabled && (
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2 text-slate-600">Порог суммы (₸)</label>
+                                        <input
+                                            type="number"
+                                            value={approvalThreshold}
+                                            onChange={(e) => setApprovalThreshold(e.target.value)}
+                                            min="0"
+                                            step="1000"
+                                            placeholder="20000"
+                                            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 text-lg font-semibold focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                                        />
+                                        <p className="text-xs text-slate-400 mt-2">
+                                            Заказы свыше {Number(approvalThreshold).toLocaleString()} ₸ потребуют одобрения суперовнера
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>

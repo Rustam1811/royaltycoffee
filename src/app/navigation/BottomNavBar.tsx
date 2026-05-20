@@ -1,13 +1,37 @@
 import React from 'react';
 import { NavLink, useLocation, useRouteMatch } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { 
-  HomeIcon, 
   Squares2X2Icon, 
   QrCodeIcon,
-  MapPinIcon,
-  UserCircleIcon 
+  UserCircleIcon,
 } from '@heroicons/react/24/solid';
+
+/* ─── Custom icons ─── */
+
+/**
+ * home.svg из public/images — иконка «Главная».
+ * SVG содержит растровые данные белого цвета, поэтому для
+ * серого/золотого состояний применяем CSS-фильтры.
+ */
+const HomeSvgIcon: React.FC<{ className?: string; active?: boolean }> = ({ className, active }) => (
+  <img
+    src="/images/home.png"
+    alt=""
+    className={className}
+    style={{
+      filter: active
+        ? 'brightness(0) saturate(100%) invert(72%) sepia(80%) saturate(600%) hue-rotate(5deg) brightness(90%) drop-shadow(0 0 6px rgba(184,134,11,0.55))'   // rich gold #B8860B
+        : 'brightness(0) saturate(100%) invert(20%) sepia(10%) saturate(500%) hue-rotate(330deg) brightness(80%) opacity(0.4)',
+    }}
+  />
+);
+
+/** Иконка короны для «Кофейни» — чистый узнаваемый силуэт */
+const CrownIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M5 16h14l1.6-8L16 11l-4-6-4 6-4.6-3L5 16Zm-1 2v2h16v-2H4Z" />
+  </svg>
+);
 
 interface NavItem {
   to: string;
@@ -17,10 +41,10 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { to: '/home', icon: HomeIcon, label: 'Главная' },
+  { to: '/home', icon: HomeSvgIcon, label: 'Главная' },
   { to: '/menu', icon: Squares2X2Icon, label: 'Меню' },
   { to: '/qr', icon: QrCodeIcon, label: 'QR', isCenter: true },
-  { to: '/locations', icon: MapPinIcon, label: 'Кофейни' },
+  { to: '/locations', icon: CrownIcon, label: 'Кофейни' },
   { to: '/profile', icon: UserCircleIcon, label: 'Профиль' },
 ];
 
@@ -37,19 +61,19 @@ const NavItem: React.FC<NavItem> = ({ to, icon: Icon, label, isCenter }) => {
     return (
       <NavLink 
         to={to} 
-        className="relative flex flex-col items-center justify-center -mt-6"
+        className="relative flex flex-col items-center justify-center -mt-4"
       >
         <div className={`
-          w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-all duration-300
+          w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-all duration-300
           ${isActive 
-            ? 'bg-amber-500 shadow-amber-500/50' 
-            : 'bg-gradient-to-br from-amber-400 to-amber-600 hover:shadow-amber-500/50 hover:scale-105'
+            ? 'bg-[#D4AF37] shadow-[#D4AF37]/40' 
+            : 'bg-[#D4AF37] hover:shadow-[#D4AF37]/30 hover:scale-105'
           }
         `}>
-          <Icon className="w-7 h-7 text-white" />
+          <Icon className="w-6 h-6 text-white" />
         </div>
-        <span className={`text-xs mt-1 transition-all duration-300 ${
-          isActive ? 'font-bold text-amber-400' : 'font-medium text-amber-200/70'
+        <span className={`text-[10px] mt-0.5 transition-all duration-300 ${
+          isActive ? 'font-bold text-[#B8860B]' : 'font-medium text-[#3D0A11]/40'
         }`}>
           {label}
         </span>
@@ -60,27 +84,21 @@ const NavItem: React.FC<NavItem> = ({ to, icon: Icon, label, isCenter }) => {
   return (
     <NavLink 
       to={to} 
-      className="relative flex flex-col items-center justify-center py-2.5 px-2 rounded-xl transition-all duration-300 min-w-0 flex-1 group"
+      className="relative flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all duration-300 min-w-0 flex-1 group"
     >
       <Icon 
-        className={`w-6 h-6 transition-all duration-300 ${
-          isActive ? 'text-amber-400' : 'text-amber-200/50 group-hover:text-amber-200/80'
-        }`} 
+        className={`w-7 h-7 transition-all duration-300 ${
+          isActive ? 'text-[#B8860B] drop-shadow-[0_0_6px_rgba(184,134,11,0.6)]' : 'text-[#3D0A11]/40 group-hover:text-[#3D0A11]/60'
+        }`}
+        active={isActive}
       />
       <span 
-        className={`text-[11px] mt-1 transition-all duration-300 ${
-          isActive ? 'font-bold text-amber-400' : 'font-medium text-amber-200/50 group-hover:text-amber-200/80'
+        className={`text-[10px] mt-0.5 transition-all duration-300 ${
+          isActive ? 'font-bold text-[#B8860B]' : 'font-medium text-[#3D0A11]/40 group-hover:text-[#3D0A11]/60'
         }`}
       >
         {label}
       </span>
-      {isActive && (
-        <motion.div
-          layoutId="active-nav-indicator"
-          className="absolute top-0.5 h-1 w-8 bg-amber-400 rounded-full shadow-[0_0_8px_rgba(251,191,36,0.6)]"
-          transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-        />
-      )}
     </NavLink>
   );
 };
@@ -93,9 +111,9 @@ export const BottomNavBar: React.FC = () => {
   if (isAdminRoute || isLogin) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center p-3">
-      <nav className="bg-gradient-to-r from-[#4A1A2C]/95 via-[#2D0F1A]/95 to-[#4A1A2C]/95 backdrop-blur-xl rounded-[28px] shadow-[0_-4px_30px_rgba(0,0,0,0.4)] px-3 py-2.5 flex justify-center border border-amber-900/20 max-w-sm w-full">
-        <div className="flex justify-around gap-1 w-full">
+    <div className="fixed bottom-0 left-0 right-0 z-50 md:right-auto md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-[440px]">
+      <nav className="bg-[#F4EDE4] backdrop-blur-xl shadow-[0_-4px_30px_rgba(61,10,17,0.08)] px-4 pt-1 pb-[max(env(safe-area-inset-bottom,4px),4px)] flex justify-center border-t border-[#3D0A11]/10 w-full">
+        <div className="flex justify-around gap-1 w-full max-w-md">
           {navItems.map((item) => (
             <NavItem key={item.to} {...item} />
           ))}

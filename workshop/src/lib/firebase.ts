@@ -1,6 +1,6 @@
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
-import { getAuth, browserLocalPersistence, setPersistence } from "firebase/auth";
-import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
+import { getAuth, initializeAuth, browserLocalPersistence } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 const env = (k: string) => (import.meta.env[k as keyof ImportMetaEnv] ?? "").toString().trim();
@@ -21,20 +21,17 @@ if (missing.length) {
 }
 
 const app: FirebaseApp = getApps()[0] ?? initializeApp(config);
-const auth = getAuth(app);
-setPersistence(auth, browserLocalPersistence);
-const db = getFirestore(app);
 
-// Enable offline persistence
-if (typeof window !== 'undefined') {
-  enableIndexedDbPersistence(db).catch((err) => {
-    if (err.code === 'failed-precondition') {
-      console.warn('Firestore persistence failed: Multiple tabs open');
-    } else if (err.code === 'unimplemented') {
-      console.warn('Firestore persistence not available');
-    }
-  });
-}
+// On iOS Capacitor (capacitor:// scheme), IndexedDB hangs forever —
+// onIdTokenChanged never fires → 15s timeout → redirect to login.
+// Fix: use initializeAuth with explicit browserLocalPersistence (same as main app).
+// Android uses https: scheme so IndexedDB works fine there.
+const isNative = typeof window !== 'undefined' && window.location.protocol === 'capacitor:';
+const auth = isNative
+  ? initializeAuth(app, { persistence: browserLocalPersistence })
+  : getAuth(app);
+
+const db = getFirestore(app);
 
 const storage = getStorage(app);
 

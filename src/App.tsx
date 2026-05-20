@@ -1,10 +1,12 @@
-import React, { useEffect, Suspense, lazy } from 'react';
+import React, { useEffect, lazy } from 'react';
 import { BrowserRouter, Switch, Route, Redirect, useLocation } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
+import { Capacitor } from '@capacitor/core';
 import { CartProvider } from './contexts/CartContext';
 import { LocationProvider } from './contexts/LocationContext';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { RoyalLoader } from './components/RoyalLoader';
+import { FirstVisitGate } from './components/FirstVisitGate';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { pageVariants } from './ui/motion';
 import './lib/env';
@@ -34,7 +36,7 @@ const PrivateRoute: React.FC<{ component: React.ComponentType<any>; exact?: bool
     <Route
       {...rest}
       render={(props) => {
-        if (loading) return <RoyalLoader fullScreen={true} />;
+        if (loading) return <RoyalLoader />;
         if (!user) return <Redirect to={{ pathname: '/login', state: { redirect: location.pathname } }} />;
         
         return (
@@ -57,20 +59,31 @@ const AppContent: React.FC = () => {
   const location = useLocation();
   const prefersReduced = useReducedMotion();
   const { user } = useAuth();
+  const isLogin = location.pathname === '/login';
 
   useEffect(() => {
     // Init Capacitor native plugins (StatusBar, Keyboard, BackButton)
     initCapacitorApp();
 
-    createPWAUpdater().then((factory) => {
-      const pwaUpdater = factory({ autoReload: true });
-      pwaUpdater.init();
-      return () => pwaUpdater.destroy();
-    });
+    // PWA updater only on web — Service Worker not used in native Capacitor
+    if (!Capacitor.isNativePlatform()) {
+      createPWAUpdater().then((factory) => {
+        const pwaUpdater = factory({ autoReload: true });
+        pwaUpdater.init();
+        return () => pwaUpdater.destroy();
+      });
+    }
   }, []);
 
   useEffect(() => {
     if (!user) return;
+
+    // Workshop users should never be in the coffee app — redirect to workshop
+    const workshopRoles = ['workshop_admin', 'workshop_client', 'workshop_owner'];
+    if (workshopRoles.includes(user.role)) {
+      window.location.href = Capacitor.isNativePlatform() ? '/workshop/index.html' : '/workshop/';
+      return;
+    }
 
     const hasAskedForNotifications = localStorage.getItem('notifications-asked');
     
@@ -87,8 +100,8 @@ const AppContent: React.FC = () => {
   
   return (
     <>
-      <main className="pb-24 overflow-hidden min-h-screen">
-        <Suspense fallback={<RoyalLoader />}>
+      <main className={isLogin ? 'min-h-screen' : 'pb-20 overflow-hidden min-h-screen'}>
+        <FirstVisitGate>
           <Switch location={location}>
             <Route exact path="/login" render={() => (
               <motion.div
@@ -111,7 +124,7 @@ const AppContent: React.FC = () => {
             <Route exact path="/"><Redirect to="/home" /></Route>
             <Route path="*"><Redirect to="/home" /></Route>
           </Switch>
-        </Suspense>
+        </FirstVisitGate>
       </main>
       <BottomNavBar />
     </>
@@ -120,12 +133,15 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => (
   <ErrorBoundary>
-    <BrowserRouter basename="/app">
+    <BrowserRouter basename={Capacitor.isNativePlatform() ? '/' : '/app'}>
       <AuthProvider>
         <LocationProvider>
           <CartProvider>
-            <div className="min-h-screen bg-[#F6F7FB] text-slate-900">
-              <AppContent />
+            {/* Desktop: dark background sides, centered mobile-width content */}
+            <div className="min-h-screen bg-[#F4EDE4] md:bg-[#0D0205] md:flex md:justify-center">
+              <div className="w-full md:max-w-[440px] min-h-screen bg-[#F4EDE4] text-slate-900 md:shadow-[0_0_80px_rgba(0,0,0,0.7)]">
+                <AppContent />
+              </div>
             </div>
           </CartProvider>
         </LocationProvider>

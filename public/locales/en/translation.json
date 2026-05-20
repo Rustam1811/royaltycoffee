@@ -1,4 +1,5 @@
 {
+  "greeting": "WELCOME",
   "menu": {
     "categories": {
       "black_coffee": "Black Coffee",
@@ -12,7 +13,8 @@
       "breakfasts": "Breakfasts",
       "hearty_croissants": "Hearty Croissants",
       "paninis": "Paninis",
-      "pastries": "Pastries"
+      "pastries": "Pastries",
+      "new_items": "New Items"
     },
     "espresso": {
       "name": "Espresso",

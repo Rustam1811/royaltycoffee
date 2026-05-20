@@ -47,12 +47,24 @@ export interface MenuItem {
   isAvailable: boolean;
   isPopular?: boolean;
   badges?: string[];
+  modifiers?: PremiumMenuModifier[];
+}
+
+export interface PremiumMenuModifier {
+  id: number;
+  title: string;
+  type: 'select' | 'multi' | 'toggle' | 'slider';
+  options?: string[];
+  default: string | string[] | boolean | number;
+  min?: number;
+  max?: number;
 }
 
 // Интерфейс для PremiumMenu компонента
 export interface PremiumMenuItem {
   id: string;
   name: string;
+  description?: string;
   price: number;
   image: string;
   energy?: number;
@@ -62,6 +74,7 @@ export interface PremiumMenuItem {
   badges: { type: string; label: string }[];
   categoryId: string;
   sizes?: MenuItemSize[];
+  modifiers?: PremiumMenuModifier[];
 }
 
 export interface PremiumCategory {
@@ -196,6 +209,7 @@ export function convertToPremiumFormat(
     id: item.id,
     name: lang === 'en' ? (item.nameEn || item.name) : 
           lang === 'kz' ? (item.nameKz || item.name) : item.name,
+    description: item.description,
     price: item.price,
     image: item.image,
     energy: item.energy,
@@ -204,7 +218,8 @@ export function convertToPremiumFormat(
     carbs: item.carbs,
     badges: (item.badges || []).map(b => ({ type: b, label: b })),
     categoryId: item.categoryId,
-    sizes: item.sizes
+    sizes: item.sizes,
+    modifiers: item.modifiers,
   }));
 
   return { items: premiumItems, categories: premiumCategories };
@@ -256,6 +271,18 @@ export async function loadFullMenu(lang: string = 'ru'): Promise<{
     drinksResult = getLocalDrinksFallback();
   } else {
     drinksResult = convertToPremiumFormat(drinkItems, drinkCategories, lang);
+    // Enrich Firestore items with modifiers from local drinksData if missing
+    const localFallback = getLocalDrinksFallback();
+    const localModMap = new Map(localFallback.items.map(li => [li.name.toLowerCase(), li.modifiers]));
+    drinksResult.items = drinksResult.items.map(item => {
+      if (!item.modifiers || item.modifiers.length === 0) {
+        const localMods = localModMap.get(item.name.toLowerCase());
+        if (localMods && localMods.length > 0) {
+          return { ...item, modifiers: localMods };
+        }
+      }
+      return item;
+    });
   }
 
   return {
@@ -277,6 +304,7 @@ function getLocalFoodFallback(): { items: PremiumMenuItem[]; categories: Premium
     cat.products.map((p: EatsProduct) => ({
       id: String(p.id),
       name: p.name,
+      description: p.description,
       price: p.price,
       image: p.image,
       energy: p.energy,
@@ -306,6 +334,7 @@ function getLocalDrinksFallback(): { items: PremiumMenuItem[]; categories: Premi
     cat.products.map((p: Product) => ({
       id: String(p.id),
       name: t(p.name),
+      description: p.description ? t(p.description) : undefined,
       price: p.price,
       image: p.image,
       energy: p.energy,
@@ -314,6 +343,7 @@ function getLocalDrinksFallback(): { items: PremiumMenuItem[]; categories: Premi
       carbs: p.carbs,
       badges: (p.badges || []).map((b: string) => ({ type: b, label: b })),
       categoryId: String(cat.id),
+      modifiers: p.modifiers,
     }))
   );
 

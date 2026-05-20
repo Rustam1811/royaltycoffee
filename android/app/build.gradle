@@ -3,24 +3,80 @@ apply plugin: 'com.android.application'
 android {
     namespace = "com.royalcoffee.app"
     compileSdk = rootProject.ext.compileSdkVersion
+    
     defaultConfig {
         applicationId "com.royalcoffee.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        
+        versionCode 24
+        versionName "1.5.0"
+        
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        
         aaptOptions {
-             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
-             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
-            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+
+    // Убираю archivesBaseName, чтобы вернуться к стандартному имени app-release.aab
+    // Это поможет избежать путаницы со старыми файлами "RoyalCoffee"
+
+    signingConfigs {
+        release {
+            def signingPropsFile = rootProject.file("signing.properties")
+            if (signingPropsFile.exists()) {
+                def signingProps = new Properties()
+                signingProps.load(new FileInputStream(signingPropsFile))
+                storeFile = rootProject.file(signingProps['storeFile'])
+                storePassword = signingProps['storePassword']
+                keyAlias = signingProps['keyAlias']
+                keyPassword = signingProps['keyPassword']
+            }
+        }
+    }
+
     buildTypes {
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            
+            if (signingConfigs.release.storeFile != null) {
+                signingConfig signingConfigs.release
+            }
+            
+            ndk {
+                debugSymbolLevel 'SYMBOL_TABLE'
+            }
         }
+    }
+
+    bundle {
+        language { enableSplit = true }
+        density { enableSplit = true }
+        abi { enableSplit = true }
+    }
+}
+
+task createReleaseKeystore(type: Exec) {
+    description 'Generates a release keystore file using the project JDK'
+    workingDir rootProject.projectDir
+    
+    def keystoreFile = rootProject.file("release.jks")
+    if (!keystoreFile.exists()) {
+        def keytoolPath = "${System.getProperty('java.home')}/bin/keytool"
+        commandLine keytoolPath, "-genkey", "-v",
+                "-keystore", "release.jks",
+                "-alias", "my-key-alias",
+                "-keyalg", "RSA",
+                "-keysize", "2048",
+                "-validity", "10000",
+                "-storepass", "blood123",
+                "-keypass", "blood123",
+                "-dname", "CN=Royal Coffee, OU=Dev, O=Royal Coffee, L=Almaty, S=KZ, C=KZ"
+    } else {
+        commandLine "echo", "Keystore already exists."
     }
 }
 
@@ -50,5 +106,5 @@ try {
         apply plugin: 'com.google.gms.google-services'
     }
 } catch(Exception e) {
-    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+    logger.info("google-services.json not found, google-services plugin not applied.")
 }

@@ -53,6 +53,11 @@ service-account.json.json
 api-server/firebase-service-account.json
 *service-account*.json
 serviceAccountKey.json
+
+# Android keystore
+*.keystore
+*.jks
+android/keystore.properties
 *-firebase-adminsdk-*.json
 
 # All private keys
@@ -82,3 +87,7 @@ dist/
 # Generated reports (contain local paths)
 reports/
 scripts/inventory.json
+
+# Android signing - contains real passwords
+android/signing.properties
+

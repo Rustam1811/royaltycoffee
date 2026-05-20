@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { auth, db } from '../firebase';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
+import { API_CONFIG } from '../services/apiConfig';
 
 // Кеш для города пользователя
 let userCityCache: string | null = null;
@@ -194,13 +195,13 @@ export const LocationProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
   }, []);
 
-  // Fetch locations from API
-  const refreshLocations = useCallback(async () => {
+  // Fetch locations from API (with retry for slow network startup on native)
+  const refreshLocations = useCallback(async (retries = 2) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      const response = await fetch('/api/locations?action=list');
+      const response = await fetch(`${API_CONFIG.BASE_URL}/locations?action=list`);
       const data = await response.json();
       
       if (data.success && Array.isArray(data.data)) {
@@ -291,7 +292,12 @@ export const LocationProvider: React.FC<{ children: ReactNode }> = ({ children }
         setError('Не удалось загрузить список кофеен');
       }
     } catch (e) {
-      console.error('Failed to fetch locations:', e);
+      console.error('Failed to fetch locations:', e instanceof Error ? e.message : e);
+      if (retries > 0) {
+        // Retry after delay (network may still be initializing on native)
+        await new Promise(r => setTimeout(r, 2000));
+        return refreshLocations(retries - 1);
+      }
       setError('Ошибка загрузки. Проверьте подключение к интернету.');
     } finally {
       setIsLoading(false);
