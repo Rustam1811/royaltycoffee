@@ -74,7 +74,7 @@ workflows:
         submit_as_draft: false
       email:
         recipients:
-          - $CM_NOTIFY_EMAIL
+          - manarbekov18999@gmail.com
         notify:
           success: true
           failure: true
@@ -163,7 +163,7 @@ workflows:
         submit_to_app_store: false
       email:
         recipients:
-          - $CM_NOTIFY_EMAIL
+          - manarbekov18999@gmail.com
         notify:
           success: true
           failure: true
@@ -210,7 +210,7 @@ workflows:
     publishing:
       email:
         recipients:
-          - $CM_NOTIFY_EMAIL
+          - manarbekov18999@gmail.com
         notify:
           success: true
           failure: true
