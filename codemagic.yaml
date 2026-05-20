@@ -119,10 +119,6 @@ workflows:
           include: true
 
     scripts:
-      - name: Set up GoogleService-Info.plist
-        script: |
-          echo $GOOGLE_SERVICES_PLIST | base64 --decode > ios/App/App/GoogleService-Info.plist
-
       - name: Install root dependencies
         script: npm ci --legacy-peer-deps
 
