@@ -131,15 +131,36 @@ workflows:
       - name: Sync Capacitor
         script: npx cap sync ios
 
-      - name: Set up code signing (use existing profile from Apple Developer)
+      - name: Set up code signing (delete old profiles, create fresh with all capabilities)
         script: |
+          set -e
           keychain initialize
 
-          # Fetch БЕЗ --create: тянем существующий рабочий профиль,
-          # который уже настроен правильно (Sign In with Apple и т.д.)
+          echo "=== Removing local cached profiles ==="
+          rm -rf "$HOME/Library/MobileDevice/Provisioning Profiles/"* || true
+
+          echo "=== Listing existing profiles on Apple Developer Portal ==="
+          # Получаем список всех профилей для нашего bundle id и удаляем их
+          PROFILES=$(app-store-connect list-profiles \
+            --bundle-id-identifier "$BUNDLE_ID" \
+            --profile-state ACTIVE \
+            --json 2>/dev/null | jq -r '.[].id' || echo "")
+
+          if [ -n "$PROFILES" ]; then
+            echo "Deleting existing profiles to force regeneration with current capabilities..."
+            for PROFILE_ID in $PROFILES; do
+              echo "Deleting profile: $PROFILE_ID"
+              app-store-connect delete-profile "$PROFILE_ID" --ignore-not-found || true
+            done
+          else
+            echo "No existing profiles found."
+          fi
+
+          echo "=== Creating fresh profile with --create (will include all App ID capabilities) ==="
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
-            --platform IOS
+            --platform IOS \
+            --create
 
           keychain add-certificates
           xcode-project use-profiles
