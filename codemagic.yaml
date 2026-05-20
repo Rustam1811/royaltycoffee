@@ -162,10 +162,11 @@ workflows:
       - name: Bump build number (avoid App Store duplicate)
         script: |
           cd $CM_BUILD_DIR/ios/App
-          # Используем номер сборки Codemagic + большой offset, чтобы точно был выше предыдущих
           NEW_BUILD_NUMBER=$(($BUILD_NUMBER + 100))
           echo "Setting build number to: $NEW_BUILD_NUMBER"
           agvtool new-version -all $NEW_BUILD_NUMBER
+          # Поднимаем версию до 1.7.0 (1.6.0 уже занята в App Store)
+          agvtool new-marketing-version 1.7.0
 
       - name: Build iOS release IPA
         script: |
