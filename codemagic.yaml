@@ -131,21 +131,32 @@ workflows:
       - name: Sync Capacitor
         script: npx cap sync ios
 
-      - name: Set up code signing (automatic via CM)
+      - name: Set up code signing (use existing profile from Apple Developer)
         script: |
           keychain initialize
-          app-store-connect fetch-signing-files $BUNDLE_ID \
+
+          # Fetch БЕЗ --create: тянем существующий рабочий профиль,
+          # который уже настроен правильно (Sign In with Apple и т.д.)
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
-            --create
+            --platform IOS
+
           keychain add-certificates
-          xcode-project use-profiles --warn-only
+          xcode-project use-profiles
+
+      - name: Bump build number (avoid App Store duplicate)
+        script: |
+          cd $CM_BUILD_DIR/ios/App
+          # Используем номер сборки Codemagic + большой offset, чтобы точно был выше предыдущих
+          NEW_BUILD_NUMBER=$(($BUILD_NUMBER + 100))
+          echo "Setting build number to: $NEW_BUILD_NUMBER"
+          agvtool new-version -all $NEW_BUILD_NUMBER
 
       - name: Build iOS release IPA
         script: |
           xcode-project build-ipa \
             --project "$XCODE_PROJECT" \
-            --scheme "$XCODE_SCHEME" \
-            --archive-xcargs "CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=X63R22FAMX"
+            --scheme "$XCODE_SCHEME"
 
     artifacts:
       - build/ios/ipa/*.ipa
