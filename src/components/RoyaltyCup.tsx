@@ -289,7 +289,7 @@ const RoyaltyCup: React.FC<RoyaltyCupProps> = React.memo(({ percent, size = 360,
         )}
 
         {/* Liquid surface ellipse — 3D top */}
-        {p > 2 && p < 98 && (
+        {p > 2 && p < 98 && fillRx > 0 && fillRy > 0 && Number.isFinite(fillY) && (
           <motion.ellipse
             cx={topCx}
             cy={fillY}
@@ -354,7 +354,7 @@ const RoyaltyCup: React.FC<RoyaltyCupProps> = React.memo(({ percent, size = 360,
           // а поворачиваем вокруг центра — так левая часть логотипа окажется внизу.
           return (
             <image
-              href="/images/logo_home.png"
+              href={`${import.meta.env.BASE_URL}images/logo_home.png`}
               x={cx - logoH / 2}
               y={cy - logoW / 2}
               width={logoH}

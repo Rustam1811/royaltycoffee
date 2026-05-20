@@ -31,6 +31,11 @@ export default defineConfig(() => {
     },
     server: {
       proxy: {
+        '/workshop': {
+          target: 'http://localhost:5175',
+          changeOrigin: true,
+          ws: true,
+        },
         '/api': {
           target: 'http://localhost:3001',
           changeOrigin: true,
@@ -56,7 +61,17 @@ export default defineConfig(() => {
       headers: {
         'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
         'Cross-Origin-Embedder-Policy': 'credentialless'
-      }
+      },
+      // Не следить за нативными билд-артефактами и dist (иначе Vite сходит с ума)
+      watch: {
+        ignored: [
+          '**/ios/**',
+          '**/android/**',
+          '**/dist/**',
+          '**/.firebase/**',
+          '**/node_modules/**',
+        ],
+      },
     },
     build: {
       outDir: "dist/app",
@@ -86,6 +101,8 @@ export default defineConfig(() => {
     },
     // Оптимизация dev сервера
     optimizeDeps: {
+      // Явно указываем точки входа — иначе Vite сканирует ВСЁ, включая ios/DerivedData/ (старые билд-артефакты)
+      entries: ['index.html', 'src/**/*.{ts,tsx}'],
       include: [
         'react',
         'react-dom',
@@ -93,8 +110,17 @@ export default defineConfig(() => {
         'framer-motion',
         'i18next',
         'react-i18next',
+        'firebase/app',
+        'firebase/auth',
+        'firebase/firestore',
+        'firebase/storage',
+        'firebase/messaging',
       ],
-      exclude: ['@firebase/auth', '@firebase/firestore'],
+      exclude: [
+        // Capacitor-плагин нужен только в нативном билде; в вебе он импортирует
+        // несуществующие в новых версиях firebase/auth экспорты и валит dev-сервер.
+        '@capacitor-firebase/authentication',
+      ],
     },
   };
 });

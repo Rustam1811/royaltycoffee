@@ -9,8 +9,10 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'meshoptimizer';
 import * as THREE from 'three';
 
+const GLB_URL = `${import.meta.env.BASE_URL}images/3Dcup_tiny.glb`.replace('//', '/');
+
 /* ── Preload GLB as soon as this module loads, before Canvas even mounts ── */
-useLoader.preload(GLTFLoader, '/images/3Dcup_tiny.glb', (loader: GLTFLoader) => {
+useLoader.preload(GLTFLoader, GLB_URL, (loader: GLTFLoader) => {
   loader.setMeshoptDecoder(MeshoptDecoder);
 });
 
@@ -91,7 +93,7 @@ export const Cup3D: React.FC<Cup3DProps> = ({ className = '' }) => (
       <directionalLight position={[-3, -3, -3]} intensity={0.25} />
       <pointLight position={[0, 2, 0]} intensity={0.5} color="#D4AF37" />
       <Suspense fallback={<LoadingFallback />}>
-        <CupModel url="/images/3Dcup_tiny.glb" />
+        <CupModel url={GLB_URL} />
       </Suspense>
     </Canvas>
   </div>

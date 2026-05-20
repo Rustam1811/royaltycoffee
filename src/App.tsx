@@ -58,7 +58,7 @@ const PrivateRoute: React.FC<{ component: React.ComponentType<any>; exact?: bool
 const AppContent: React.FC = () => {
   const location = useLocation();
   const prefersReduced = useReducedMotion();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const isLogin = location.pathname === '/login';
 
   useEffect(() => {
@@ -76,7 +76,7 @@ const AppContent: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (loading || !user) return;
 
     // Workshop users should never be in the coffee app — redirect to workshop
     const workshopRoles = ['workshop_admin', 'workshop_client', 'workshop_owner'];
@@ -96,7 +96,7 @@ const AppContent: React.FC = () => {
     } else {
       initPushNotifications();
     }
-  }, [user]);
+  }, [user, loading]);
   
   return (
     <>

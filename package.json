@@ -95,6 +95,7 @@
         "node": "20.x"
     },
     "devDependencies": {
+        "@emotion/is-prop-valid": "^1.4.0",
         "@tailwindcss/postcss": "^4.1.5",
         "@testing-library/dom": ">=7.21.4",
         "@testing-library/jest-dom": "^5.16.5",
