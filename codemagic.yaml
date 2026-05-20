@@ -94,7 +94,7 @@ workflows:
       # APP_STORE_CONNECT_PRIVATE_KEY, APP_STORE_CONNECT_KEY_IDENTIFIER, APP_STORE_CONNECT_ISSUER_ID
       # VITE_* env vars
       vars:
-        XCODE_WORKSPACE: ios/App/App.xcworkspace
+        XCODE_PROJECT: ios/App/App.xcodeproj
         XCODE_SCHEME: App
         BUNDLE_ID: "com.royalcoffee.app"
       node: 22
@@ -143,7 +143,7 @@ workflows:
       - name: Build iOS release IPA
         script: |
           xcode-project build-ipa \
-            --workspace "$XCODE_WORKSPACE" \
+            --project "$XCODE_PROJECT" \
             --scheme "$XCODE_SCHEME" \
             --export-options-plist ios/ExportOptionsUpload.plist
 
