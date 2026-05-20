@@ -9,10 +9,10 @@ workflows:
     instance_type: mac_mini_m2
 
     environment:
-      groups:
-        - royal_coffee_android        # CM group: KEYSTORE_FILE, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
-        - royal_coffee_firebase       # CM group: GOOGLE_SERVICES_JSON (base64)
-        - royal_coffee_env            # CM group: VITE_* env vars
+      # Add these variables in Codemagic UI → App settings → Environment variables:
+      # KEYSTORE_FILE (base64), KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
+      # GOOGLE_SERVICES_JSON (base64), GPLAY_SERVICE_ACCOUNT_JSON
+      # VITE_* env vars
       vars:
         PACKAGE_NAME: "com.royalcoffee.app"
       node: 20.x
@@ -88,15 +88,15 @@ workflows:
     instance_type: mac_mini_m2
 
     environment:
-      groups:
-        - royal_coffee_ios            # CM group: CM_CERTIFICATE, CM_CERTIFICATE_PASSWORD, CM_PROVISIONING_PROFILE
-        - royal_coffee_firebase       # CM group: GOOGLE_SERVICES_PLIST (base64)
-        - royal_coffee_env            # CM group: VITE_* env vars
+      # Add these variables in Codemagic UI → App settings → Environment variables:
+      # CM_CERTIFICATE (base64), CM_CERTIFICATE_PASSWORD, CM_PROVISIONING_PROFILE (base64)
+      # GOOGLE_SERVICES_PLIST (base64)
+      # APP_STORE_CONNECT_PRIVATE_KEY, APP_STORE_CONNECT_KEY_IDENTIFIER, APP_STORE_CONNECT_ISSUER_ID
+      # VITE_* env vars
       vars:
         XCODE_WORKSPACE: ios/App/App.xcworkspace
         XCODE_SCHEME: App
         BUNDLE_ID: "com.royalcoffee.app"
-        APP_STORE_APPLE_ID: $APP_STORE_APPLE_ID   # set in CM group
       node: 20.x
       xcode: latest
       cocoapods: default
@@ -177,9 +177,8 @@ workflows:
     instance_type: linux_x2
 
     environment:
-      groups:
-        - royal_coffee_firebase       # CM group: FIREBASE_TOKEN or GOOGLE_APPLICATION_CREDENTIALS
-        - royal_coffee_env
+      # Add these variables in Codemagic UI → App settings → Environment variables:
+      # FIREBASE_TOKEN, VITE_* env vars
       node: 20.x
 
     triggering:
