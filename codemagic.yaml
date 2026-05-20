@@ -15,7 +15,7 @@ workflows:
       # VITE_* env vars
       vars:
         PACKAGE_NAME: "com.royalcoffee.app"
-      node: 20.x
+      node: 20
       java: 17
 
     triggering:
@@ -97,7 +97,7 @@ workflows:
         XCODE_WORKSPACE: ios/App/App.xcworkspace
         XCODE_SCHEME: App
         BUNDLE_ID: "com.royalcoffee.app"
-      node: 20.x
+      node: 20
       xcode: latest
       cocoapods: default
 
@@ -179,7 +179,7 @@ workflows:
     environment:
       # Add these variables in Codemagic UI → App settings → Environment variables:
       # FIREBASE_TOKEN, VITE_* env vars
-      node: 20.x
+      node: 20
 
     triggering:
       events:
