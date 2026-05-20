@@ -102,7 +102,7 @@ workflows:
       # APP_STORE_CONNECT_PRIVATE_KEY, APP_STORE_CONNECT_KEY_IDENTIFIER, APP_STORE_CONNECT_ISSUER_ID
       # VITE_* env vars
       groups:
-        - los_signing
+        - ios_signing
       vars:
         XCODE_PROJECT: ios/App/App.xcodeproj
         XCODE_SCHEME: App
