@@ -63,7 +63,6 @@ const REQUIRED_FILES = [
   'sw.js',
   'manifest.json',
   'firebase-messaging-sw.js',
-  'coffeeaddict.jpg',
   'app/index.html',
 ];
 

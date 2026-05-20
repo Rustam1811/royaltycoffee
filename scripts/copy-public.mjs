@@ -17,7 +17,6 @@ const ROOT_FILES = [
   'sw.js',
   'firebase-messaging-sw.js',
   'manifest.json',
-  'coffeeaddict.jpg',
   'favicon.png',
   'index.html',
   'privacy.html',

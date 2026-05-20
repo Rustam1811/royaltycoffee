@@ -46,6 +46,8 @@ yarn-error.log*
 *.jsx
 *.js.map
 *.jsx.map
+!public/firebase-messaging-sw.js
+!public/sw.js
 
 # Firebase / Google Cloud service accounts
 service-account.json
