@@ -13,6 +13,14 @@ workflows:
       # KEYSTORE_FILE (base64), KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
       # GOOGLE_SERVICES_JSON (base64), GPLAY_SERVICE_ACCOUNT_JSON
       # VITE_* env vars
+      groups:
+        - api
+        - app_id
+        - auth_domain
+        - measurement_id
+        - project_id
+        - sender_id
+        - storage_bucket
       vars:
         PACKAGE_NAME: "com.royalcoffee.app"
       node: 22
@@ -93,6 +101,8 @@ workflows:
       # GOOGLE_SERVICES_PLIST (base64)
       # APP_STORE_CONNECT_PRIVATE_KEY, APP_STORE_CONNECT_KEY_IDENTIFIER, APP_STORE_CONNECT_ISSUER_ID
       # VITE_* env vars
+      groups:
+        - los_signing
       vars:
         XCODE_PROJECT: ios/App/App.xcodeproj
         XCODE_SCHEME: App
@@ -131,38 +141,24 @@ workflows:
       - name: Sync Capacitor
         script: npx cap sync ios
 
-      - name: Set up code signing (delete old profiles, create fresh with all capabilities)
+      - name: Set up code signing (manual with provided cert + profile)
         script: |
           set -e
           keychain initialize
 
-          echo "=== Removing local cached profiles ==="
-          rm -rf "$HOME/Library/MobileDevice/Provisioning Profiles/"* || true
+          echo "=== Decoding distribution certificate ==="
+          echo "$CM_CERTIFICATE" | base64 --decode > /tmp/certificate.p12
 
-          echo "=== Listing existing profiles on Apple Developer Portal ==="
-          # Получаем список всех профилей для нашего bundle id и удаляем их
-          PROFILES=$(app-store-connect list-profiles \
-            --bundle-id-identifier "$BUNDLE_ID" \
-            --profile-state ACTIVE \
-            --json 2>/dev/null | jq -r '.[].id' || echo "")
+          echo "=== Decoding provisioning profile ==="
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          echo "$CM_PROVISIONING_PROFILE" | base64 --decode > "$HOME/Library/MobileDevice/Provisioning Profiles/royal_coffee.mobileprovision"
 
-          if [ -n "$PROFILES" ]; then
-            echo "Deleting existing profiles to force regeneration with current capabilities..."
-            for PROFILE_ID in $PROFILES; do
-              echo "Deleting profile: $PROFILE_ID"
-              app-store-connect delete-profile "$PROFILE_ID" --ignore-not-found || true
-            done
-          else
-            echo "No existing profiles found."
-          fi
+          echo "=== Adding certificate to keychain ==="
+          keychain add-certificates \
+            --certificate /tmp/certificate.p12 \
+            --certificate-password "$CM_CERTIFICATE_PASSWORD"
 
-          echo "=== Creating fresh profile with --create (will include all App ID capabilities) ==="
-          app-store-connect fetch-signing-files "$BUNDLE_ID" \
-            --type IOS_APP_STORE \
-            --platform IOS \
-            --create
-
-          keychain add-certificates
+          echo "=== Applying provisioning profile to Xcode project ==="
           xcode-project use-profiles
 
       - name: Bump build number (avoid App Store duplicate)
@@ -185,12 +181,8 @@ workflows:
       - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
 
     publishing:
-      app_store_connect:
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        submit_to_testflight: true
-        submit_to_app_store: false
+      # TestFlight отключен — нет App Store Connect API ключа.
+      # IPA доступен в artifacts, заливай через Transporter с Mac или включи позже.
       email:
         recipients:
           - manarbekov18999@gmail.com
