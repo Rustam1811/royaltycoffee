@@ -71,6 +71,7 @@ android/keystore.properties
 # Mobile platform secrets
 **/google-services.json
 **/GoogleService-Info.plist
+!ios/App/App/GoogleService-Info.plist
 
 # Local env files
 .env
