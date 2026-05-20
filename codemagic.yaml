@@ -107,6 +107,8 @@ workflows:
         XCODE_PROJECT: ios/App/App.xcodeproj
         XCODE_SCHEME: App
         BUNDLE_ID: "com.royalcoffee.app"
+        APP_STORE_CONNECT_KEY_IDENTIFIER: "T5QGVHH94U"
+        APP_STORE_CONNECT_ISSUER_ID: "0a63e59d-a55d-4041-b332-01b08d787958"
       node: 22
       xcode: latest
       cocoapods: default
@@ -177,8 +179,12 @@ workflows:
       - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
 
     publishing:
-      # TestFlight отключен — нет App Store Connect API ключа.
-      # IPA доступен в artifacts, заливай через Transporter с Mac или включи позже.
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: true
+        submit_to_app_store: false
       email:
         recipients:
           - manarbekov18999@gmail.com
