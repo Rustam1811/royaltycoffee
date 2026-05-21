@@ -2,9 +2,12 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
+import { DebugOverlay } from './DebugOverlay';
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+const rootEl = document.getElementById('root')!;
+ReactDOM.createRoot(rootEl).render(
   <React.StrictMode>
     <App />
+    <DebugOverlay />
   </React.StrictMode>
 );
