@@ -143,7 +143,7 @@ workflows:
           # Собираем по отдельности — landing может упасть, не блокируем workshop
           npm run build:web
           npm run build:admin
-          cd workshop && npm run build && cd ..
+          cd workshop && CAPACITOR_BUILD=true npm run build && cd ..
           node scripts/copy-workshop-to-app.mjs
 
       - name: Sync Capacitor
