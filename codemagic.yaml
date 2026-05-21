@@ -60,7 +60,9 @@ workflows:
       - name: Build web assets (Capacitor mode)
         script: |
           export CAPACITOR_BUILD=true
-          npm run build:all
+          npm run build:web
+          npm run build:admin
+          cd workshop && CAPACITOR_BUILD=true npm run build && cd ..
           node scripts/copy-workshop-to-app.mjs
 
       - name: Sync Capacitor
