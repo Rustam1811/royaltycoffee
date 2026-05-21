@@ -10,13 +10,10 @@ import {
   TrashIcon,
   CheckIcon,
   SparklesIcon,
-  ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline';
 import { useUser } from '@/contexts/UserContext';
 import { Button, Input, WorkshopLoader } from '@/components/ui';
 import { getClientByUid, updateClient, addOutlet } from '@/services';
-import { signOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
 
 interface OutletDraft {
   name: string;
@@ -95,23 +92,8 @@ const OnboardingPage: React.FC = () => {
     setOutlets(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-    } finally {
-      window.location.href = '/login';
-    }
-  };
-
   const handleFinish = async () => {
-    // Если в форме осталась заполненная точка — добавим её автоматически,
-    // чтобы пользователю не приходилось искать кнопку «Добавить точку».
-    const outletsToSave = [...outlets];
-    if (outletForm.name.trim() && outletForm.address.trim()) {
-      outletsToSave.push({ ...outletForm });
-    }
-
-    if (outletsToSave.length === 0) {
+    if (outlets.length === 0) {
       setError('Добавьте хотя бы одну точку доставки');
       return;
     }
@@ -129,7 +111,7 @@ const OnboardingPage: React.FC = () => {
       });
 
       // 2. Добавляем каждую точку
-      for (const outlet of outletsToSave) {
+      for (const outlet of outlets) {
         await addOutlet(clientDocId, {
           name: outlet.name.trim(),
           address: outlet.address.trim(),
@@ -139,13 +121,9 @@ const OnboardingPage: React.FC = () => {
         });
       }
 
-      // очищаем форму на случай, если останемся на странице
-      setOutlets(outletsToSave);
-      setOutletForm({ name: '', address: '', phone: '', deliveryTime: '08:00' });
-
       setStep(3);
 
-      // Через 2.5 секунды перенаправляем
+      // Через 2 секунды перенаправляем
       setTimeout(() => {
         history.replace('/client/outlets');
       }, 2500);
@@ -183,17 +161,7 @@ const OnboardingPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-rose-50 via-white to-rose-50">
       {/* Header */}
-      <div className="bg-gradient-to-br from-[#3D0A11] via-[#4D0E16] to-[#5A0D17] text-white px-6 pt-12 pb-8 relative">
-        {/* Logout button — доступен в любой момент онбординга */}
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="absolute top-12 right-5 inline-flex items-center gap-1.5 text-xs font-medium text-white/70 hover:text-white bg-white/10 hover:bg-white/20 transition-colors rounded-lg px-2.5 py-1.5"
-          aria-label="Выйти из аккаунта"
-        >
-          <ArrowRightOnRectangleIcon className="w-4 h-4" />
-          Выйти
-        </button>
+      <div className="bg-gradient-to-br from-[#3D0A11] via-[#4D0E16] to-[#5A0D17] text-white px-6 pt-12 pb-8">
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
           <div className="flex items-center gap-3 mb-4">
             <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
@@ -356,32 +324,39 @@ const OnboardingPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Continue button — shown prominently when at least one outlet added */}
+            {outlets.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <Button
+                  fullWidth
+                  size="lg"
+                  onClick={handleFinish}
+                  loading={saving}
+                  className="bg-green-600 hover:bg-green-700 text-white text-base font-bold py-4 rounded-2xl shadow-lg shadow-green-200"
+                >
+                  ✓ Продолжить и сделать заказ
+                </Button>
+              </motion.div>
+            )}
+
             {/* Actions */}
             <div className="flex gap-3">
               <Button variant="outline" fullWidth onClick={() => { setStep(1); setError(''); }}>
                 ← Назад
               </Button>
-              <Button
-                fullWidth
-                onClick={handleFinish}
-                loading={saving}
-                disabled={
-                  saving ||
-                  (outlets.length === 0 && (!outletForm.name.trim() || !outletForm.address.trim()))
-                }
-              >
-                Продолжить →
-              </Button>
+              {outlets.length === 0 && (
+                <Button fullWidth onClick={handleFinish} loading={saving} disabled>
+                  Готово ✓
+                </Button>
+              )}
             </div>
 
-            {outlets.length === 0 ? (
+            {outlets.length === 0 && (
               <p className="text-xs text-slate-400 text-center px-4">
-                Заполните название и адрес — мы сохраним точку автоматически при нажатии «Продолжить».
-                Чтобы добавить ещё несколько точек, нажмите «Добавить точку».
-              </p>
-            ) : (
-              <p className="text-xs text-slate-400 text-center px-4">
-                Можно добавить ещё одну точку или нажать «Продолжить», чтобы завершить настройку.
+                Добавьте хотя бы одну точку, чтобы мы знали куда доставлять заказы
               </p>
             )}
           </motion.div>

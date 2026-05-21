@@ -7,7 +7,7 @@ import { getCashbackPercent } from '../components/AchievementBadge';
 import { auth, db } from '../lib/firebase';
 import { useAuth } from '../auth/AuthContext';
 import { API_CONFIG } from '../services/apiConfig';
-import { doc, getDoc, collection, getDocs, query, limit, where } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import { 
   TrophyIcon, 
@@ -711,7 +711,10 @@ const LeaderboardCarousel: React.FC<{
 
 const HomePage: React.FC = () => {
   const { user: authUser } = useAuth();
+  // dataReady — только профиль + бонусы (карточка кешбэка)
   const [dataReady, setDataReady] = useState(false);
+  // leaderboardReady — лидерборд загружается независимо
+  const [leaderboardReady, setLeaderboardReady] = useState(false);
   const [userName, setUserName] = useState(authUser?.name || authUser?.email?.split('@')[0] || 'Гость');
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [bonusBalance, setBonusBalance] = useState(0);
@@ -722,34 +725,30 @@ const HomePage: React.FC = () => {
   const [drinkLeaders, setDrinkLeaders] = useState<Record<string, CategoryLeaderUser[]>>({});
   const [foodLeaders, setFoodLeaders] = useState<Record<string, CategoryLeaderUser[]>>({});
 
+  // ── Effect 1: профиль + бонусы → dataReady сразу после загрузки ──
   useEffect(() => {
-    const loadUserData = async () => {
+    const loadProfile = async () => {
       try {
         const user = auth.currentUser;
-        if (!user) {
-          setDataReady(true);
-          return;
-        }
+        if (!user) return;
 
-        // Загружаем профиль
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        // Параллельно: профиль + заказы + бонусы
+        const [userDoc, ordersSnap, bonusDoc] = await Promise.all([
+          getDoc(doc(db, 'users', user.uid)),
+          getDocs(query(collection(db, 'orders'), where('userId', '==', user.uid))),
+          getDoc(doc(db, 'bonuses', user.uid)),
+        ]);
+
         if (userDoc.exists()) {
           const userData = userDoc.data();
           setUserName(userData.name || user.displayName || authUser?.name || 'Гость');
           setUserAvatar(userData.avatar || user.photoURL || null);
           setTotalOrders(userData.ordersCount || 0);
         } else {
-          // doc ещё не создан — берём из Firebase Auth
           setUserName(user.displayName || authUser?.name || 'Гость');
           setUserAvatar(user.photoURL || null);
         }
 
-        // Подсчитываем общую сумму потраченных денег
-        const ordersQuery = query(
-          collection(db, 'orders'),
-          where('userId', '==', user.uid)
-        );
-        const ordersSnap = await getDocs(ordersQuery);
         let spent = 0;
         ordersSnap.forEach(d => {
           const o = d.data();
@@ -757,138 +756,136 @@ const HomePage: React.FC = () => {
         });
         setTotalSpent(spent);
 
-        // Загружаем бонусы
-        let userBonusBalance = 0;
-        const bonusDoc = await getDoc(doc(db, 'bonuses', user.uid));
         if (bonusDoc.exists()) {
-          const bonusData = bonusDoc.data();
-          userBonusBalance = bonusData.balance || 0;
-          setBonusBalance(userBonusBalance);
+          setBonusBalance(bonusDoc.data().balance || 0);
         }
-
-        // Загружаем лидерборд через API (Admin SDK на сервере — full access к orders)
-        const leaderboardData: LeaderboardUser[] = [];
-        let currentUserData: LeaderboardUser | null = null;
-
-        try {
-          const lbRes = await fetch(`${API_CONFIG.BASE_URL}/leaderboard?limit=100&userId=${user.uid}`);
-          const lbJson = await lbRes.json();
-          if (lbJson.ok) {
-            // Загружаем бонусы для всех лидеров
-            const bonusMap = new Map<string, number>();
-            const leaderIds = (lbJson.leaders || []).map((u: { id: string }) => u.id);
-            // Добавляем текущего юзера
-            if (!leaderIds.includes(user.uid)) leaderIds.push(user.uid);
-            try {
-              for (let i = 0; i < leaderIds.length; i += 10) {
-                const batch = leaderIds.slice(i, i + 10);
-                const bonusDocs = await Promise.all(
-                  batch.map((uid: string) => getDoc(doc(db, 'bonuses', uid)))
-                );
-                bonusDocs.forEach((bDoc) => {
-                  if (bDoc.exists()) {
-                    bonusMap.set(bDoc.id, bDoc.data().balance || 0);
-                  }
-                });
-              }
-            } catch {
-              // Бонусы не загрузились — продолжаем без них
-            }
-
-            // Загружаем аватары для всех лидеров из Firestore
-            // Собираем ВСЕ уникальные uid: основной список + drink + food категории
-            const avatarMap = new Map<string, string>();
-            const drinkFoodIds = new Set<string>();
-            Object.values(lbJson.drinkLeaders || {}).forEach((list: unknown) =>
-              (list as Array<{ id: string }>).forEach(u => drinkFoodIds.add(u.id))
-            );
-            Object.values(lbJson.foodLeaders || {}).forEach((list: unknown) =>
-              (list as Array<{ id: string }>).forEach(u => drinkFoodIds.add(u.id))
-            );
-            const allAvatarIds = [...new Set([...leaderIds, ...drinkFoodIds])];
-            try {
-              for (let i = 0; i < allAvatarIds.length; i += 10) {
-                const batch = allAvatarIds.slice(i, i + 10);
-                const userDocs = await Promise.all(
-                  batch.map((uid: string) => getDoc(doc(db, 'users', uid)))
-                );
-                userDocs.forEach((uDoc) => {
-                  if (uDoc.exists()) {
-                    const avatar = uDoc.data().avatar || uDoc.data().photoURL;
-                    if (avatar) avatarMap.set(uDoc.id, avatar);
-                  }
-                });
-              }
-            } catch {
-              // Аватары не загрузились — продолжаем без них
-            }
-
-            (lbJson.leaders || []).forEach((u: { id: string; name: string; ordersCount: number; totalSpent: number; position: number }) => {
-              leaderboardData.push({
-                id: u.id,
-                name: u.name,
-                ordersCount: u.ordersCount,
-                totalSpent: u.totalSpent,
-                bonusBalance: bonusMap.get(u.id) || 0,
-                position: u.position,
-                avatar: avatarMap.get(u.id),
-              });
-            });
-
-            if (lbJson.currentUser) {
-              const cu = lbJson.currentUser;
-              currentUserData = {
-                id: cu.id,
-                name: cu.name,
-                ordersCount: cu.ordersCount,
-                totalSpent: cu.totalSpent,
-                bonusBalance: bonusMap.get(cu.id) || userBonusBalance,
-                position: cu.position,
-                avatar: avatarMap.get(cu.id),
-              };
-            }
-
-            // Drink/food лидерборды — обогащаем аватарами
-            const enrichWithAvatars = (map: Record<string, Array<{id: string; name: string; count: number; position: number}>>) => {
-              const result: Record<string, CategoryLeaderUser[]> = {};
-              Object.entries(map).forEach(([key, list]) => {
-                result[key] = list.map(u => ({ ...u, avatar: avatarMap.get(u.id) }));
-              });
-              return result;
-            };
-            setDrinkLeaders(enrichWithAvatars(lbJson.drinkLeaders || {}));
-            setFoodLeaders(enrichWithAvatars(lbJson.foodLeaders || {}));
-          }
-        } catch (leaderError) {
-          console.error('Leaderboard load error:', leaderError);
-        }
-        
-        setLeaders(leaderboardData);
-        
-        if (!currentUserData && userDoc.exists()) {
-          const userData = userDoc.data();
-          setCurrentUserLeaderboard({
-            id: user.uid,
-            name: userData.name || userData.displayName || 'Вы',
-            ordersCount: userData.ordersCount || 0,
-            bonusBalance: userBonusBalance,
-            totalSpent: spent,
-            position: leaderboardData.length + 1,
-            avatar: userData.avatar || userData.photoURL || userAvatar || undefined,
-          });
-        } else {
-          setCurrentUserLeaderboard(currentUserData);
-        }
-
       } catch (error) {
-        console.error('Error loading user data:', error);
+        console.error('Error loading profile:', error);
       } finally {
+        // Карточка кешбэка готова отображаться
         setDataReady(true);
       }
     };
 
-    loadUserData();
-  }, []);
+    loadProfile();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Effect 2: лидерборд — независимо, не блокирует UI ──
+  useEffect(() => {
+    const loadLeaderboard = async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) {
+          setLeaderboardReady(true);
+          return;
+        }
+
+        const lbRes = await fetch(`${API_CONFIG.BASE_URL}/leaderboard?limit=100&userId=${user.uid}`);
+        const lbJson = await lbRes.json();
+        if (!lbJson.ok) {
+          setLeaderboardReady(true);
+          return;
+        }
+
+        // Собираем все уникальные uid для batch-запросов аватаров и бонусов
+        const leaderIds: string[] = (lbJson.leaders || []).map((u: { id: string }) => u.id);
+        if (!leaderIds.includes(user.uid)) leaderIds.push(user.uid);
+
+        const drinkFoodIds = new Set<string>();
+        Object.values(lbJson.drinkLeaders || {}).forEach((list: unknown) =>
+          (list as Array<{ id: string }>).forEach(u => drinkFoodIds.add(u.id))
+        );
+        Object.values(lbJson.foodLeaders || {}).forEach((list: unknown) =>
+          (list as Array<{ id: string }>).forEach(u => drinkFoodIds.add(u.id))
+        );
+        const allIds = [...new Set([...leaderIds, ...drinkFoodIds])];
+
+        // Batch-загрузка аватаров и бонусов параллельно
+        const avatarMap = new Map<string, string>();
+        const bonusMap = new Map<string, number>();
+
+        const batchSize = 10;
+        const batches: string[][] = [];
+        for (let i = 0; i < allIds.length; i += batchSize) {
+          batches.push(allIds.slice(i, i + batchSize));
+        }
+
+        await Promise.all(batches.map(async batch => {
+          const [userDocs, bonusDocs] = await Promise.all([
+            Promise.all(batch.map(uid => getDoc(doc(db, 'users', uid)))),
+            Promise.all(batch.map(uid => getDoc(doc(db, 'bonuses', uid)))),
+          ]);
+          userDocs.forEach(uDoc => {
+            if (uDoc.exists()) {
+              const av = uDoc.data().avatar || uDoc.data().photoURL;
+              if (av) avatarMap.set(uDoc.id, av);
+            }
+          });
+          bonusDocs.forEach(bDoc => {
+            if (bDoc.exists()) bonusMap.set(bDoc.id, bDoc.data().balance || 0);
+          });
+        }));
+
+        // Обновляем баланс текущего юзера если он в лидерборде
+        const myBonus = bonusMap.get(user.uid);
+        if (myBonus !== undefined) setBonusBalance(myBonus);
+
+        const leaderboardData: LeaderboardUser[] = (lbJson.leaders || []).map(
+          (u: { id: string; name: string; ordersCount: number; totalSpent: number; position: number }) => ({
+            id: u.id,
+            name: u.name,
+            ordersCount: u.ordersCount,
+            totalSpent: u.totalSpent,
+            bonusBalance: bonusMap.get(u.id) || 0,
+            position: u.position,
+            avatar: avatarMap.get(u.id),
+          })
+        );
+
+        setLeaders(leaderboardData);
+
+        const enrichWithAvatars = (map: Record<string, Array<{ id: string; name: string; count: number; position: number }>>) => {
+          const result: Record<string, CategoryLeaderUser[]> = {};
+          Object.entries(map).forEach(([key, list]) => {
+            result[key] = list.map(u => ({ ...u, avatar: avatarMap.get(u.id) }));
+          });
+          return result;
+        };
+        setDrinkLeaders(enrichWithAvatars(lbJson.drinkLeaders || {}));
+        setFoodLeaders(enrichWithAvatars(lbJson.foodLeaders || {}));
+
+        if (lbJson.currentUser) {
+          const cu = lbJson.currentUser;
+          setCurrentUserLeaderboard({
+            id: cu.id,
+            name: cu.name,
+            ordersCount: cu.ordersCount,
+            totalSpent: cu.totalSpent,
+            bonusBalance: bonusMap.get(cu.id) || 0,
+            position: cu.position,
+            avatar: avatarMap.get(cu.id),
+          });
+        } else {
+          // Текущий юзер не в топе — строим данные из уже загруженного профиля
+          setCurrentUserLeaderboard(prev => prev ?? {
+            id: user.uid,
+            name: authUser?.name || 'Вы',
+            ordersCount: 0,
+            bonusBalance: bonusMap.get(user.uid) || 0,
+            totalSpent: 0,
+            position: leaderboardData.length + 1,
+            avatar: avatarMap.get(user.uid),
+          });
+        }
+      } catch (leaderError) {
+        console.error('Leaderboard load error:', leaderError);
+      } finally {
+        setLeaderboardReady(true);
+      }
+    };
+
+    loadLeaderboard();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Данные загружаются после auth — скелет страницы рисуем сразу,
   // fullscreen RoyalLoader уже показан на уровне App/PrivateRoute.
@@ -967,10 +964,10 @@ const HomePage: React.FC = () => {
             style={{
               width: 320,
               height: 320,
-              top: '50%',
+              top: '30%',
               right: -80,
               transform: 'translateY(-50%)',
-              filter: 'brightness(1.6) saturate(0)',
+              filter: 'brightness(1.2) saturate(0)',
             }}
           />
         </div>
@@ -1106,7 +1103,7 @@ const HomePage: React.FC = () => {
             transition={{ delay: 0.2 }}
             className="mt-5"
           >
-            {dataReady ? (
+            {leaderboardReady ? (
               <LeaderboardCarousel
                 leaders={leaders}
                 currentUser={currentUserLeaderboard}

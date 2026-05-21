@@ -62,7 +62,7 @@ const OnboardingGuard: React.FC<{ children: React.ReactNode }> = ({ children }) 
 const ClientRoutes: React.FC = () => (
   <Switch>
     <Route exact path="/client/onboarding" component={OnboardingPage} />
-    {/* Settings доступны вне OnboardingGuard, чтобы пользователь мог выйти из аккаунта прямо во время онбординга */}
+    {/* Settings доступны всегда — даже во время онбординга (например, чтобы выйти из аккаунта) */}
     <Route exact path="/client/settings" component={ClientSettingsPage} />
     <Route path="/client">
       <OnboardingGuard>
