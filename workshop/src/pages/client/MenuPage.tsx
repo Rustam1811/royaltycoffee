@@ -390,8 +390,8 @@ const MenuPage: React.FC = () => {
 
       {/* Products — list on mobile, grid on desktop */}
       {/* pb accounts for: navbar (64px) + cart bar (80px) + safe spacing */}
-      <div className="px-4 py-4 max-w-5xl mx-auto pb-44 md:pb-24">
-        <div className="space-y-3 md:hidden">
+      <div className="px-4 py-4 max-w-5xl mx-auto pb-44 lg:pb-24">
+        <div className="space-y-3 lg:hidden">
           {/* ── Mobile: compact list ── */}
           <AnimatePresence mode="popLayout">
             {filteredProducts.map((product, index) => {
@@ -511,7 +511,7 @@ const MenuPage: React.FC = () => {
         </div>
 
         {/* ── Desktop: grid cards ── */}
-        <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="hidden lg:grid lg:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredProducts.map((product, index) => {
             const quantity = getItemQuantity(product.id);
             const step = product.minOrder || 1;
@@ -615,7 +615,7 @@ const MenuPage: React.FC = () => {
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="md:hidden fixed bottom-[4.5rem] left-0 right-0 px-4 pb-2 pt-2 z-40"
+            className="lg:hidden fixed bottom-[4.5rem] left-0 right-0 px-4 pb-2 pt-2 z-40"
           >
             <button
               onClick={handleGoToCart}
