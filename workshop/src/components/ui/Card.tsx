@@ -20,6 +20,13 @@ export const Card: React.FC<CardProps> = ({
         ${hover ? 'hover:shadow-md hover:border-workshop-200 transition-all cursor-pointer' : ''}
         ${className}
       `}
+      style={{
+        backgroundColor: '#ffffff',
+        borderRadius: '1rem',
+        boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+        border: '1px solid rgb(241 245 249)',
+        cursor: onClick ? 'pointer' : undefined,
+      }}
       onClick={onClick}
     >
       {children}
@@ -40,7 +47,7 @@ export const CardBody: React.FC<{ children: React.ReactNode; className?: string 
   children,
   className = '',
 }) => (
-  <div className={`p-5 ${className}`}>
+  <div className={`p-5 ${className}`} style={{ padding: '1.25rem' }}>
     {children}
   </div>
 );

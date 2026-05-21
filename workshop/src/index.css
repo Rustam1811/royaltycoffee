@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Fix: Tailwind reset sets border-style:solid but no color on all elements.
+   On Capacitor iOS (capacitor:// scheme) this causes black borders on divs with 'border' class.
+   Explicitly set the default border color to match Tailwind's var. */
+*, *::before, *::after {
+  border-color: rgb(229 231 235); /* Tailwind gray-200 — same as Tailwind's default */
+}
+
 /* Custom styles */
 :root {
   --color-workshop-primary: #5A0D17;
