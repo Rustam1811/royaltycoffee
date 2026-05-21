@@ -106,8 +106,8 @@ export const BottomNavBar: React.FC = () => {
   const navItems = getNavItems(user.role);
 
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-2xl bg-white border-t border-slate-200 z-50 safe-area-pb">
-      <div className="flex justify-around items-center h-16">
+    <nav style={{ display: 'flex', flexShrink: 0, borderTop: '1px solid #e2e8f0', background: '#fff', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', height: '64px', width: '100%' }}>
         {navItems.map(item => {
           const isActive = location.pathname.startsWith(item.path);
           const Icon = isActive ? item.iconActive : item.icon;
@@ -117,21 +117,25 @@ export const BottomNavBar: React.FC = () => {
             <NavLink
               key={item.path}
               to={item.path}
-              className={`relative flex flex-col items-center justify-center w-full h-full transition-colors ${
-                isActive 
-                  ? 'text-[#5A0D17]' 
-                  : 'text-slate-400 hover:text-slate-600'
-              }`}
+              style={{ 
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                flex: 1, height: '100%', textDecoration: 'none',
+                color: isActive ? '#5A0D17' : '#94a3b8'
+              }}
             >
-              <div className="relative">
+              <div style={{ position: 'relative' }}>
                 <Icon className="w-6 h-6" />
                 {showBadge && (
-                  <span className="absolute -top-1.5 -right-2.5 min-w-[18px] h-[18px] flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full px-1 animate-pulse">
+                  <span style={{
+                    position: 'absolute', top: '-6px', right: '-10px',
+                    minWidth: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: '#ef4444', color: '#fff', fontSize: '10px', fontWeight: 'bold', borderRadius: '9999px', padding: '0 4px'
+                  }}>
                     {pendingCount > 99 ? '99+' : pendingCount}
                   </span>
                 )}
               </div>
-              <span className="text-xs mt-1 font-medium">{item.label}</span>
+              <span style={{ fontSize: '12px', marginTop: '4px', fontWeight: 500 }}>{item.label}</span>
             </NavLink>
           );
         })}

@@ -27,21 +27,18 @@ const App: React.FC = () => {
     <BrowserRouter basename="/workshop">
       <UserProvider>
         <CartProvider>
-          <div className="min-h-screen bg-slate-50 font-sans">
-            <div className="max-w-2xl mx-auto bg-white min-h-screen shadow-sm">
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', maxWidth: '672px', margin: '0 auto', background: '#fff' }}>
+            <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
               <Switch>
-                {/* Редирект на основной логин */}
                 <Route exact path="/login">
                   <RedirectToMainLogin />
                 </Route>
                 <Route path="/">
-                  <>
-                    <RoleBasedRouter />
-                    <BottomNavBar />
-                  </>
+                  <RoleBasedRouter />
                 </Route>
               </Switch>
             </div>
+            <BottomNavBar />
           </div>
         </CartProvider>
       </UserProvider>
