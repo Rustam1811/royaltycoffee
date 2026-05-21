@@ -964,10 +964,10 @@ const HomePage: React.FC = () => {
             style={{
               width: 320,
               height: 320,
-              top: '30%',
+              top: '20%',
               right: -80,
               transform: 'translateY(-50%)',
-              filter: 'brightness(1.2) saturate(0)',
+              filter: 'brightness(1.0) saturate(0)',
             }}
           />
         </div>
