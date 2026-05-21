@@ -13,6 +13,16 @@ import './index.css';
  */
 
 const App: React.FC = () => {
+  // On Capacitor iOS the URL is https://localhost/workshop/index.html
+  // BrowserRouter with basename="/workshop" then sees path="/index.html" → no route match.
+  // Strip /index.html from the path so routing works correctly.
+  React.useEffect(() => {
+    if (window.location.pathname.endsWith('/index.html')) {
+      const clean = window.location.pathname.replace('/index.html', '') || '/';
+      window.history.replaceState(null, '', clean + window.location.search + window.location.hash);
+    }
+  }, []);
+
   return (
     <BrowserRouter basename="/workshop">
       <UserProvider>
