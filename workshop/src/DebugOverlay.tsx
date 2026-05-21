@@ -24,6 +24,19 @@ export const DebugOverlay: React.FC = () => {
   React.useEffect(() => {
     const apiKey = import.meta.env.VITE_FIREBASE_API_KEY ?? '(empty)';
     const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID ?? '(empty)';
+
+    // Check if Tailwind CSS is actually applied
+    const testEl = document.createElement('div');
+    testEl.className = 'hidden';
+    document.body.appendChild(testEl);
+    const twWorks = window.getComputedStyle(testEl).display === 'none';
+    document.body.removeChild(testEl);
+
+    // List all loaded stylesheets
+    const sheets = Array.from(document.styleSheets).map(s => {
+      try { return s.href ?? '(inline)'; } catch { return '(blocked)'; }
+    }).join('\n  ');
+
     setInfo(
       `href: ${window.location.href}\n` +
       `protocol: ${window.location.protocol}\n` +
@@ -31,7 +44,9 @@ export const DebugOverlay: React.FC = () => {
       `FIREBASE_API_KEY: ${String(apiKey).slice(0, 14)}...\n` +
       `FIREBASE_PROJECT_ID: ${projectId}\n` +
       `MODE: ${import.meta.env.MODE}\n` +
-      `BASE_URL: ${import.meta.env.BASE_URL}`
+      `BASE_URL: ${import.meta.env.BASE_URL}\n` +
+      `Tailwind works: ${twWorks}\n` +
+      `CSS sheets:\n  ${sheets}`
     );
   }, []);
 
