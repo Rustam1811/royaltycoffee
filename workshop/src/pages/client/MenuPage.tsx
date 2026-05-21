@@ -19,6 +19,17 @@ function useQuery() {
   return new URLSearchParams(useLocation().search);
 }
 
+// JS-based breakpoint — avoids CSS media query issues in Capacitor WebView
+function useIsMobile(breakpoint = 1024): boolean {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < breakpoint);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < breakpoint);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, [breakpoint]);
+  return isMobile;
+}
+
 const getLocalizedName = (name: LocalizedString): string => {
   return name.ru || name.en || name.kz || '';
 };
@@ -229,6 +240,7 @@ const MenuPage: React.FC = () => {
   const query = useQuery();
   const history = useHistory();
   const { user } = useUser();
+  const isMobile = useIsMobile(1024);
   const outletId = query.get('outletId') || '';
   const outletName = decodeURIComponent(query.get('outletName') || 'Точка');
   
@@ -388,10 +400,10 @@ const MenuPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Products — list on mobile, grid on desktop */}
-      {/* pb accounts for: navbar (64px) + cart bar (80px) + safe spacing */}
-      <div className="px-4 py-4 max-w-5xl mx-auto pb-44 lg:pb-24">
-        <div className="space-y-3 lg:hidden">
+      {/* Products */}
+      <div className="px-4 py-4 max-w-5xl mx-auto pb-44">
+        {isMobile ? (
+          <div className="space-y-3">
           {/* ── Mobile: compact list ── */}
           <AnimatePresence mode="popLayout">
             {filteredProducts.map((product, index) => {
@@ -509,9 +521,9 @@ const MenuPage: React.FC = () => {
             })}
           </AnimatePresence>
         </div>
-
-        {/* ── Desktop: grid cards ── */}
-        <div className="hidden lg:grid lg:grid-cols-2 xl:grid-cols-3 gap-4">
+        ) : (
+        <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
+          {/* ── Desktop: grid cards ── */}
           {filteredProducts.map((product, index) => {
             const quantity = getItemQuantity(product.id);
             const step = product.minOrder || 1;
@@ -599,7 +611,8 @@ const MenuPage: React.FC = () => {
             );
           })}
         </div>
-        
+        )}
+
         {filteredProducts.length === 0 && (
           <div className="text-center py-12">
             <div className="text-5xl mb-3">🔍</div>
@@ -610,12 +623,12 @@ const MenuPage: React.FC = () => {
 
       {/* Mobile: floating cart bar — sits ABOVE bottom navbar */}
       <AnimatePresence>
-        {totalItems > 0 && (
+        {totalItems > 0 && isMobile && (
           <motion.div
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="lg:hidden fixed bottom-[4.5rem] left-0 right-0 px-4 pb-2 pt-2 z-40"
+            className="fixed bottom-[4.5rem] left-0 right-0 px-4 pb-2 pt-2 z-40"
           >
             <button
               onClick={handleGoToCart}
