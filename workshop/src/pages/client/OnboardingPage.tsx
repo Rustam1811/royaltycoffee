@@ -256,7 +256,7 @@ const OnboardingPage: React.FC = () => {
               )}
 
               {/* Add outlet form */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 16, background: '#f8fafc', borderRadius: 16, border: '2px dashed #cbd5e1' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '20px 16px', background: '#f8fafc', borderRadius: 20, border: '2px dashed #d4a574' }}>
                 <Input
                   label="Название точки"
                   value={outletForm.name}

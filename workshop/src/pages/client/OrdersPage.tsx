@@ -18,6 +18,7 @@ import {
 import { useUser } from '@/contexts/UserContext';
 import { useCart } from '@/contexts/CartContext';
 import { Textarea, WorkshopLoader } from '@/components/ui';
+import ProductDetailModal from '@/components/ui/ProductDetailModal';
 import { getClientOrders, getClientByUid, cancelOrder, updateOrderItems, getWorkshopSettings, getProducts, getAllOrders } from '@/services';
 import { WorkshopOrder, OrderStatus, OrderItem, LocalizedString, WorkshopProduct } from '@/types';
 import { doc, updateDoc, Timestamp } from 'firebase/firestore';
@@ -107,6 +108,7 @@ const OrdersPage: React.FC = () => {
   const [addSearch, setAddSearch] = useState('');
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [addModalProduct, setAddModalProduct] = useState<WorkshopProduct | null>(null);
 
   const isSuperowner = user?.role === 'superowner' || user?.role === 'workshop_owner';
 
@@ -525,7 +527,7 @@ const OrdersPage: React.FC = () => {
                           {addSearch ? 'Ничего не найдено' : 'Все продукты уже добавлены'}
                         </p>
                       ) : availableToAdd.map(product => (
-                        <button key={product.id} onClick={() => handleAddProduct(product)}
+                        <button key={product.id} onClick={() => { setAddModalProduct(product); }}
                           style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderTop: '1px solid #f8fafc' }}>
                           {/* Thumbnail */}
                           <div style={{ width: 44, height: 44, borderRadius: 10, background: '#f5f0eb', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -578,6 +580,26 @@ const OrdersPage: React.FC = () => {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Product detail modal — opened when tapping a product in "add" panel */}
+      <AnimatePresence>
+        {addModalProduct && (
+          <ProductDetailModal
+            product={addModalProduct}
+            quantity={editItems.find(i => i.productId === addModalProduct.id)?.quantity || 0}
+            onAddToCart={() => { handleAddProduct(addModalProduct); setAddModalProduct(null); }}
+            onDelta={(delta) => {
+              const exists = editItems.find(i => i.productId === addModalProduct.id);
+              if (exists) {
+                handleEditQty(addModalProduct.id, exists.quantity + delta);
+              } else if (delta > 0) {
+                handleAddProduct(addModalProduct);
+              }
+            }}
+            onClose={() => setAddModalProduct(null)}
+          />
         )}
       </AnimatePresence>
     </div>

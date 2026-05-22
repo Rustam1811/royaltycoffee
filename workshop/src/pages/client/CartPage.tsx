@@ -223,8 +223,8 @@ const CartPage: React.FC = () => {
   return (
     <div style={{ minHeight: '100%', background: '#f8fafc' }}>
       {/* Gradient header */}
-      <div style={{ background: 'linear-gradient(135deg, #3D0A11 0%, #5A0D17 100%)', padding: '44px 20px 20px', position: 'sticky', top: 0, zIndex: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, maxWidth: 720, margin: '0 auto' }}>
+      <div style={{ background: 'linear-gradient(135deg, #3D0A11 0%, #5A0D17 100%)', padding: '44px 20px 20px', position: 'sticky', top: 0, zIndex: 20, margin: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button onClick={() => history.goBack()} style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', flexShrink: 0 }}>
             <ArrowLeftIcon style={{ width: 20, height: 20, display: 'block' }} />
           </button>
@@ -299,14 +299,23 @@ const CartPage: React.FC = () => {
         <p style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '8px 0 2px', padding: '0 4px' }}>Детали доставки</p>
 
         <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,0.06)', padding: '14px 16px' }}>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>📅 Дата доставки</label>
-          <input
-            type="date"
-            value={deliveryDate}
-            min={new Date().toISOString().split('T')[0]}
-            onChange={(e) => setDeliveryDate(e.target.value)}
-            style={{ width: '100%', padding: '11px 14px', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: 12, color: '#0f172a', outline: 'none', fontSize: 15, boxSizing: 'border-box' }}
-          />
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 10 }}>📅 Дата доставки</label>
+          {/* Custom date picker — horizontal scroll chips (avoids broken iOS native date input) */}
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+            {Array.from({ length: 14 }).map((_, i) => {
+              const d = new Date();
+              d.setDate(d.getDate() + 1 + i);
+              const iso = d.toISOString().split('T')[0];
+              const isSelected = deliveryDate === iso;
+              const label = d.toLocaleDateString('ru', { weekday: 'short', day: 'numeric', month: 'short' });
+              return (
+                <button key={iso} onClick={() => setDeliveryDate(iso)}
+                  style={{ flexShrink: 0, padding: '9px 14px', borderRadius: 12, border: isSelected ? 'none' : '1.5px solid #e2e8f0', background: isSelected ? 'linear-gradient(135deg,#3D0A11,#5A0D17)' : '#fff', color: isSelected ? '#fff' : '#374151', fontSize: 13, fontWeight: isSelected ? 700 : 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  {label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,0.06)', padding: '14px 16px' }}>

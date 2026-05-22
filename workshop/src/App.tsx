@@ -27,8 +27,8 @@ const App: React.FC = () => {
     <BrowserRouter basename="/workshop">
       <UserProvider>
         <CartProvider>
-          <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', maxWidth: '672px', margin: '0 auto', background: '#fff' }}>
-            <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%' }}>
+            <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'none' }}>
               <Switch>
                 <Route exact path="/login">
                   <RedirectToMainLogin />
