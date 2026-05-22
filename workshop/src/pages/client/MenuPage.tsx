@@ -11,7 +11,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useCart } from '@/contexts/CartContext';
 import { useUser } from '@/contexts/UserContext';
-import { Card, CardBody, Button, WorkshopLoader } from '@/components/ui';
+import { WorkshopLoader } from '@/components/ui';
 import { getAllProducts, getCategories, getClientByUid } from '@/services';
 import { WorkshopProduct, WorkshopCategory, LocalizedString } from '@/types';
 
@@ -70,7 +70,7 @@ const QuantityInput: React.FC<{
         onChange={e => setDraft(e.target.value)}
         onBlur={commit}
         onKeyDown={e => { if (e.key === 'Enter') commit(); }}
-        className="w-12 h-8 text-center font-semibold text-slate-900 border border-workshop-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-workshop-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        style={{ width: 48, height: 32, textAlign: 'center', fontWeight: 600, color: '#0f172a', border: '1px solid #d4a574', borderRadius: 8, background: '#fff', outline: 'none', fontSize: 14 }}
         min={min}
         autoFocus
       />
@@ -80,7 +80,7 @@ const QuantityInput: React.FC<{
   return (
     <button
       onClick={startEdit}
-      className="w-12 h-8 text-center font-semibold text-slate-900 rounded-lg hover:bg-slate-100 transition-colors cursor-text"
+      style={{ width: 48, height: 32, textAlign: 'center', fontWeight: 600, color: '#0f172a', borderRadius: 8, background: 'none', border: 'none', cursor: 'text', fontSize: 14 }}
       title="Нажмите чтобы ввести число"
     >
       {value}
@@ -102,7 +102,7 @@ const ProductDetailModal: React.FC<{
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 z-[70] flex items-end sm:items-center sm:justify-center"
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 70, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
       onClick={onClose}
     >
       <motion.div
@@ -110,90 +110,85 @@ const ProductDetailModal: React.FC<{
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: '100%', opacity: 0 }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md max-h-[92vh] flex flex-col"
+        style={{ background: '#fff', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 480, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Image — object-contain so product is never cropped */}
-        <div className="relative w-full flex-shrink-0 bg-[#f5f0eb] rounded-t-3xl overflow-hidden flex items-center justify-center" style={{ height: 280 }}>
+        {/* Image */}
+        <div style={{ position: 'relative', width: '100%', flexShrink: 0, background: '#f5f0eb', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', height: 240 }}>
           {product.image ? (
             <img
               src={product.image}
               alt={getLocalizedName(product.name)}
-              className={`w-full h-full object-contain ${!product.isAvailable ? 'grayscale opacity-70' : ''}`}
+              style={{ width: '100%', height: '100%', objectFit: 'contain', filter: !product.isAvailable ? 'grayscale(1) opacity(0.7)' : 'none' }}
             />
           ) : (
-            <div className="text-7xl text-slate-300">🥐</div>
+            <div style={{ fontSize: 72, color: '#cbd5e1' }}>🥐</div>
           )}
           {!product.isAvailable && (
-            <div className="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-xl shadow">
+            <div style={{ position: 'absolute', top: 12, left: 12, background: '#ef4444', color: '#fff', fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 12 }}>
               Нет в наличии
             </div>
           )}
           <button
             onClick={onClose}
-            className="absolute top-3 right-3 w-9 h-9 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white active:bg-black/70 transition-colors"
+            style={{ position: 'absolute', top: 12, right: 12, width: 36, height: 36, background: 'rgba(0,0,0,0.45)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', border: 'none', cursor: 'pointer', flexShrink: 0 }}
           >
-            <XMarkIcon className="w-5 h-5" />
+            <XMarkIcon style={{ width: 20, height: 20, display: 'block' }} />
           </button>
         </div>
 
         {/* Scrollable content */}
-        <div className="overflow-y-auto flex-1 p-5">
+        <div style={{ overflowY: 'auto', flex: 1, padding: '20px 20px 32px' }}>
           {/* Name + price */}
-          <div className="flex items-start justify-between gap-3 mb-3">
-            <h2 className="text-xl font-bold text-slate-900 leading-tight">
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', lineHeight: 1.3, margin: 0, flex: 1 }}>
               {getLocalizedName(product.name)}
             </h2>
-            <div className="text-right flex-shrink-0">
-              <span className="text-xl font-bold text-workshop-600">
-                {product.price.toLocaleString()} ₸
-              </span>
-              <span className="text-sm text-slate-400">/{product.unit}</span>
+            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+              <div style={{ fontSize: 20, fontWeight: 700, color: '#92400e' }}>{product.price.toLocaleString()} ₸</div>
+              <div style={{ fontSize: 13, color: '#94a3b8' }}>за {product.unit}</div>
             </div>
           </div>
 
           {product.minOrder && product.minOrder > 1 && (
-            <p className="text-xs text-slate-400 mb-3">Мин. заказ: {product.minOrder} {product.unit}</p>
+            <p style={{ fontSize: 12, color: '#64748b', background: '#f1f5f9', display: 'inline-block', padding: '3px 10px', borderRadius: 8, marginBottom: 12 }}>
+              Мин. заказ: {product.minOrder} {product.unit}
+            </p>
           )}
 
-          {/* Description */}
           {product.description && (
-            <div className="mb-4">
-              <p className="text-sm text-slate-600 leading-relaxed">
-                {getLocalizedName(product.description)}
-              </p>
-            </div>
+            <p style={{ fontSize: 14, color: '#475569', lineHeight: 1.6, marginBottom: 16, marginTop: 8 }}>{getLocalizedName(product.description)}</p>
           )}
 
           {/* КБЖУ */}
           {hasNutrition && (
-            <div className="mb-5 bg-slate-50 rounded-2xl p-4">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
+            <div style={{ background: '#f8fafc', borderRadius: 16, padding: 16, marginBottom: 20 }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12, margin: '0 0 12px' }}>
                 КБЖУ · на {nutrition!.per || 'порцию'}
               </p>
-              <div className="grid grid-cols-4 gap-2 text-center">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, textAlign: 'center' }}>
                 {nutrition!.calories != null && (
-                  <div className="bg-white rounded-xl py-2.5 shadow-sm">
-                    <p className="text-lg font-bold text-slate-900">{nutrition!.calories}</p>
-                    <p className="text-[10px] text-slate-500 mt-0.5">ккал</p>
+                  <div style={{ background: '#fff', borderRadius: 12, padding: '10px 4px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                    <p style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: 0 }}>{nutrition!.calories}</p>
+                    <p style={{ fontSize: 10, color: '#94a3b8', margin: 0 }}>ккал</p>
                   </div>
                 )}
                 {nutrition!.protein != null && (
-                  <div className="bg-white rounded-xl py-2.5 shadow-sm">
-                    <p className="text-lg font-bold text-blue-600">{nutrition!.protein}г</p>
-                    <p className="text-[10px] text-slate-500 mt-0.5">белки</p>
+                  <div style={{ background: '#fff', borderRadius: 12, padding: '10px 4px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                    <p style={{ fontSize: 18, fontWeight: 700, color: '#2563eb', margin: 0 }}>{nutrition!.protein}г</p>
+                    <p style={{ fontSize: 10, color: '#94a3b8', margin: 0 }}>белки</p>
                   </div>
                 )}
                 {nutrition!.fat != null && (
-                  <div className="bg-white rounded-xl py-2.5 shadow-sm">
-                    <p className="text-lg font-bold text-amber-500">{nutrition!.fat}г</p>
-                    <p className="text-[10px] text-slate-500 mt-0.5">жиры</p>
+                  <div style={{ background: '#fff', borderRadius: 12, padding: '10px 4px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                    <p style={{ fontSize: 18, fontWeight: 700, color: '#f59e0b', margin: 0 }}>{nutrition!.fat}г</p>
+                    <p style={{ fontSize: 10, color: '#94a3b8', margin: 0 }}>жиры</p>
                   </div>
                 )}
                 {nutrition!.carbs != null && (
-                  <div className="bg-white rounded-xl py-2.5 shadow-sm">
-                    <p className="text-lg font-bold text-green-600">{nutrition!.carbs}г</p>
-                    <p className="text-[10px] text-slate-500 mt-0.5">углев.</p>
+                  <div style={{ background: '#fff', borderRadius: 12, padding: '10px 4px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                    <p style={{ fontSize: 18, fontWeight: 700, color: '#16a34a', margin: 0 }}>{nutrition!.carbs}г</p>
+                    <p style={{ fontSize: 10, color: '#94a3b8', margin: 0 }}>углев.</p>
                   </div>
                 )}
               </div>
@@ -202,27 +197,21 @@ const ProductDetailModal: React.FC<{
 
           {/* Cart controls */}
           {product.isAvailable && (
-            <div>
+            <div style={{ marginTop: 8 }}>
               {quantity > 0 ? (
-                <div className="flex items-center justify-between bg-slate-50 rounded-2xl p-2">
-                  <button
-                    onClick={() => onDelta(-step)}
-                    className="w-11 h-11 rounded-xl bg-slate-200 flex items-center justify-center active:bg-slate-300"
-                  >
-                    <MinusIcon className="w-5 h-5" />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f8fafc', borderRadius: 16, padding: 8 }}>
+                  <button onClick={() => onDelta(-step)} style={{ width: 48, height: 48, borderRadius: 12, background: '#e2e8f0', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                    <MinusIcon style={{ width: 20, height: 20, display: 'block' }} />
                   </button>
-                  <span className="font-bold text-lg text-slate-900">{quantity} {product.unit}</span>
-                  <button
-                    onClick={() => onDelta(step)}
-                    className="w-11 h-11 rounded-xl bg-workshop-500 text-white flex items-center justify-center active:bg-workshop-600"
-                  >
-                    <PlusIcon className="w-5 h-5" />
+                  <span style={{ fontWeight: 700, fontSize: 18, color: '#0f172a' }}>{quantity} {product.unit}</span>
+                  <button onClick={() => onDelta(step)} style={{ width: 48, height: 48, borderRadius: 12, background: '#92400e', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}>
+                    <PlusIcon style={{ width: 20, height: 20, display: 'block' }} />
                   </button>
                 </div>
               ) : (
-                <Button fullWidth size="lg" onClick={onAddToCart}>
+                <button onClick={onAddToCart} style={{ width: '100%', padding: '16px', background: 'linear-gradient(135deg, #3D0A11, #5A0D17)', color: '#fff', border: 'none', borderRadius: 14, fontSize: 16, fontWeight: 600, cursor: 'pointer', letterSpacing: '0.01em' }}>
                   Добавить в заказ
-                </Button>
+                </button>
               )}
             </div>
           )}
@@ -331,314 +320,242 @@ const MenuPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div style={{ minHeight: '100%', background: '#f8fafc' }}>
       {/* Header */}
-      <div className="sticky top-0 z-20">
-        <div className="bg-gradient-to-br from-[#3D0A11] via-[#4D0E16] to-[#5A0D17] text-white px-5 pt-10 pb-4">
-          <div className="flex items-center gap-3 max-w-5xl mx-auto">
-            <button
-              onClick={() => history.goBack()}
-              className="p-2 -ml-2 rounded-lg active:bg-white/10"
-            >
-              <ArrowLeftIcon className="w-5 h-5 text-white" />
+      <div style={{ position: 'sticky', top: 0, zIndex: 20 }}>
+        <div style={{ background: 'linear-gradient(135deg, #3D0A11 0%, #4D0E16 50%, #5A0D17 100%)', color: '#fff', padding: '40px 20px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, maxWidth: 960, margin: '0 auto' }}>
+            <button onClick={() => history.goBack()} style={{ padding: 8, marginLeft: -8, borderRadius: 8, background: 'none', border: 'none', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center' }}>
+              <ArrowLeftIcon style={{ width: 20, height: 20 }} />
             </button>
-            <div className="flex-1 min-w-0">
-              <h1 className="font-bold text-xl text-white truncate">{outletName}</h1>
-              <p className="text-white/60 text-sm mt-0.5">Выберите продукцию</p>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h1 style={{ fontWeight: 700, fontSize: 20, color: '#fff', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{outletName}</h1>
+              <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginTop: 2 }}>Выберите продукцию</p>
             </div>
-            {/* Cart summary */}
             {totalItems > 0 && (
               <button
                 onClick={handleGoToCart}
-                className="flex items-center gap-2 px-3 py-1.5 bg-white/15 backdrop-blur-sm text-white rounded-xl active:bg-white/25 transition-colors"
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: 'rgba(255,255,255,0.15)', color: '#fff', borderRadius: 12, border: 'none', cursor: 'pointer', fontWeight: 700 }}
               >
-                <ShoppingCartIcon className="w-5 h-5" />
-                <span className="font-bold">{totalAmount.toLocaleString()} ₸</span>
+                <ShoppingCartIcon style={{ width: 20, height: 20 }} />
+                <span>{totalAmount.toLocaleString()} ₸</span>
               </button>
             )}
           </div>
         </div>
-        <div className="bg-white border-b border-slate-200">
-        {/* Search */}
-        <div className="px-4 pt-3 max-w-5xl mx-auto">
-          <div className="relative">
-            <MagnifyingGlassIcon className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Поиск..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-100 rounded-xl border-0 focus:ring-2 focus:ring-workshop-500 outline-none"
-            />
+        <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0' }}>
+          {/* Search */}
+          <div style={{ padding: '12px 16px 0', maxWidth: 960, margin: '0 auto' }}>
+            <div style={{ position: 'relative' }}>
+              <MagnifyingGlassIcon style={{ width: 20, height: 20, color: '#94a3b8', position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+              <input
+                type="text"
+                placeholder="Поиск..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ width: '100%', paddingLeft: 40, paddingRight: 16, paddingTop: 10, paddingBottom: 10, background: '#f1f5f9', borderRadius: 12, border: 'none', outline: 'none', fontSize: 15, boxSizing: 'border-box' }}
+              />
+            </div>
           </div>
-        </div>
-        
-        {/* Categories */}
-        <div className="flex gap-2 px-4 py-3 overflow-x-auto scrollbar-hide max-w-5xl mx-auto">
-          <button
-            onClick={() => setSelectedCategory('all')}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all
-              ${selectedCategory === 'all' 
-                ? 'bg-workshop-500 text-white shadow-sm' 
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-          >
-            Все
-          </button>
-          {categories.map(category => (
+          {/* Categories */}
+          <div style={{ display: 'flex', gap: 8, padding: '12px 16px', overflowX: 'auto', maxWidth: 960, margin: '0 auto' }}>
             <button
-              key={category.id}
-              onClick={() => setSelectedCategory(category.id)}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all
-                ${selectedCategory === category.id 
-                  ? 'bg-workshop-500 text-white shadow-sm' 
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+              onClick={() => setSelectedCategory('all')}
+              style={{ padding: '8px 16px', borderRadius: 999, fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap', border: 'none', cursor: 'pointer', background: selectedCategory === 'all' ? '#92400e' : '#f1f5f9', color: selectedCategory === 'all' ? '#fff' : '#475569', flexShrink: 0 }}
             >
-              {category.icon} {getLocalizedName(category.name)}
+              Все
             </button>
-          ))}
-        </div>
+            {categories.map(category => (
+              <button
+                key={category.id}
+                onClick={() => setSelectedCategory(category.id)}
+                style={{ padding: '8px 16px', borderRadius: 999, fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap', border: 'none', cursor: 'pointer', background: selectedCategory === category.id ? '#92400e' : '#f1f5f9', color: selectedCategory === category.id ? '#fff' : '#475569', flexShrink: 0 }}
+              >
+                {category.icon} {getLocalizedName(category.name)}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Products */}
-      <div className="px-4 py-4 max-w-5xl mx-auto pb-44">
+      <div style={{ padding: '16px', maxWidth: 960, margin: '0 auto', paddingBottom: 120 }}>
         {isMobile ? (
-          <div className="space-y-3">
-          {/* ── Mobile: compact list ── */}
-          <AnimatePresence mode="popLayout">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <AnimatePresence mode="popLayout">
+              {filteredProducts.map((product, index) => {
+                const quantity = getItemQuantity(product.id);
+                const step = product.minOrder || 1;
+                return (
+                  <motion.div
+                    key={product.id}
+                    layout
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ delay: index * 0.02 }}
+                    style={{ background: '#fff', borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,0.07)', overflow: 'hidden', opacity: product.isAvailable ? 1 : 0.6 }}
+                  >
+                    <div style={{ display: 'flex' }}>
+                      {/* Image */}
+                      <button
+                        onClick={() => setSelectedProduct(product)}
+                        style={{ width: 96, height: 96, flexShrink: 0, background: '#f5f0eb', position: 'relative', overflow: 'hidden', border: 'none', padding: 0, cursor: 'pointer' }}
+                      >
+                        {product.image ? (
+                          <img src={product.image} alt={getLocalizedName(product.name)} style={{ width: '100%', height: '100%', objectFit: 'contain', filter: !product.isAvailable ? 'grayscale(1)' : 'none' }} />
+                        ) : (
+                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>🥐</div>
+                        )}
+                        {!product.isAvailable && (
+                          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <span style={{ fontSize: 9, fontWeight: 700, color: '#fff', background: '#ef4444', padding: '2px 6px', borderRadius: 4 }}>НЕТ</span>
+                          </div>
+                        )}
+                      </button>
+
+                      {/* Info */}
+                      <div style={{ flex: 1, minWidth: 0, padding: 12, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                        <div>
+                          <p style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.3, color: product.isAvailable ? '#0f172a' : '#94a3b8', margin: 0 }}>
+                            {getLocalizedName(product.name)}
+                          </p>
+                          {product.description ? (
+                            <button onClick={() => setSelectedProduct(product)} style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', marginTop: 2 }}>
+                              <p style={{ fontSize: 12, color: '#94a3b8', margin: 0, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' }}>{getLocalizedName(product.description)}</p>
+                              <span style={{ fontSize: 12, color: '#92400e', fontWeight: 500 }}>Подробнее →</span>
+                            </button>
+                          ) : (
+                            <button onClick={() => setSelectedProduct(product)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12, color: '#92400e', fontWeight: 500, marginTop: 2 }}>Подробнее →</button>
+                          )}
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+                          <div>
+                            <span style={{ fontWeight: 700, fontSize: 14, color: product.isAvailable ? '#92400e' : '#94a3b8' }}>{product.price.toLocaleString()} ₸</span>
+                            <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 4 }}>/{product.unit}</span>
+                            {product.minOrder && product.minOrder > 1 && <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 4 }}>мин.{product.minOrder}</span>}
+                          </div>
+
+                          {!product.isAvailable ? (
+                            <span style={{ fontSize: 12, fontWeight: 600, color: '#ef4444', background: '#fef2f2', padding: '4px 8px', borderRadius: 8 }}>Нет</span>
+                          ) : quantity > 0 ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <button onClick={() => handleDelta(product.id, -step, step)} style={{ width: 32, height: 32, borderRadius: '50%', background: '#f1f5f9', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                                <MinusIcon style={{ width: 16, height: 16 }} />
+                              </button>
+                              <QuantityInput value={quantity} onChange={(q) => handleSetQuantity(product.id, q)} min={0} />
+                              <button onClick={() => handleDelta(product.id, step, step)} style={{ width: 32, height: 32, borderRadius: '50%', background: '#92400e', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}>
+                                <PlusIcon style={{ width: 16, height: 16 }} />
+                              </button>
+                            </div>
+                          ) : (
+                            <button onClick={() => handleAddProduct(product)} style={{ padding: '6px 14px', background: 'linear-gradient(135deg, #3D0A11, #5A0D17)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                              Добавить
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
             {filteredProducts.map((product, index) => {
               const quantity = getItemQuantity(product.id);
               const step = product.minOrder || 1;
-              
               return (
                 <motion.div
                   key={product.id}
-                  layout
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ delay: index * 0.02 }}
+                  style={{ background: '#fff', borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,0.07)', overflow: 'hidden', display: 'flex', flexDirection: 'column', opacity: product.isAvailable ? 1 : 0.6 }}
                 >
-                  <Card className={!product.isAvailable ? 'opacity-60' : ''}>
-                    <CardBody className="p-0 overflow-hidden">
-                      <div className="flex">
-                        {/* Left: tappable image block */}
-                        <button
-                          onClick={() => setSelectedProduct(product)}
-                          className="w-24 h-24 flex-shrink-0 bg-[#f5f0eb] relative overflow-hidden focus:outline-none"
-                        >
-                          {product.image ? (
-                            <img
-                              src={product.image}
-                              alt={getLocalizedName(product.name)}
-                              className={`w-full h-full object-contain ${!product.isAvailable ? 'grayscale' : ''}`}
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-3xl">🥐</div>
-                          )}
-                          {!product.isAvailable && (
-                            <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                              <span className="text-[9px] font-bold text-white bg-red-500 px-1.5 py-0.5 rounded">НЕТ</span>
-                            </div>
-                          )}
-                        </button>
-
-                        {/* Right: info + controls */}
-                        <div className="flex-1 min-w-0 p-3 flex flex-col justify-between">
-                          {/* Name + подробнее */}
-                          <div>
-                            <div className="flex items-start justify-between gap-1">
-                              <h3 className={`font-semibold text-sm leading-tight ${product.isAvailable ? 'text-slate-900' : 'text-slate-400'}`}>
-                                {getLocalizedName(product.name)}
-                              </h3>
-                            </div>
-                            {product.description ? (
-                              <button
-                                onClick={() => setSelectedProduct(product)}
-                                className="mt-0.5 text-left"
-                              >
-                                <p className="text-xs text-slate-500 line-clamp-1">{getLocalizedName(product.description)}</p>
-                                <span className="text-xs text-workshop-500 font-medium">Подробнее →</span>
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => setSelectedProduct(product)}
-                                className="mt-0.5 text-xs text-workshop-500 font-medium"
-                              >
-                                Подробнее →
-                              </button>
-                            )}
-                          </div>
-
-                          {/* Price + controls */}
-                          <div className="flex items-center justify-between mt-2">
-                            <div>
-                              <span className={`font-bold text-sm ${product.isAvailable ? 'text-workshop-600' : 'text-slate-400'}`}>
-                                {product.price.toLocaleString()} ₸
-                              </span>
-                              <span className="text-xs text-slate-400 ml-1">/{product.unit}</span>
-                              {product.minOrder && product.minOrder > 1 && (
-                                <span className="text-xs text-slate-400 ml-1">мин.{product.minOrder}</span>
-                              )}
-                            </div>
-
-                            {!product.isAvailable ? (
-                              <span className="text-xs font-semibold text-red-500 bg-red-50 px-2 py-1 rounded-lg">
-                                Нет
-                              </span>
-                            ) : quantity > 0 ? (
-                              <div className="flex items-center gap-1">
-                                <button
-                                  onClick={() => handleDelta(product.id, -step, step)}
-                                  className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center active:bg-slate-200"
-                                >
-                                  <MinusIcon className="w-4 h-4" />
-                                </button>
-                                <QuantityInput
-                                  value={quantity}
-                                  onChange={(q) => handleSetQuantity(product.id, q)}
-                                  min={0}
-                                />
-                                <button
-                                  onClick={() => handleDelta(product.id, step, step)}
-                                  className="w-8 h-8 rounded-full bg-workshop-500 text-white flex items-center justify-center active:bg-workshop-600"
-                                >
-                                  <PlusIcon className="w-4 h-4" />
-                                </button>
-                              </div>
-                            ) : (
-                              <Button size="sm" onClick={() => handleAddProduct(product)}>
-                                Добавить
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </CardBody>
-                  </Card>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </div>
-        ) : (
-        <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
-          {/* ── Desktop: grid cards ── */}
-          {filteredProducts.map((product, index) => {
-            const quantity = getItemQuantity(product.id);
-            const step = product.minOrder || 1;
-            
-            return (
-              <motion.div
-                key={product.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.02 }}
-              >
-                <Card className={`overflow-hidden h-full flex flex-col ${!product.isAvailable ? 'opacity-60' : ''}`}>
-                  {/* Image — tappable */}
-                  <button
-                    onClick={() => setSelectedProduct(product)}
-                    className="aspect-[4/3] bg-slate-100 relative block w-full overflow-hidden focus:outline-none"
-                  >
+                  {/* Image */}
+                  <button onClick={() => setSelectedProduct(product)} style={{ aspectRatio: '4/3', background: '#f5f0eb', position: 'relative', display: 'block', width: '100%', overflow: 'hidden', border: 'none', padding: 0, cursor: 'pointer' }}>
                     {product.image ? (
-                      <img src={product.image} alt={getLocalizedName(product.name)} className={`w-full h-full object-cover hover:scale-105 transition-transform duration-300 ${!product.isAvailable ? 'grayscale' : ''}`} />
+                      <img src={product.image} alt={getLocalizedName(product.name)} style={{ width: '100%', height: '100%', objectFit: 'cover', filter: !product.isAvailable ? 'grayscale(1)' : 'none' }} />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-5xl text-slate-300">🥐</div>
+                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, color: '#cbd5e1' }}>🥐</div>
                     )}
                     {!product.isAvailable && (
-                      <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-lg shadow-sm">
-                        Нет в наличии
-                      </div>
+                      <div style={{ position: 'absolute', top: 8, left: 8, background: '#ef4444', color: '#fff', fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 8 }}>Нет в наличии</div>
                     )}
-                    <div className={`absolute top-2 right-2 bg-white/90 backdrop-blur-sm font-bold px-3 py-1 rounded-lg text-sm shadow-sm ${product.isAvailable ? 'text-workshop-600' : 'text-slate-400'}`}>
+                    <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(255,255,255,0.9)', fontWeight: 700, padding: '3px 10px', borderRadius: 8, fontSize: 13, color: product.isAvailable ? '#92400e' : '#94a3b8' }}>
                       {product.price.toLocaleString()} ₸/{product.unit}
                     </div>
                   </button>
-                  
-                  <CardBody className="flex-1 flex flex-col p-4">
-                    <h3
-                      className={`font-semibold cursor-pointer hover:text-workshop-600 transition-colors ${product.isAvailable ? 'text-slate-900' : 'text-slate-400'}`}
-                      onClick={() => setSelectedProduct(product)}
-                    >
+
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 16 }}>
+                    <p style={{ fontWeight: 600, color: product.isAvailable ? '#0f172a' : '#94a3b8', margin: 0, cursor: 'pointer' }} onClick={() => setSelectedProduct(product)}>
                       {getLocalizedName(product.name)}
-                    </h3>
+                    </p>
                     {product.description && (
-                      <button onClick={() => setSelectedProduct(product)} className="text-left mt-1 flex-1">
-                        <p className="text-sm text-slate-500 line-clamp-2">{getLocalizedName(product.description)}</p>
-                        <span className="text-xs text-workshop-500 font-medium">Подробнее →</span>
+                      <button onClick={() => setSelectedProduct(product)} style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', flex: 1, marginTop: 4 }}>
+                        <p style={{ fontSize: 13, color: '#94a3b8', margin: 0, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{getLocalizedName(product.description)}</p>
+                        <span style={{ fontSize: 12, color: '#92400e', fontWeight: 500 }}>Подробнее →</span>
                       </button>
                     )}
                     {product.minOrder && product.minOrder > 1 && (
-                      <p className="text-xs text-slate-400 mt-1">Мин. заказ: {product.minOrder} {product.unit}</p>
+                      <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>Мин. заказ: {product.minOrder} {product.unit}</p>
                     )}
-                    
-                    {/* Controls */}
-                    <div className="mt-3 pt-3 border-t border-slate-100">
+
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
                       {!product.isAvailable ? (
-                        <div className="text-center text-sm font-semibold text-red-500 bg-red-50 py-2 rounded-xl">
-                          Нет в наличии
-                        </div>
+                        <div style={{ textAlign: 'center', fontSize: 14, fontWeight: 600, color: '#ef4444', background: '#fef2f2', padding: '8px', borderRadius: 12 }}>Нет в наличии</div>
                       ) : quantity > 0 ? (
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => handleDelta(product.id, -step, step)}
-                            className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors"
-                          >
-                            <MinusIcon className="w-4 h-4" />
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                          <button onClick={() => handleDelta(product.id, -step, step)} style={{ width: 36, height: 36, borderRadius: '50%', background: '#f1f5f9', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                            <MinusIcon style={{ width: 16, height: 16 }} />
                           </button>
-                          <QuantityInput
-                            value={quantity}
-                            onChange={(q) => handleSetQuantity(product.id, q)}
-                            min={0}
-                          />
-                          <button
-                            onClick={() => handleDelta(product.id, step, step)}
-                            className="w-9 h-9 rounded-full bg-workshop-500 text-white flex items-center justify-center hover:bg-workshop-600 transition-colors"
-                          >
-                            <PlusIcon className="w-4 h-4" />
+                          <QuantityInput value={quantity} onChange={(q) => handleSetQuantity(product.id, q)} min={0} />
+                          <button onClick={() => handleDelta(product.id, step, step)} style={{ width: 36, height: 36, borderRadius: '50%', background: '#92400e', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}>
+                            <PlusIcon style={{ width: 16, height: 16 }} />
                           </button>
                         </div>
                       ) : (
-                        <Button fullWidth onClick={() => handleAddProduct(product)}>
+                        <button onClick={() => handleAddProduct(product)} style={{ width: '100%', padding: '10px', background: 'linear-gradient(135deg, #3D0A11, #5A0D17)', color: '#fff', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
                           Добавить
-                        </Button>
+                        </button>
                       )}
                     </div>
-                  </CardBody>
-                </Card>
-              </motion.div>
-            );
-          })}
-        </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
         )}
 
         {filteredProducts.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-5xl mb-3">🔍</div>
-            <p className="text-slate-500">Ничего не найдено</p>
+          <div style={{ textAlign: 'center', padding: '48px 0' }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>🔍</div>
+            <p style={{ color: '#94a3b8' }}>Ничего не найдено</p>
           </div>
         )}
       </div>
 
-      {/* Mobile: floating cart bar — sits ABOVE bottom navbar */}
+      {/* Floating cart bar */}
       <AnimatePresence>
         {totalItems > 0 && isMobile && (
           <motion.div
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-[4.5rem] left-0 right-0 px-4 pb-2 pt-2 z-40"
+            style={{ position: 'fixed', bottom: 72, left: 0, right: 0, padding: '8px 16px', zIndex: 40 }}
           >
             <button
               onClick={handleGoToCart}
-              className="w-full flex items-center justify-between px-5 py-3.5 bg-workshop-500 text-white rounded-2xl shadow-lg shadow-workshop-500/30 active:bg-workshop-600 transition-colors"
+              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: 'linear-gradient(135deg, #3D0A11, #5A0D17)', color: '#fff', border: 'none', borderRadius: 16, boxShadow: '0 4px 20px rgba(61,10,17,0.4)', cursor: 'pointer' }}
             >
-              <div className="flex items-center gap-2">
-                <ShoppingCartIcon className="w-5 h-5" />
-                <span className="font-semibold">{totalItems} шт</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <ShoppingCartIcon style={{ width: 20, height: 20 }} />
+                <span style={{ fontWeight: 600 }}>{totalItems} шт</span>
               </div>
-              <span className="font-bold text-lg">{totalAmount.toLocaleString()} ₸ →</span>
+              <span style={{ fontWeight: 700, fontSize: 18 }}>{totalAmount.toLocaleString()} ₸ →</span>
             </button>
           </motion.div>
         )}
@@ -650,12 +567,8 @@ const MenuPage: React.FC = () => {
           <ProductDetailModal
             product={selectedProduct}
             quantity={getItemQuantity(selectedProduct.id)}
-            onAddToCart={() => {
-              handleAddProduct(selectedProduct);
-            }}
-            onDelta={(delta) => {
-              handleDelta(selectedProduct.id, delta, selectedProduct.minOrder || 1);
-            }}
+            onAddToCart={() => { handleAddProduct(selectedProduct); }}
+            onDelta={(delta) => { handleDelta(selectedProduct.id, delta, selectedProduct.minOrder || 1); }}
             onClose={() => setSelectedProduct(null)}
           />
         )}

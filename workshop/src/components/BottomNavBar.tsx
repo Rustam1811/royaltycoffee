@@ -124,7 +124,9 @@ export const BottomNavBar: React.FC = () => {
               }}
             >
               <div style={{ position: 'relative' }}>
-                <Icon className="w-6 h-6" />
+                <div style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Icon style={{ width: 24, height: 24, display: 'block', minWidth: 24, minHeight: 24 }} />
+                </div>
                 {showBadge && (
                   <span style={{
                     position: 'absolute', top: '-6px', right: '-10px',
