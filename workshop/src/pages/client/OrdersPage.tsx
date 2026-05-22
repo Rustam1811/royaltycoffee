@@ -17,7 +17,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useUser } from '@/contexts/UserContext';
 import { useCart } from '@/contexts/CartContext';
-import { Card, CardBody, Badge, Button, Textarea, WorkshopLoader } from '@/components/ui';
+import { Button, Textarea, WorkshopLoader } from '@/components/ui';
 import { getClientOrders, getClientByUid, cancelOrder, updateOrderItems, getWorkshopSettings, getProducts, getAllOrders } from '@/services';
 import { WorkshopOrder, OrderStatus, OrderItem, LocalizedString, WorkshopProduct } from '@/types';
 import { doc, updateDoc, Timestamp } from 'firebase/firestore';
@@ -278,16 +278,24 @@ const OrdersPage: React.FC = () => {
     return <WorkshopLoader text="Загрузка заказов..." />;
   }
 
+  const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+    warning: { bg: '#fffbeb', text: '#d97706' },
+    info: { bg: '#eff6ff', text: '#2563eb' },
+    success: { bg: '#f0fdf4', text: '#16a34a' },
+    danger: { bg: '#fef2f2', text: '#dc2626' },
+    default: { bg: '#f8fafc', text: '#475569' },
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 pb-24">
+    <div style={{ minHeight: '100%', background: '#f8fafc', paddingBottom: 96 }}>
       {/* Header */}
-      <div className="bg-gradient-to-br from-[#3D0A11] via-[#4D0E16] to-[#5A0D17] text-white px-5 pt-10 pb-4">
-        <h1 className="text-xl font-bold">{isSuperowner ? 'Все заказы' : 'Мои заказы'}</h1>
-        <p className="text-white/60 text-sm mt-0.5">{isSuperowner ? 'Управление и одобрение заказов' : 'История заказов продукции'}</p>
+      <div style={{ background: 'linear-gradient(135deg, #3D0A11 0%, #4D0E16 50%, #5A0D17 100%)', color: '#fff', padding: '40px 20px 16px' }}>
+        <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{isSuperowner ? 'Все заказы' : 'Мои заказы'}</h1>
+        <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginTop: 2 }}>{isSuperowner ? 'Управление и одобрение заказов' : 'История заказов продукции'}</p>
       </div>
 
       {/* Filters */}
-      <div className="flex gap-2 px-4 py-4 bg-white border-b border-slate-200 sticky top-0 z-10 overflow-x-auto">
+      <div style={{ display: 'flex', gap: 8, padding: '16px', background: '#fff', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 10, overflowX: 'auto' }}>
         {([
           ...(isSuperowner ? [{ key: 'needs_approval' as const, label: '⚠️ Одобрение' }] : []),
           { key: 'all' as const, label: 'Все' },
@@ -297,20 +305,16 @@ const OrdersPage: React.FC = () => {
           const count = f.key === 'needs_approval'
             ? orders.filter(o => o.requiresApproval && !o.approvedBy && o.status === 'pending').length
             : undefined;
+          const isActive = filter === f.key;
           return (
             <button
               key={f.key}
               onClick={() => setFilter(f.key)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1.5
-                ${filter === f.key
-                  ? 'bg-workshop-500 text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+              style={{ padding: '8px 16px', borderRadius: 9999, fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap', border: 'none', cursor: 'pointer', background: isActive ? '#92400e' : '#f1f5f9', color: isActive ? '#fff' : '#475569', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}
             >
               {f.label}
               {count !== undefined && count > 0 && (
-                <span className={`px-1.5 py-0.5 rounded-full text-xs ${
-                  filter === f.key ? 'bg-white/20' : 'bg-amber-200 text-amber-800'
-                }`}>
+                <span style={{ padding: '2px 6px', borderRadius: 9999, fontSize: 11, background: isActive ? 'rgba(255,255,255,0.2)' : '#fde68a', color: isActive ? '#fff' : '#92400e' }}>
                   {count}
                 </span>
               )}
@@ -320,166 +324,105 @@ const OrdersPage: React.FC = () => {
       </div>
 
       {/* Orders List */}
-      <div className="px-4 py-4 space-y-4">
+      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         {filteredOrders.length === 0 ? (
-          <Card>
-            <CardBody className="text-center py-12">
-              <ClipboardDocumentListIcon className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                Нет заказов
-              </h3>
-              <p className="text-slate-500">
-                {filter === 'active' ? 'Нет активных заказов' : 'История заказов пуста'}
-              </p>
-            </CardBody>
-          </Card>
+          <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,0.07)', padding: '48px 16px', textAlign: 'center' }}>
+            <ClipboardDocumentListIcon style={{ width: 64, height: 64, color: '#cbd5e1', margin: '0 auto 16px' }} />
+            <h3 style={{ fontSize: 18, fontWeight: 600, color: '#0f172a', marginBottom: 8 }}>Нет заказов</h3>
+            <p style={{ color: '#64748b', margin: 0 }}>{filter === 'active' ? 'Нет активных заказов' : 'История заказов пуста'}</p>
+          </div>
         ) : (
           filteredOrders.map((order, index) => {
             const statusConfig = STATUS_CONFIG[order.status];
             const StatusIcon = statusConfig.icon;
             const isPending = order.status === 'pending';
+            const sc = STATUS_COLORS[statusConfig.variant] || STATUS_COLORS.default;
             
             return (
-              <motion.div
-                key={order.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <Card>
-                  <CardBody>
-                    {/* Approval banner (for superowner) */}
-                    {order.requiresApproval && order.status === 'pending' && isSuperowner && (
-                      <div className={`-mx-4 -mt-4 mb-3 px-4 py-2 text-xs font-semibold rounded-t-xl ${
-                        order.approvedBy
-                          ? 'bg-green-50 text-green-700 border-b border-green-100'
-                          : 'bg-amber-50 text-amber-700 border-b border-amber-100'
-                      }`}>
-                        {order.approvedBy
-                          ? '✅ Одобрено руководителем'
-                          : `⚠️ Требуется одобрение (сумма ${order.totalAmount.toLocaleString()} ₸)`
-                        }
-                      </div>
-                    )}
+              <motion.div key={order.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
+                <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
+                  {/* Approval banner */}
+                  {order.requiresApproval && order.status === 'pending' && isSuperowner && (
+                    <div style={{ padding: '8px 16px', fontSize: 12, fontWeight: 600, background: order.approvedBy ? '#f0fdf4' : '#fffbeb', color: order.approvedBy ? '#15803d' : '#b45309', borderBottom: `1px solid ${order.approvedBy ? '#bbf7d0' : '#fde68a'}` }}>
+                      {order.approvedBy ? '✅ Одобрено руководителем' : `⚠️ Требуется одобрение (сумма ${order.totalAmount.toLocaleString()} ₸)`}
+                    </div>
+                  )}
 
-                    {/* Header */}
-                    <div className="flex items-start justify-between mb-3">
+                  <div style={{ padding: 16 }}>
+                    {/* Header row */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
                       <div>
-                        <p className="text-sm text-slate-500">
-                          {formatDate(order.createdAt)}
-                        </p>
+                        <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>{formatDate(order.createdAt)}</p>
                         {order.updatedAt && order.updatedAt.getTime() - order.createdAt.getTime() > 60000 && (
-                          <p className="text-xs text-slate-400 mt-0.5">
-                            ✏️ Изменён: {formatDate(order.updatedAt)}
-                          </p>
+                          <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0' }}>✏️ Изменён: {formatDate(order.updatedAt)}</p>
                         )}
-                        <h3 className="font-semibold text-slate-900 mt-0.5">
-                          {order.outletName}
-                        </h3>
+                        <h3 style={{ fontWeight: 600, color: '#0f172a', margin: '2px 0 0', fontSize: 15 }}>{order.outletName}</h3>
                       </div>
-                      <Badge variant={statusConfig.variant}>
-                        <StatusIcon className="w-3.5 h-3.5 mr-1" />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 9999, background: sc.bg, color: sc.text, fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
+                        <StatusIcon style={{ width: 14, height: 14 }} />
                         {statusConfig.label}
-                      </Badge>
+                      </div>
                     </div>
 
                     {/* Estimated delivery */}
                     {order.estimatedDelivery && (
-                      <div className="flex items-center gap-1.5 mb-2 text-xs text-blue-700 bg-blue-50 rounded-lg px-2.5 py-1.5">
-                        <TruckIcon className="w-3.5 h-3.5 shrink-0" />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, fontSize: 12, color: '#1d4ed8', background: '#eff6ff', borderRadius: 8, padding: '6px 10px' }}>
+                        <TruckIcon style={{ width: 14, height: 14, flexShrink: 0 }} />
                         Время доставки: <strong>{order.estimatedDelivery}</strong>
                       </div>
                     )}
 
-                    {/* Client-requested delivery date */}
-                    {(order as any).deliveryDate && (
-                      <div className="flex items-center gap-1.5 mb-2 text-xs text-violet-700 bg-violet-50 rounded-lg px-2.5 py-1.5">
-                        📅 Дата доставки: <strong>{(order as any).deliveryDate}</strong>
+                    {/* Delivery date */}
+                    {!!(order as WorkshopOrder & { deliveryDate?: string }).deliveryDate && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, fontSize: 12, color: '#6d28d9', background: '#f5f3ff', borderRadius: 8, padding: '6px 10px' }}>
+                        📅 Дата доставки: <strong>{(order as WorkshopOrder & { deliveryDate?: string }).deliveryDate}</strong>
                       </div>
                     )}
-                    
-                    {/* Items Preview */}
-                    <div className="space-y-1 py-3 border-y border-slate-100">
+
+                    {/* Items */}
+                    <div style={{ borderTop: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', paddingTop: 12, paddingBottom: 12, marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
                       {order.items.slice(0, 3).map(item => (
-                        <div key={item.productId} className="flex justify-between text-sm">
-                          <span className="text-slate-600">
-                            {getLocalizedName(item.productName)} × {item.quantity}
-                          </span>
-                          <span className="text-slate-900 font-medium">
-                            {item.subtotal.toLocaleString()} ₸
-                          </span>
+                        <div key={item.productId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                          <span style={{ color: '#64748b' }}>{getLocalizedName(item.productName)} × {item.quantity}</span>
+                          <span style={{ color: '#0f172a', fontWeight: 500 }}>{item.subtotal.toLocaleString()} ₸</span>
                         </div>
                       ))}
                       {order.items.length > 3 && (
-                        <p className="text-sm text-slate-500">
-                          +{order.items.length - 3} ещё...
-                        </p>
+                        <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>+{order.items.length - 3} ещё...</p>
                       )}
                     </div>
 
                     {/* Notes */}
                     {order.notes && (
-                      <div className="mt-2 text-sm text-slate-500 bg-slate-50 rounded-lg px-3 py-2">
+                      <div style={{ marginBottom: 8, fontSize: 14, color: '#64748b', background: '#f8fafc', borderRadius: 8, padding: '8px 12px' }}>
                         💬 {order.notes}
                       </div>
                     )}
-                    
-                    {/* Total + Actions */}
-                    <div className="flex justify-between items-center mt-3">
-                      <span className="text-lg font-bold text-slate-900">
-                        {order.totalAmount.toLocaleString()} ₸
-                      </span>
 
-                      {/* Cancel & Edit buttons for pending orders */}
+                    {/* Total + Actions */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>{order.totalAmount.toLocaleString()} ₸</span>
                       {isPending && (
-                        <div className="flex gap-2">
-                          {/* Approval button for superowner on big orders */}
+                        <div style={{ display: 'flex', gap: 8 }}>
                           {isSuperowner && order.requiresApproval && !order.approvedBy && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleApproveOrder(order.id)}
-                              loading={approvingId === order.id}
-                              disabled={approvingId === order.id}
-                            >
-                              ✅ Одобрить
-                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => handleApproveOrder(order.id)} loading={approvingId === order.id} disabled={approvingId === order.id}>✅ Одобрить</Button>
                           )}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleStartEdit(order)}
-                          >
-                            <PencilSquareIcon className="w-4 h-4 mr-1" />
-                            Изменить
+                          <Button size="sm" variant="outline" onClick={() => handleStartEdit(order)}>
+                            <PencilSquareIcon style={{ width: 16, height: 16, marginRight: 4 }} />Изменить
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="danger"
-                            onClick={() => handleCancel(order.id)}
-                            loading={cancellingId === order.id}
-                            disabled={cancellingId === order.id}
-                          >
-                            <XCircleIcon className="w-4 h-4 mr-1" />
-                            Отменить
+                          <Button size="sm" variant="danger" onClick={() => handleCancel(order.id)} loading={cancellingId === order.id} disabled={cancellingId === order.id}>
+                            <XCircleIcon style={{ width: 16, height: 16, marginRight: 4 }} />Отменить
                           </Button>
                         </div>
                       )}
-
-                      {/* Repeat order button for delivered orders */}
                       {!isPending && !isSuperowner && (order.status === 'delivered' || order.status === 'ready') && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleRepeatOrder(order)}
-                        >
-                          <ArrowPathIcon className="w-4 h-4 mr-1" />
-                          Повторить
+                        <Button size="sm" variant="outline" onClick={() => handleRepeatOrder(order)}>
+                          <ArrowPathIcon style={{ width: 16, height: 16, marginRight: 4 }} />Повторить
                         </Button>
                       )}
                     </div>
-                  </CardBody>
-                </Card>
+                  </div>
+                </div>
               </motion.div>
             );
           })
@@ -489,150 +432,102 @@ const OrdersPage: React.FC = () => {
       {/* ─── Edit Order Modal ─── */}
       <AnimatePresence>
         {editingOrder && (
-          <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" onClick={() => setEditingOrder(null)}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setEditingOrder(null)}>
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="bg-white rounded-3xl w-full max-w-lg flex flex-col"
-              style={{ maxHeight: 'calc(100vh - 2rem)' }}
+              style={{ background: '#fff', borderRadius: 24, width: '100%', maxWidth: 512, display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 2rem)' }}
               onClick={e => e.stopPropagation()}
             >
-              {/* Header — pinned */}
-              <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100 shrink-0">
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 20px 12px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">Редактировать заказ</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">{editingOrder.outletName}</p>
+                  <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: 0 }}>Редактировать заказ</h2>
+                  <p style={{ fontSize: 12, color: '#64748b', margin: '2px 0 0' }}>{editingOrder.outletName}</p>
                 </div>
-                <button onClick={() => setEditingOrder(null)} className="p-2 -mr-2 rounded-xl hover:bg-slate-100">
-                  <XMarkIcon className="w-5 h-5" />
+                <button onClick={() => setEditingOrder(null)} style={{ padding: 8, marginRight: -8, borderRadius: 12, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                  <XMarkIcon style={{ width: 20, height: 20, color: '#94a3b8' }} />
                 </button>
               </div>
 
               {/* Scrollable content */}
-              <div className="flex-1 overflow-y-auto px-5 py-4 min-h-0">
-                {/* Current items */}
-                <div className="space-y-2 mb-4">
+              <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', minHeight: 0 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
                   {editItems.length === 0 && (
-                    <p className="text-center text-slate-400 py-4">Все позиции удалены</p>
+                    <p style={{ textAlign: 'center', color: '#94a3b8', padding: 16 }}>Все позиции удалены</p>
                   )}
                   {editItems.map(item => (
-                    <div key={item.productId} className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-xl">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-slate-900 text-sm truncate">{getLocalizedName(item.productName)}</p>
-                        <p className="text-xs text-slate-400">{item.price.toLocaleString()} ₸/{item.unit}</p>
+                    <div key={item.productId} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 10, background: '#f8fafc', borderRadius: 12 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontWeight: 500, color: '#0f172a', fontSize: 14, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{getLocalizedName(item.productName)}</p>
+                        <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>{item.price.toLocaleString()} ₸/{item.unit}</p>
                       </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          onClick={() => handleEditQty(item.productId, item.quantity - 1)}
-                          className="w-7 h-7 rounded-full bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-100 active:scale-95 transition-all"
-                        >
-                          <MinusIcon className="w-3.5 h-3.5" />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                        <button onClick={() => handleEditQty(item.productId, item.quantity - 1)} style={{ width: 28, height: 28, borderRadius: '50%', background: '#fff', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                          <MinusIcon style={{ width: 14, height: 14 }} />
                         </button>
                         <EditQtyInput value={item.quantity} onChange={q => handleEditQty(item.productId, q)} />
-                        <button
-                          onClick={() => handleEditQty(item.productId, item.quantity + 1)}
-                          className="w-7 h-7 rounded-full bg-workshop-500 text-white flex items-center justify-center hover:bg-workshop-600 active:scale-95 transition-all"
-                        >
-                          <PlusIcon className="w-3.5 h-3.5" />
+                        <button onClick={() => handleEditQty(item.productId, item.quantity + 1)} style={{ width: 28, height: 28, borderRadius: '50%', background: '#92400e', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                          <PlusIcon style={{ width: 14, height: 14 }} />
                         </button>
                       </div>
-                      <span className="text-sm font-semibold text-slate-900 w-16 text-right shrink-0">
-                        {item.subtotal.toLocaleString()} ₸
-                      </span>
-                      <button
-                        onClick={() => handleEditRemove(item.productId)}
-                        className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg shrink-0"
-                      >
-                        <TrashIcon className="w-4 h-4" />
+                      <span style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', width: 64, textAlign: 'right', flexShrink: 0 }}>{item.subtotal.toLocaleString()} ₸</span>
+                      <button onClick={() => handleEditRemove(item.productId)} style={{ padding: 4, color: '#f87171', background: 'none', border: 'none', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                        <TrashIcon style={{ width: 16, height: 16 }} />
                       </button>
                     </div>
                   ))}
                 </div>
 
-                {/* ── Add new products section ── */}
+                {/* Add products */}
                 {!showAddPanel ? (
-                  <button
-                    onClick={() => setShowAddPanel(true)}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-workshop-300 rounded-xl text-workshop-600 font-medium text-sm hover:bg-workshop-50 active:scale-[0.98] transition-all mb-4"
-                  >
-                    <PlusIcon className="w-4 h-4" />
-                    Добавить позицию
+                  <button onClick={() => setShowAddPanel(true)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px', border: '2px dashed #d4a574', borderRadius: 12, color: '#92400e', fontWeight: 500, fontSize: 14, background: 'none', cursor: 'pointer', marginBottom: 16 }}>
+                    <PlusIcon style={{ width: 16, height: 16 }} />Добавить позицию
                   </button>
                 ) : (
-                  <div className="mb-4 border border-slate-200 rounded-xl overflow-hidden">
-                    <div className="relative">
-                      <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <input
-                        type="text"
-                        placeholder="Поиск продукции..."
-                        value={addSearch}
-                        onChange={e => setAddSearch(e.target.value)}
-                        className="w-full pl-9 pr-10 py-2.5 text-sm border-b border-slate-200 focus:outline-none focus:ring-0"
-                        autoFocus
-                      />
-                      <button
-                        onClick={() => { setShowAddPanel(false); setAddSearch(''); }}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-slate-100"
-                      >
-                        <XMarkIcon className="w-4 h-4 text-slate-400" />
+                  <div style={{ marginBottom: 16, border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
+                    <div style={{ position: 'relative' }}>
+                      <MagnifyingGlassIcon style={{ width: 16, height: 16, color: '#94a3b8', position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+                      <input type="text" placeholder="Поиск продукции..." value={addSearch} onChange={e => setAddSearch(e.target.value)} style={{ width: '100%', paddingLeft: 36, paddingRight: 36, paddingTop: 10, paddingBottom: 10, fontSize: 14, borderBottom: '1px solid #e2e8f0', border: 'none', outline: 'none', background: '#fff', boxSizing: 'border-box' }} autoFocus />
+                      <button onClick={() => { setShowAddPanel(false); setAddSearch(''); }} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', padding: 4, borderRadius: 8, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                        <XMarkIcon style={{ width: 16, height: 16, color: '#94a3b8' }} />
                       </button>
                     </div>
-                    <div className="max-h-40 overflow-y-auto">
+                    <div style={{ maxHeight: 160, overflowY: 'auto' }}>
                       {availableToAdd.length === 0 ? (
-                        <p className="text-center text-slate-400 text-sm py-4">
-                          {addSearch ? 'Ничего не найдено' : 'Все продукты уже добавлены'}
-                        </p>
-                      ) : (
-                        availableToAdd.map(product => (
-                          <button
-                            key={product.id}
-                            onClick={() => handleAddProduct(product)}
-                            className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-slate-50 active:bg-slate-100 transition-colors text-left"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium text-slate-900 truncate">{getLocalizedName(product.name)}</p>
-                              <p className="text-xs text-slate-400">{product.price.toLocaleString()} ₸/{product.unit}</p>
-                            </div>
-                            <div className="w-7 h-7 rounded-full bg-workshop-500 text-white flex items-center justify-center shrink-0 ml-2">
-                              <PlusIcon className="w-3.5 h-3.5" />
-                            </div>
-                          </button>
-                        ))
-                      )}
+                        <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 14, padding: 16 }}>{addSearch ? 'Ничего не найдено' : 'Все продукты уже добавлены'}</p>
+                      ) : availableToAdd.map(product => (
+                        <button key={product.id} onClick={() => handleAddProduct(product)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderTop: '1px solid #f1f5f9' }}>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <p style={{ fontSize: 14, fontWeight: 500, color: '#0f172a', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{getLocalizedName(product.name)}</p>
+                            <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>{product.price.toLocaleString()} ₸/{product.unit}</p>
+                          </div>
+                          <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#92400e', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: 8 }}>
+                            <PlusIcon style={{ width: 14, height: 14 }} />
+                          </div>
+                        </button>
+                      ))}
                     </div>
                   </div>
                 )}
 
                 {/* Notes */}
-                <div className="mb-3">
-                  <Textarea
-                    label="Комментарий"
-                    value={editNotes}
-                    onChange={e => setEditNotes(e.target.value)}
-                    placeholder="Комментарий к заказу"
-                    rows={2}
-                  />
+                <div style={{ marginBottom: 12 }}>
+                  <Textarea label="Комментарий" value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="Комментарий к заказу" rows={2} />
                 </div>
               </div>
 
-              {/* Footer — pinned above BottomNavBar */}
-              <div className="shrink-0 border-t border-slate-200 bg-white rounded-b-3xl px-5 pt-3 pb-5">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm text-slate-500">Итого:</span>
-                  <span className="text-xl font-bold text-slate-900">{editTotal.toLocaleString()} ₸</span>
+              {/* Footer */}
+              <div style={{ flexShrink: 0, borderTop: '1px solid #e2e8f0', background: '#fff', borderRadius: '0 0 24px 24px', padding: '12px 20px 20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <span style={{ fontSize: 14, color: '#64748b' }}>Итого:</span>
+                  <span style={{ fontSize: 20, fontWeight: 700, color: '#0f172a' }}>{editTotal.toLocaleString()} ₸</span>
                 </div>
-                <div className="flex gap-3">
+                <div style={{ display: 'flex', gap: 12 }}>
                   <Button variant="outline" fullWidth onClick={() => setEditingOrder(null)}>Отмена</Button>
-                  <Button
-                    fullWidth
-                    onClick={handleSaveEdit}
-                    loading={savingEdit}
-                    disabled={savingEdit || editItems.length === 0}
-                  >
-                    Сохранить
-                  </Button>
+                  <Button fullWidth onClick={handleSaveEdit} loading={savingEdit} disabled={savingEdit || editItems.length === 0}>Сохранить</Button>
                 </div>
               </div>
             </motion.div>

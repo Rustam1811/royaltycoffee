@@ -141,143 +141,114 @@ const OnboardingPage: React.FC = () => {
   // Step 3 — Success
   if (step === 3) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex items-center justify-center p-6">
+      <div style={{ minHeight: '100%', background: 'linear-gradient(to bottom, #f0fdf4, #fff)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ type: 'spring', stiffness: 200 }}
-          className="text-center"
+          style={{ textAlign: 'center' }}
         >
-          <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckIcon className="w-12 h-12 text-green-600" />
+          <div style={{ width: 96, height: 96, background: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+            <CheckIcon style={{ width: 48, height: 48, color: '#16a34a' }} />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Всё готово!</h1>
-          <p className="text-gray-500">Добро пожаловать в Цех. Переходим к заказам...</p>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#111827', marginBottom: 8 }}>Всё готово!</h1>
+          <p style={{ color: '#6b7280' }}>Добро пожаловать в Цех. Переходим к заказам...</p>
         </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-rose-50 via-white to-rose-50">
+    <div style={{ minHeight: '100%', background: 'linear-gradient(to bottom, #fff1f2, #fff, #fff1f2)' }}>
       {/* Header */}
-      <div className="bg-gradient-to-br from-[#3D0A11] via-[#4D0E16] to-[#5A0D17] text-white px-6 pt-12 pb-8">
+      <div style={{ background: 'linear-gradient(135deg, #3D0A11 0%, #4D0E16 50%, #5A0D17 100%)', color: '#fff', padding: '48px 24px 32px' }}>
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
-              <SparklesIcon className="w-7 h-7 text-white" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            <div style={{ width: 48, height: 48, background: 'rgba(255,255,255,0.2)', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <SparklesIcon style={{ width: 28, height: 28, color: '#fff' }} />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">Добро пожаловать!</h1>
-              <p className="text-white/60 text-sm">Заполните данные для начала работы</p>
+              <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Добро пожаловать!</h1>
+              <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, margin: 0 }}>Заполните данные для начала работы</p>
             </div>
           </div>
 
           {/* Progress Steps */}
-          <div className="flex items-center gap-2 mt-6">
-            <div className={`flex-1 h-1.5 rounded-full transition-all ${step >= 1 ? 'bg-white' : 'bg-white/30'}`} />
-            <div className={`flex-1 h-1.5 rounded-full transition-all ${step >= 2 ? 'bg-white' : 'bg-white/30'}`} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 24 }}>
+            <div style={{ flex: 1, height: 6, borderRadius: 9999, background: step >= 1 ? '#fff' : 'rgba(255,255,255,0.3)', transition: 'background 0.3s' }} />
+            <div style={{ flex: 1, height: 6, borderRadius: 9999, background: step >= 2 ? '#fff' : 'rgba(255,255,255,0.3)', transition: 'background 0.3s' }} />
           </div>
-          <div className="flex justify-between text-xs text-workshop-100 mt-2">
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 8 }}>
             <span>О компании</span>
             <span>Точки доставки</span>
           </div>
         </motion.div>
       </div>
 
-      <div className="px-5 py-6 -mt-4">
+      <div style={{ padding: '24px 20px' }}>
         {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm"
-          >
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 16, padding: 12, background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', borderRadius: 12, fontSize: 14 }}>
             {error}
           </motion.div>
         )}
 
         {/* Step 1 — Company Info */}
         {step === 1 && (
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="bg-white rounded-3xl shadow-lg p-6 border border-slate-100"
-          >
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-workshop-100 rounded-xl flex items-center justify-center">
-                <UserCircleIcon className="w-6 h-6 text-workshop-600" />
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+            <div style={{ background: '#fff', borderRadius: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.08)', padding: 24, border: '1px solid #f1f5f9' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+                <div style={{ width: 40, height: 40, background: '#fef3c7', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <UserCircleIcon style={{ width: 24, height: 24, color: '#92400e' }} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: 0 }}>Информация о компании</h2>
+                  <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>Расскажите о вашем бизнесе</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">Информация о компании</h2>
-                <p className="text-sm text-slate-500">Расскажите о вашем бизнесе</p>
-              </div>
-            </div>
 
-            <div className="space-y-4">
-              <Input
-                label="Название компании *"
-                value={companyName}
-                onChange={e => setCompanyName(e.target.value)}
-                placeholder="ООО Кофейня Астана"
-              />
-              <Input
-                label="Контактное лицо *"
-                value={contactPerson}
-                onChange={e => setContactPerson(e.target.value)}
-                placeholder="Ваше имя"
-              />
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  <PhoneIcon className="w-4 h-4 inline mr-1" />
-                  Телефон *
-                </label>
-                <Input
-                  type="tel"
-                  value={phone}
-                  onChange={e => setPhone(e.target.value)}
-                  placeholder="+7 777 123 4567"
-                />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <Input label="Название компании *" value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="ООО Кофейня Астана" />
+                <Input label="Контактное лицо *" value={contactPerson} onChange={e => setContactPerson(e.target.value)} placeholder="Ваше имя" />
+                <div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 14, fontWeight: 500, color: '#374151', marginBottom: 6 }}>
+                    <PhoneIcon style={{ width: 16, height: 16 }} />
+                    Телефон *
+                  </label>
+                  <Input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+7 777 123 4567" />
+                </div>
               </div>
-            </div>
 
-            <Button fullWidth onClick={handleStep1Next} className="mt-6">
-              Далее →
-            </Button>
+              <Button fullWidth onClick={handleStep1Next} className="mt-6">Далее →</Button>
+            </div>
           </motion.div>
         )}
 
         {/* Step 2 — Outlets */}
         {step === 2 && (
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-4"
-          >
-            <div className="bg-white rounded-3xl shadow-lg p-6 border border-slate-100">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-workshop-100 rounded-xl flex items-center justify-center">
-                  <BuildingStorefrontIcon className="w-6 h-6 text-workshop-600" />
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ background: '#fff', borderRadius: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.08)', padding: 24, border: '1px solid #f1f5f9' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+                <div style={{ width: 40, height: 40, background: '#fef3c7', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <BuildingStorefrontIcon style={{ width: 24, height: 24, color: '#92400e' }} />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">Точки доставки</h2>
-                  <p className="text-sm text-slate-500">Куда будем доставлять заказы?</p>
+                  <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: 0 }}>Точки доставки</h2>
+                  <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>Куда будем доставлять заказы?</p>
                 </div>
               </div>
 
               {/* Added outlets list */}
               {outlets.length > 0 && (
-                <div className="space-y-2 mb-4">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
                   {outlets.map((o, i) => (
-                    <div key={i} className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-xl">
-                      <MapPinIcon className="w-5 h-5 text-green-600 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-900 truncate">{o.name}</p>
-                        <p className="text-xs text-slate-500 truncate">{o.address}</p>
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12 }}>
+                      <MapPinIcon style={{ width: 20, height: 20, color: '#16a34a', flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 14, fontWeight: 500, color: '#0f172a', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.name}</p>
+                        <p style={{ fontSize: 12, color: '#64748b', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.address}</p>
                       </div>
-                      <button type="button" onClick={() => removeOutlet(i)} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                        <TrashIcon className="w-4 h-4" />
+                      <button type="button" onClick={() => removeOutlet(i)} style={{ padding: 6, color: '#f87171', background: 'none', border: 'none', borderRadius: 8, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                        <TrashIcon style={{ width: 16, height: 16 }} />
                       </button>
                     </div>
                   ))}
@@ -285,7 +256,7 @@ const OnboardingPage: React.FC = () => {
               )}
 
               {/* Add outlet form */}
-              <div className="space-y-3 p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 16, background: '#f8fafc', borderRadius: 16, border: '2px dashed #cbd5e1' }}>
                 <Input
                   label="Название точки"
                   value={outletForm.name}
@@ -319,7 +290,7 @@ const OnboardingPage: React.FC = () => {
                   disabled={!outletForm.name.trim() || !outletForm.address.trim()}
                   fullWidth
                 >
-                  <PlusIcon className="w-4 h-4 mr-1" /> Добавить точку
+                  <PlusIcon style={{ width: 16, height: 16, marginRight: 4 }} /> Добавить точку
                 </Button>
               </div>
             </div>
@@ -330,20 +301,14 @@ const OnboardingPage: React.FC = () => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
               >
-                <Button
-                  fullWidth
-                  size="lg"
-                  onClick={handleFinish}
-                  loading={saving}
-                  className="bg-green-600 hover:bg-green-700 text-white text-base font-bold py-4 rounded-2xl shadow-lg shadow-green-200"
-                >
-                  ✓ Продолжить и сделать заказ
-                </Button>
+                <button onClick={handleFinish} disabled={saving} style={{ width: '100%', padding: '16px', background: saving ? '#94a3b8' : '#16a34a', color: '#fff', border: 'none', borderRadius: 16, fontSize: 16, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', boxShadow: '0 4px 16px rgba(22,163,74,0.3)' }}>
+                  {saving ? 'Сохранение...' : '✓ Продолжить и сделать заказ'}
+                </button>
               </motion.div>
             )}
 
             {/* Actions */}
-            <div className="flex gap-3">
+            <div style={{ display: 'flex', gap: 12 }}>
               <Button variant="outline" fullWidth onClick={() => { setStep(1); setError(''); }}>
                 ← Назад
               </Button>
@@ -355,7 +320,7 @@ const OnboardingPage: React.FC = () => {
             </div>
 
             {outlets.length === 0 && (
-              <p className="text-xs text-slate-400 text-center px-4">
+              <p style={{ fontSize: 12, color: '#94a3b8', textAlign: 'center', padding: '0 16px' }}>
                 Добавьте хотя бы одну точку, чтобы мы знали куда доставлять заказы
               </p>
             )}

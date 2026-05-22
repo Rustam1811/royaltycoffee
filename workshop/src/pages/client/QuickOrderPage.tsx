@@ -8,7 +8,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useUser } from '@/contexts/UserContext';
 import { useCart } from '@/contexts/CartContext';
-import { Card, CardBody, Button, WorkshopLoader } from '@/components/ui';
+import { Button, WorkshopLoader } from '@/components/ui';
 import { getQuickOrderTemplate, getClientByUid, createOrder, getWorkshopSettings, isOrderingAllowed } from '@/services';
 import { QuickOrderTemplate, LocalizedString } from '@/types';
 
@@ -124,21 +124,13 @@ const QuickOrderPage: React.FC = () => {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="text-center"
-        >
-          <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-            <CheckCircleIcon className="w-10 h-10 text-green-500" />
+      <div style={{ minHeight: '100%', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={{ textAlign: 'center' }}>
+          <div style={{ width: 80, height: 80, borderRadius: '50%', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+            <CheckCircleIcon style={{ width: 40, height: 40, color: '#16a34a' }} />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">
-            Заказ отправлен!
-          </h2>
-          <p className="text-slate-500">
-            Ожидайте подтверждения
-          </p>
+          <h2 style={{ fontSize: 24, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>Заказ отправлен!</h2>
+          <p style={{ color: '#94a3b8' }}>Ожидайте подтверждения</p>
         </motion.div>
       </div>
     );
@@ -146,123 +138,94 @@ const QuickOrderPage: React.FC = () => {
 
   if (!template) {
     return (
-      <div className="min-h-screen bg-slate-50">
-        <div className="bg-white border-b border-slate-200 sticky top-0 z-20">
-          <div className="flex items-center gap-3 px-4 py-3">
-            <button
-              onClick={() => history.goBack()}
-              className="p-2 -ml-2 rounded-lg hover:bg-slate-100"
-            >
-              <ArrowLeftIcon className="w-5 h-5 text-slate-600" />
+      <div style={{ minHeight: '100%', background: '#f8fafc' }}>
+        <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px' }}>
+            <button onClick={() => history.goBack()} style={{ padding: 8, marginLeft: -8, borderRadius: 8, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+              <ArrowLeftIcon style={{ width: 20, height: 20, color: '#475569' }} />
             </button>
-            <h1 className="font-semibold text-slate-900">Быстрый заказ</h1>
+            <h1 style={{ fontWeight: 600, color: '#0f172a', margin: 0 }}>Быстрый заказ</h1>
           </div>
         </div>
-        
-        <div className="flex flex-col items-center justify-center py-20 px-4">
-          <div className="text-6xl mb-4">📋</div>
-          <h2 className="text-xl font-semibold text-slate-900 mb-2">
-            Нет сохранённого заказа
-          </h2>
-          <p className="text-slate-500 text-center mb-6">
-            Сделайте первый заказ для этой точки
-          </p>
-          <Button onClick={() => history.push(`/client/menu?outletId=${outletId}`)}>
-            Перейти в меню
-          </Button>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 16px', textAlign: 'center' }}>
+          <div style={{ fontSize: 64, marginBottom: 16 }}>📋</div>
+          <h2 style={{ fontSize: 20, fontWeight: 600, color: '#0f172a', marginBottom: 8 }}>Нет сохранённого заказа</h2>
+          <p style={{ color: '#94a3b8', marginBottom: 24 }}>Сделайте первый заказ для этой точки</p>
+          <Button onClick={() => history.push(`/client/menu?outletId=${outletId}`)}>Перейти в меню</Button>
         </div>
       </div>
     );
   }
 
   const totalAmount = template.items.reduce((sum, item) => sum + item.subtotal, 0);
+  const discountPercent = clientData?.discountPercent || 0;
+  const discountAmount = discountPercent > 0 ? Math.round(totalAmount * discountPercent / 100) : 0;
+  const finalTotal = totalAmount - discountAmount;
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-32">
+    <div style={{ minHeight: '100%', background: '#f8fafc', paddingBottom: 160 }}>
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-20">
-        <div className="flex items-center gap-3 px-4 py-3">
-          <button
-            onClick={() => history.goBack()}
-            className="p-2 -ml-2 rounded-lg hover:bg-slate-100"
-          >
-            <ArrowLeftIcon className="w-5 h-5 text-slate-600" />
+      <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px' }}>
+          <button onClick={() => history.goBack()} style={{ padding: 8, marginLeft: -8, borderRadius: 8, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+            <ArrowLeftIcon style={{ width: 20, height: 20, color: '#475569' }} />
           </button>
-          <div className="flex-1">
-            <h1 className="font-semibold text-slate-900">Быстрый заказ</h1>
-            <p className="text-sm text-slate-500">{clientData?.outletName}</p>
+          <div style={{ flex: 1 }}>
+            <h1 style={{ fontWeight: 600, color: '#0f172a', margin: 0 }}>Быстрый заказ</h1>
+            <p style={{ fontSize: 14, color: '#94a3b8', margin: 0 }}>{clientData?.outletName}</p>
           </div>
         </div>
       </div>
 
       {/* Order Preview */}
-      <div className="px-4 py-4">
-        <Card>
-          <CardBody>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-slate-900">Ваш последний заказ</h3>
-              <button
-                onClick={handleEditOrder}
-                className="flex items-center gap-1 text-workshop-600 text-sm font-medium"
-              >
-                <PencilSquareIcon className="w-4 h-4" />
-                Изменить
-              </button>
-            </div>
-            
-            <div className="space-y-2 py-3 border-y border-slate-100">
-              {template.items.map(item => (
-                <div key={item.productId} className="flex justify-between text-sm">
-                  <span className="text-slate-600">
-                    {getLocalizedName(item.productName)} × <strong>{item.quantity}</strong>
-                  </span>
-                  <span className="text-slate-900 font-medium">
-                    {item.subtotal.toLocaleString()} ₸
-                  </span>
-                </div>
-              ))}
-            </div>
-            
-            <div className="flex justify-between items-center mt-4">
-              <span className="text-slate-600">Сумма:</span>
-              <span className={`font-bold text-slate-900 ${clientData?.discountPercent ? 'text-lg line-through text-slate-400' : 'text-2xl'}`}>
-                {totalAmount.toLocaleString()} ₸
-              </span>
-            </div>
-            {clientData && clientData.discountPercent > 0 && (
-              <>
-                <div className="flex justify-between items-center mt-1">
-                  <span className="text-amber-600 text-sm font-medium">Скидка {clientData.discountPercent}%</span>
-                  <span className="text-amber-600 text-sm font-medium">
-                    −{Math.round(totalAmount * clientData.discountPercent / 100).toLocaleString()} ₸
-                  </span>
-                </div>
-                <div className="flex justify-between items-center mt-1">
-                  <span className="text-slate-900 font-semibold">Итого:</span>
-                  <span className="text-2xl font-bold text-slate-900">
-                    {(totalAmount - Math.round(totalAmount * clientData.discountPercent / 100)).toLocaleString()} ₸
-                  </span>
-                </div>
-              </>
-            )}
-          </CardBody>
-        </Card>
+      <div style={{ padding: '16px' }}>
+        <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,0.07)', padding: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <h3 style={{ fontWeight: 600, color: '#0f172a', margin: 0 }}>Ваш последний заказ</h3>
+            <button onClick={handleEditOrder} style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#92400e', fontSize: 14, fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+              <PencilSquareIcon style={{ width: 16, height: 16 }} />
+              Изменить
+            </button>
+          </div>
+          
+          <div style={{ borderTop: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', paddingTop: 12, paddingBottom: 12, marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {template.items.map(item => (
+              <div key={item.productId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                <span style={{ color: '#64748b' }}>{getLocalizedName(item.productName)} × <strong>{item.quantity}</strong></span>
+                <span style={{ color: '#0f172a', fontWeight: 500 }}>{item.subtotal.toLocaleString()} ₸</span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: '#64748b' }}>Сумма:</span>
+            <span style={{ fontWeight: 700, color: discountPercent > 0 ? '#94a3b8' : '#0f172a', fontSize: discountPercent > 0 ? 14 : 24, textDecoration: discountPercent > 0 ? 'line-through' : 'none' }}>
+              {totalAmount.toLocaleString()} ₸
+            </span>
+          </div>
+          {discountPercent > 0 && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                <span style={{ color: '#d97706', fontSize: 14, fontWeight: 500 }}>Скидка {discountPercent}%</span>
+                <span style={{ color: '#d97706', fontSize: 14, fontWeight: 500 }}>−{discountAmount.toLocaleString()} ₸</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                <span style={{ fontWeight: 600, color: '#0f172a' }}>Итого:</span>
+                <span style={{ fontSize: 24, fontWeight: 700, color: '#0f172a' }}>{finalTotal.toLocaleString()} ₸</span>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Submit Button */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-200 shadow-lg z-[60] pb-[calc(1rem+env(safe-area-inset-bottom,0px))]" style={{ bottom: '5rem' }}>
+      <div style={{ position: 'fixed', bottom: '5rem', left: 0, right: 0, padding: '8px 16px', background: '#fff', borderTop: '1px solid #e2e8f0', boxShadow: '0 -4px 16px rgba(0,0,0,0.08)', zIndex: 60 }}>
         {orderBlocked && (
-          <div className="mb-2 p-3 bg-red-50 border border-red-200 rounded-2xl text-sm text-red-700 text-center">
+          <div style={{ marginBottom: 8, padding: 12, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 16, fontSize: 14, color: '#b91c1c', textAlign: 'center' }}>
             🕐 {orderBlocked}
           </div>
         )}
-        <Button
-          fullWidth
-          size="lg"
-          onClick={handleQuickOrder}
-          loading={submitting}
-          disabled={submitting || !!orderBlocked}
-        >
+        <Button fullWidth size="lg" onClick={handleQuickOrder} loading={submitting} disabled={submitting || !!orderBlocked}>
           {orderBlocked ? 'Заказ закрыт' : '🚀 Заказать одним нажатием'}
         </Button>
       </div>
