@@ -3,7 +3,6 @@ import { NavLink, useLocation, useRouteMatch } from 'react-router-dom';
 import { 
   Squares2X2Icon, 
   QrCodeIcon,
-  UserCircleIcon,
 } from '@heroicons/react/24/solid';
 
 /* ─── Custom icons ─── */
@@ -21,6 +20,20 @@ const HomeSvgIcon: React.FC<{ className?: string; active?: boolean }> = ({ class
     style={{
       filter: active
         ? 'brightness(0) saturate(100%) invert(72%) sepia(80%) saturate(600%) hue-rotate(5deg) brightness(90%) drop-shadow(0 0 6px rgba(184,134,11,0.55))'   // rich gold #B8860B
+        : 'brightness(0) saturate(100%) invert(20%) sepia(10%) saturate(500%) hue-rotate(330deg) brightness(80%) opacity(0.4)',
+    }}
+  />
+);
+
+/** Иконка профиля из public/images/profile.svg */
+const ProfileSvgIcon: React.FC<{ className?: string; active?: boolean }> = ({ className, active }) => (
+  <img
+    src="/images/profile.svg"
+    alt=""
+    className={className}
+    style={{
+      filter: active
+        ? 'brightness(0) saturate(100%) invert(72%) sepia(80%) saturate(600%) hue-rotate(5deg) brightness(90%) drop-shadow(0 0 6px rgba(184,134,11,0.55))'
         : 'brightness(0) saturate(100%) invert(20%) sepia(10%) saturate(500%) hue-rotate(330deg) brightness(80%) opacity(0.4)',
     }}
   />
@@ -45,7 +58,7 @@ const navItems: NavItem[] = [
   { to: '/menu', icon: Squares2X2Icon, label: 'Меню' },
   { to: '/qr', icon: QrCodeIcon, label: 'QR', isCenter: true },
   { to: '/locations', icon: CrownIcon, label: 'Кофейни' },
-  { to: '/profile', icon: UserCircleIcon, label: 'Профиль' },
+  { to: '/profile', icon: ProfileSvgIcon, label: 'Профиль' },
 ];
 
 // Закомментированные неиспользуемые пункты навигации:

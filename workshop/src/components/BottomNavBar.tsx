@@ -30,14 +30,13 @@ interface NavItem {
   label: string;
   icon: React.ElementType;
   iconActive: React.ElementType;
-  imgSrc?: string; // custom image override (e.g. profile.svg)
 }
 
 const CLIENT_NAV: NavItem[] = [
   { path: '/client/outlets', label: 'Точки', icon: BuildingStorefrontIcon, iconActive: BuildingIconSolid },
   { path: '/client/orders', label: 'Заказы', icon: ClipboardDocumentListIcon, iconActive: ClipboardIconSolid },
   { path: '/client/analytics', label: 'Статистика', icon: ChartBarIcon, iconActive: ChartBarIconSolid },
-  { path: '/client/settings', label: 'Профиль', icon: Cog6ToothIcon, iconActive: Cog6ToothIconSolid, imgSrc: '/images/profile.svg' },
+  { path: '/client/settings', label: 'Ещё', icon: Cog6ToothIcon, iconActive: Cog6ToothIconSolid },
 ];
 
 const ADMIN_NAV: NavItem[] = [
@@ -125,26 +124,8 @@ export const BottomNavBar: React.FC = () => {
               }}
             >
               <div style={{ position: 'relative' }}>
-                <div style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  {item.imgSrc ? (
-                    <img
-                      src={item.imgSrc}
-                      alt={item.label}
-                      style={{
-                        width: 26,
-                        height: 26,
-                        display: 'block',
-                        objectFit: 'contain',
-                        opacity: isActive ? 1 : 0.45,
-                        filter: isActive
-                          ? 'sepia(1) saturate(4) hue-rotate(310deg) brightness(0.55)'
-                          : 'none',
-                        transition: 'opacity 0.2s, filter 0.2s',
-                      }}
-                    />
-                  ) : (
-                    <Icon style={{ width: 24, height: 24, display: 'block', minWidth: 24, minHeight: 24 }} />
-                  )}
+                <div style={{ width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Icon style={{ width: 24, height: 24, display: 'block', minWidth: 24, minHeight: 24 }} />
                 </div>
                 {showBadge && (
                   <span style={{
@@ -156,7 +137,7 @@ export const BottomNavBar: React.FC = () => {
                   </span>
                 )}
               </div>
-              <span style={{ fontSize: '12px', marginTop: '4px', fontWeight: isActive ? 600 : 500 }}>{item.label}</span>
+              <span style={{ fontSize: '12px', marginTop: '4px', fontWeight: 500 }}>{item.label}</span>
             </NavLink>
           );
         })}
