@@ -21,6 +21,8 @@
 
 html {
   scroll-behavior: smooth;
+  background: #3D0A11; /* prevents white flash on overscroll in Capacitor */
+  overscroll-behavior: none;
 }
 
 body {

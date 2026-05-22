@@ -12,7 +12,7 @@ import {
   SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { useUser } from '@/contexts/UserContext';
-import { Button, Input, WorkshopLoader } from '@/components/ui';
+import { Input, WorkshopLoader } from '@/components/ui';
 import { getClientByUid, updateClient, addOutlet } from '@/services';
 
 interface OutletDraft {
@@ -218,7 +218,7 @@ const OnboardingPage: React.FC = () => {
                 </div>
               </div>
 
-              <Button fullWidth onClick={handleStep1Next} className="mt-6">Далее →</Button>
+              <button onClick={handleStep1Next} style={{ width: '100%', padding: '15px', marginTop: 24, background: 'linear-gradient(135deg, #3D0A11, #5A0D17)', color: '#fff', border: 'none', borderRadius: 14, fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(61,10,17,0.3)' }}>Далее →</button>
             </div>
           </motion.div>
         )}
@@ -282,16 +282,14 @@ const OnboardingPage: React.FC = () => {
                   value={outletForm.deliveryTime}
                   onChange={e => setOutletForm(prev => ({ ...prev, deliveryTime: e.target.value }))}
                 />
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="sm"
                   onClick={addOutletToList}
                   disabled={!outletForm.name.trim() || !outletForm.address.trim()}
-                  fullWidth
+                  style={{ width: '100%', padding: '11px', border: '2px dashed #d4a574', borderRadius: 12, color: !outletForm.name.trim() || !outletForm.address.trim() ? '#cbd5e1' : '#92400e', fontWeight: 600, fontSize: 14, background: 'none', cursor: !outletForm.name.trim() || !outletForm.address.trim() ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                 >
-                  <PlusIcon style={{ width: 16, height: 16, marginRight: 4 }} /> Добавить точку
-                </Button>
+                  <PlusIcon style={{ width: 16, height: 16, display: 'block' }} /> Добавить точку
+                </button>
               </div>
             </div>
 
@@ -309,13 +307,13 @@ const OnboardingPage: React.FC = () => {
 
             {/* Actions */}
             <div style={{ display: 'flex', gap: 12 }}>
-              <Button variant="outline" fullWidth onClick={() => { setStep(1); setError(''); }}>
+              <button onClick={() => { setStep(1); setError(''); }} style={{ flex: 1, padding: '13px', border: '1.5px solid #e2e8f0', background: '#fff', color: '#374151', borderRadius: 12, fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>
                 ← Назад
-              </Button>
+              </button>
               {outlets.length === 0 && (
-                <Button fullWidth onClick={handleFinish} loading={saving} disabled>
+                <button disabled style={{ flex: 1, padding: '13px', background: '#e2e8f0', color: '#94a3b8', border: 'none', borderRadius: 12, fontWeight: 600, fontSize: 15, cursor: 'not-allowed' }}>
                   Готово ✓
-                </Button>
+                </button>
               )}
             </div>
 

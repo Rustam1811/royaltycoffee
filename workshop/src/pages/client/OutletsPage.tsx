@@ -150,17 +150,10 @@ const OutletsPage: React.FC = () => {
     <div style={S.page}>
       {/* Header */}
       <div style={S.header}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <h1 style={S.h1}>Мои точки</h1>
-            <p style={S.subtext}>
-              {outlets.length > 0 ? `${outlets.length} ${outlets.length === 1 ? 'точка' : outlets.length < 5 ? 'точки' : 'точек'} · выберите для заказа` : 'Добавьте вашу первую точку'}
-            </p>
-          </div>
-          <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
-            🏪
-          </div>
-        </div>
+        <h1 style={S.h1}>Мои точки</h1>
+        <p style={S.subtext}>
+          {outlets.length > 0 ? `${outlets.length} ${outlets.length === 1 ? 'точка' : outlets.length < 5 ? 'точки' : 'точек'} · выберите для заказа` : 'Добавьте вашу первую точку'}
+        </p>
       </div>
 
       {/* Content */}

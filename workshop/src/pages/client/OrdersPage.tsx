@@ -503,29 +503,46 @@ const OrdersPage: React.FC = () => {
 
                 {/* Add products */}
                 {!showAddPanel ? (
-                  <button onClick={() => setShowAddPanel(true)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px', border: '2px dashed #d4a574', borderRadius: 12, color: '#92400e', fontWeight: 500, fontSize: 14, background: 'none', cursor: 'pointer', marginBottom: 16 }}>
-                    <PlusIcon style={{ width: 16, height: 16 }} />Добавить позицию
+                  <button onClick={() => setShowAddPanel(true)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px', border: '2px dashed #d4a574', borderRadius: 14, color: '#92400e', fontWeight: 600, fontSize: 14, background: 'none', cursor: 'pointer', marginBottom: 16 }}>
+                    <PlusIcon style={{ width: 18, height: 18, display: 'block' }} />Добавить позицию
                   </button>
                 ) : (
-                  <div style={{ marginBottom: 16, border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
-                    <div style={{ position: 'relative' }}>
-                      <MagnifyingGlassIcon style={{ width: 16, height: 16, color: '#94a3b8', position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
-                      <input type="text" placeholder="Поиск продукции..." value={addSearch} onChange={e => setAddSearch(e.target.value)} style={{ width: '100%', paddingLeft: 36, paddingRight: 36, paddingTop: 10, paddingBottom: 10, fontSize: 14, borderBottom: '1px solid #e2e8f0', border: 'none', outline: 'none', background: '#fff', boxSizing: 'border-box' }} autoFocus />
-                      <button onClick={() => { setShowAddPanel(false); setAddSearch(''); }} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', padding: 4, borderRadius: 8, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                        <XMarkIcon style={{ width: 16, height: 16, color: '#94a3b8' }} />
+                  <div style={{ marginBottom: 16, border: '1px solid #e2e8f0', borderRadius: 16, overflow: 'hidden', background: '#fff' }}>
+                    {/* Search bar */}
+                    <div style={{ position: 'relative', borderBottom: '1px solid #f1f5f9' }}>
+                      <MagnifyingGlassIcon style={{ width: 16, height: 16, color: '#94a3b8', position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', display: 'block' }} />
+                      <input type="text" placeholder="Поиск продукции..." value={addSearch} onChange={e => setAddSearch(e.target.value)}
+                        style={{ width: '100%', paddingLeft: 36, paddingRight: 36, paddingTop: 11, paddingBottom: 11, fontSize: 14, border: 'none', outline: 'none', background: '#fff', boxSizing: 'border-box' }} autoFocus />
+                      <button onClick={() => { setShowAddPanel(false); setAddSearch(''); }}
+                        style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 28, height: 28, borderRadius: '50%', background: '#f1f5f9', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <XMarkIcon style={{ width: 14, height: 14, color: '#64748b', display: 'block' }} />
                       </button>
                     </div>
-                    <div style={{ maxHeight: 160, overflowY: 'auto' }}>
+                    {/* Product grid with images */}
+                    <div style={{ maxHeight: 240, overflowY: 'auto' }}>
                       {availableToAdd.length === 0 ? (
-                        <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 14, padding: 16 }}>{addSearch ? 'Ничего не найдено' : 'Все продукты уже добавлены'}</p>
+                        <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 14, padding: '20px 16px' }}>
+                          {addSearch ? 'Ничего не найдено' : 'Все продукты уже добавлены'}
+                        </p>
                       ) : availableToAdd.map(product => (
-                        <button key={product.id} onClick={() => handleAddProduct(product)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderTop: '1px solid #f1f5f9' }}>
-                          <div style={{ minWidth: 0, flex: 1 }}>
-                            <p style={{ fontSize: 14, fontWeight: 500, color: '#0f172a', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{getLocalizedName(product.name)}</p>
-                            <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>{product.price.toLocaleString()} ₸/{product.unit}</p>
+                        <button key={product.id} onClick={() => handleAddProduct(product)}
+                          style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderTop: '1px solid #f8fafc' }}>
+                          {/* Thumbnail */}
+                          <div style={{ width: 44, height: 44, borderRadius: 10, background: '#f5f0eb', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {product.image ? (
+                              <img src={product.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                            ) : (
+                              <span style={{ fontSize: 20 }}>🥐</span>
+                            )}
                           </div>
-                          <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#92400e', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: 8 }}>
-                            <PlusIcon style={{ width: 14, height: 14 }} />
+                          {/* Info */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{getLocalizedName(product.name)}</p>
+                            <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>{product.price.toLocaleString()} ₸ / {product.unit}</p>
+                          </div>
+                          {/* Add btn */}
+                          <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'linear-gradient(135deg, #3D0A11, #5A0D17)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <PlusIcon style={{ width: 14, height: 14, display: 'block' }} />
                           </div>
                         </button>
                       ))}
