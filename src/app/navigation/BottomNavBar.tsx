@@ -25,16 +25,18 @@ const HomeSvgIcon: React.FC<{ className?: string; active?: boolean }> = ({ class
   />
 );
 
-/** Иконка профиля — силуэт человека */
+/** Иконка профиля из public/images/profile_0.png */
 const ProfileSvgIcon: React.FC<{ className?: string; active?: boolean }> = ({ className, active }) => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="currentColor"
+  <img
+    src="/images/profile_0.png"
+    alt=""
     className={className}
-    style={{ color: active ? '#B8860B' : 'rgba(61,10,17,0.4)' }}
-  >
-    <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12Zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8Z" />
-  </svg>
+    style={{
+      filter: active
+        ? 'brightness(0) saturate(100%) invert(72%) sepia(80%) saturate(600%) hue-rotate(5deg) brightness(90%) drop-shadow(0 0 6px rgba(184,134,11,0.55))'
+        : 'brightness(0) saturate(100%) invert(20%) sepia(10%) saturate(500%) hue-rotate(330deg) brightness(80%) opacity(0.4)',
+    }}
+  />
 );
 
 /** Иконка короны для «Кофейни» — чистый узнаваемый силуэт */
