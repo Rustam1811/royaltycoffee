@@ -11,7 +11,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { useUser } from '@/contexts/UserContext';
-import { Card, CardBody, Button, Input, WorkshopLoader } from '@/components/ui';
+import { Input, WorkshopLoader } from '@/components/ui';
 import { getClientByUid, addClientOutlet } from '@/services';
 import { ClientOutlet } from '@/types';
 
@@ -107,233 +107,207 @@ const OutletsPage: React.FC = () => {
     return <WorkshopLoader text="Загрузка точек..." />;
   }
 
+  const S = {
+    page: { minHeight: '100%', background: '#f8fafc', paddingBottom: '24px' } as React.CSSProperties,
+    header: { background: 'linear-gradient(135deg, #3D0A11 0%, #4D0E16 50%, #5A0D17 100%)', color: '#fff', padding: '44px 20px 24px' } as React.CSSProperties,
+    h1: { fontSize: '22px', fontWeight: 800, margin: 0, letterSpacing: '-0.01em' } as React.CSSProperties,
+    subtext: { color: 'rgba(255,255,255,0.6)', fontSize: '14px', marginTop: '4px' } as React.CSSProperties,
+    content: { padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: '12px' } as React.CSSProperties,
+    card: { background: '#fff', borderRadius: '20px', boxShadow: '0 2px 12px rgba(0,0,0,0.08)', overflow: 'hidden', cursor: 'pointer', border: '1.5px solid transparent' } as React.CSSProperties,
+    cardBody: { padding: '16px' } as React.CSSProperties,
+    row: { display: 'flex', alignItems: 'flex-start', gap: '14px' } as React.CSSProperties,
+    iconBox: { width: '52px', height: '52px', borderRadius: '16px', background: 'linear-gradient(135deg, #fef3c7, #fde68a)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 } as React.CSSProperties,
+    iconBoxSmall: { width: '40px', height: '40px', borderRadius: '12px', background: 'linear-gradient(135deg, #fef3c7, #fde68a)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 } as React.CSSProperties,
+    cardInfo: { flex: 1, minWidth: 0 } as React.CSSProperties,
+    outletName: { fontWeight: 700, color: '#0f172a', fontSize: '16px', margin: 0 } as React.CSSProperties,
+    metaRow: { display: 'flex', alignItems: 'center', gap: '5px', marginTop: '5px' } as React.CSSProperties,
+    metaText: { fontSize: '13px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } as React.CSSProperties,
+    deliveryText: { fontSize: '13px', fontWeight: 600, color: '#92400e' } as React.CSSProperties,
+    arrowBox: { display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1', flexShrink: 0, alignSelf: 'center' } as React.CSSProperties,
+    addCard: { background: '#fff', borderRadius: '20px', border: '2px dashed #e2e8f0', cursor: 'pointer' } as React.CSSProperties,
+    addCardInner: { padding: '16px', display: 'flex', alignItems: 'center', gap: '14px' } as React.CSSProperties,
+    addLabel: { fontWeight: 700, color: '#0f172a', margin: 0, fontSize: '15px' } as React.CSSProperties,
+    addSub: { fontSize: '13px', color: '#94a3b8', margin: '2px 0 0' } as React.CSSProperties,
+    formCard: { background: '#fff', borderRadius: '20px', boxShadow: '0 2px 12px rgba(0,0,0,0.08)' } as React.CSSProperties,
+    formHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' } as React.CSSProperties,
+    formTitle: { display: 'flex', alignItems: 'center', gap: '12px' } as React.CSSProperties,
+    formTitleText: { fontWeight: 700, color: '#0f172a', margin: 0, fontSize: '16px' } as React.CSSProperties,
+    closeBtn: { width: 36, height: 36, borderRadius: '50%', background: '#f1f5f9', color: '#64748b', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' } as React.CSSProperties,
+    fieldGroup: { display: 'flex', flexDirection: 'column', gap: '14px' } as React.CSSProperties,
+    label: { display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' } as React.CSSProperties,
+    hint: { fontSize: '12px', color: '#94a3b8', marginTop: '4px' } as React.CSSProperties,
+    actions: { display: 'flex', gap: '10px', marginTop: '20px' } as React.CSSProperties,
+    btnOutline: { flex: 1, padding: '13px', borderRadius: '12px', border: '1.5px solid #e2e8f0', background: '#fff', color: '#374151', fontWeight: 600, fontSize: '15px', cursor: 'pointer' } as React.CSSProperties,
+    btnPrimary: { flex: 1, padding: '13px', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg, #3D0A11, #5A0D17)', color: '#fff', fontWeight: 600, fontSize: '15px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(61,10,17,0.25)' } as React.CSSProperties,
+    btnDisabled: { opacity: 0.5, cursor: 'not-allowed', boxShadow: 'none' } as React.CSSProperties,
+    emptyState: { textAlign: 'center', padding: '40px 16px' } as React.CSSProperties,
+    emptyCircle: { width: '88px', height: '88px', background: 'linear-gradient(135deg, #fef3c7, #fde68a)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' } as React.CSSProperties,
+    emptyTitle: { fontSize: '18px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' } as React.CSSProperties,
+    emptyText: { color: '#94a3b8', fontSize: '14px', maxWidth: '280px', margin: '0 auto', lineHeight: 1.5 } as React.CSSProperties,
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 pb-24">
+    <div style={S.page}>
       {/* Header */}
-      <div className="bg-gradient-to-br from-[#3D0A11] via-[#4D0E16] to-[#5A0D17] text-white px-5 pt-10 pb-4">
-        <h1 className="text-xl font-bold">Мои точки</h1>
-        <p className="text-white/60 text-sm mt-0.5">
-          {outlets.length > 0 
-            ? 'Выберите точку для заказа' 
-            : 'Добавьте вашу первую точку'
-          }
-        </p>
+      <div style={S.header}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <h1 style={S.h1}>Мои точки</h1>
+            <p style={S.subtext}>
+              {outlets.length > 0 ? `${outlets.length} ${outlets.length === 1 ? 'точка' : outlets.length < 5 ? 'точки' : 'точек'} · выберите для заказа` : 'Добавьте вашу первую точку'}
+            </p>
+          </div>
+          <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
+            🏪
+          </div>
+        </div>
       </div>
 
       {/* Content */}
-      <div className="px-4 py-6 space-y-4">
-        
+      <div style={S.content}>
+
         {/* Existing Outlets */}
         {outlets.map((outlet, index) => (
           <motion.div
             key={outlet.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
+            transition={{ delay: index * 0.07 }}
+            style={S.card}
+            onClick={() => handleSelectOutlet(outlet)}
           >
-            <Card hover onClick={() => handleSelectOutlet(outlet)}>
-              <CardBody>
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-workshop-100 flex items-center justify-center flex-shrink-0">
-                    <BuildingStorefrontIcon className="w-6 h-6 text-workshop-600" />
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-slate-900 text-lg">
-                      {outlet.name}
-                    </h3>
-                    
-                    <div className="flex items-center gap-1.5 mt-1 text-slate-500">
-                      <MapPinIcon className="w-4 h-4 flex-shrink-0" />
-                      <span className="text-sm truncate">{outlet.address}</span>
-                    </div>
-                    
-                    <div className="flex items-center gap-1.5 mt-1 text-slate-500">
-                      <PhoneIcon className="w-4 h-4 flex-shrink-0" />
-                      <span className="text-sm">{outlet.phone}</span>
-                    </div>
-                    
-                    {outlet.deliveryTime && (
-                      <div className="flex items-center gap-1.5 mt-1 text-workshop-600">
-                        <ClockIcon className="w-4 h-4" />
-                        <span className="text-sm font-medium">
-                          Доставка к {outlet.deliveryTime}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Arrow indicator */}
-                  <div className="text-slate-300">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
+            <div style={S.cardBody}>
+              <div style={S.row}>
+                <div style={S.iconBox}>
+                  <BuildingStorefrontIcon style={{ width: 26, height: 26, color: '#92400e', display: 'block' }} />
                 </div>
-              </CardBody>
-            </Card>
+                <div style={S.cardInfo}>
+                  <p style={S.outletName}>{outlet.name}</p>
+                  <div style={S.metaRow}>
+                    <MapPinIcon style={{ width: 14, height: 14, color: '#94a3b8', flexShrink: 0, display: 'block' }} />
+                    <span style={S.metaText}>{outlet.address}</span>
+                  </div>
+                  <div style={S.metaRow}>
+                    <PhoneIcon style={{ width: 14, height: 14, color: '#94a3b8', flexShrink: 0, display: 'block' }} />
+                    <span style={S.metaText}>{outlet.phone}</span>
+                  </div>
+                  {outlet.deliveryTime && (
+                    <div style={S.metaRow}>
+                      <ClockIcon style={{ width: 14, height: 14, color: '#92400e', flexShrink: 0, display: 'block' }} />
+                      <span style={S.deliveryText}>Доставка к {outlet.deliveryTime}</span>
+                    </div>
+                  )}
+                </div>
+                <div style={S.arrowBox}>
+                  <svg style={{ width: 20, height: 20, display: 'block' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
+              {/* Order button */}
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 13, color: '#94a3b8' }}>Нажмите чтобы сделать заказ</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#5A0D17', background: '#fef3c7', padding: '4px 12px', borderRadius: 20 }}>Заказать →</span>
+                </div>
+              </div>
+            </div>
           </motion.div>
         ))}
 
-        {/* Add Outlet Card */}
+        {/* Add Outlet / Form */}
         <AnimatePresence mode="wait">
           {!showAddForm ? (
-            <motion.div
-              key="add-button"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <Card 
-                hover 
-                onClick={() => setShowAddForm(true)}
-                className="border-2 border-dashed border-slate-200 bg-slate-50/50"
-              >
-                <CardBody>
-                  <div className="flex items-center gap-4 py-4">
-                    <div className="w-12 h-12 rounded-xl bg-workshop-100 flex items-center justify-center">
-                      <PlusIcon className="w-6 h-6 text-workshop-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-slate-900">Добавить точку</h3>
-                      <p className="text-sm text-slate-500">Новый адрес доставки</p>
-                    </div>
+            <motion.div key="add-button" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <div style={S.addCard} onClick={() => setShowAddForm(true)}>
+                <div style={S.addCardInner}>
+                  <div style={S.iconBox}>
+                    <PlusIcon style={{ width: 24, height: 24, color: '#92400e', display: 'block' }} />
                   </div>
-                </CardBody>
-              </Card>
+                  <div>
+                    <p style={S.addLabel}>Добавить точку</p>
+                    <p style={S.addSub}>Новый адрес доставки</p>
+                  </div>
+                </div>
+              </div>
             </motion.div>
           ) : (
-            <motion.div
-              key="add-form"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-            >
-              <Card>
-                <CardBody>
+            <motion.div key="add-form" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+              <div style={S.formCard}>
+                <div style={S.cardBody}>
                   {/* Form Header */}
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-workshop-100 flex items-center justify-center">
-                        <PlusIcon className="w-5 h-5 text-workshop-600" />
+                  <div style={S.formHeader}>
+                    <div style={S.formTitle}>
+                      <div style={S.iconBoxSmall}>
+                        <PlusIcon style={{ width: 20, height: 20, color: '#92400e', display: 'block' }} />
                       </div>
-                      <h3 className="font-semibold text-slate-900">Новая точка</h3>
+                      <p style={S.formTitleText}>Новая точка</p>
                     </div>
-                    <button
-                      onClick={() => setShowAddForm(false)}
-                      className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
-                    >
-                      <XMarkIcon className="w-5 h-5" />
+                    <button style={S.closeBtn} onClick={() => setShowAddForm(false)}>
+                      <XMarkIcon style={{ width: 18, height: 18, display: 'block' }} />
                     </button>
                   </div>
 
-                  {/* Form Fields */}
-                  <div className="space-y-4">
+                  {/* Fields */}
+                  <div style={S.fieldGroup}>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                        Название точки
-                      </label>
-                      <Input
-                        placeholder="Например: Кофейня на Арбате"
-                        value={formData.name}
-                        onChange={(e) => handleFormChange('name', e.target.value)}
-                      />
+                      <label style={S.label}>Название точки</label>
+                      <Input placeholder="Например: Кофейня на Арбате" value={formData.name} onChange={(e) => handleFormChange('name', e.target.value)} />
                     </div>
-
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                        <PhoneIcon className="w-4 h-4 inline mr-1" />
-                        Телефон для связи
-                      </label>
-                      <Input
-                        type="tel"
-                        placeholder="+7 (999) 123-45-67"
-                        value={formData.phone}
-                        onChange={(e) => handleFormChange('phone', e.target.value)}
-                      />
+                      <label style={S.label}>Телефон для связи</label>
+                      <Input type="tel" placeholder="+7 (999) 123-45-67" value={formData.phone} onChange={(e) => handleFormChange('phone', e.target.value)} />
                     </div>
-
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                        <MapPinIcon className="w-4 h-4 inline mr-1" />
-                        Адрес доставки
-                      </label>
-                      <Input
-                        placeholder="Улица, дом, вход/этаж"
-                        value={formData.address}
-                        onChange={(e) => handleFormChange('address', e.target.value)}
-                      />
+                      <label style={S.label}>Адрес доставки</label>
+                      <Input placeholder="Улица, дом, вход/этаж" value={formData.address} onChange={(e) => handleFormChange('address', e.target.value)} />
                     </div>
-
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                        <ClockIcon className="w-4 h-4 inline mr-1" />
-                        Время доставки
-                      </label>
-                      <Input
-                        type="time"
-                        value={formData.deliveryTime}
-                        onChange={(e) => handleFormChange('deliveryTime', e.target.value)}
-                      />
-                      <p className="text-xs text-slate-500 mt-1">
-                        К какому времени нужно привезти заказ
-                      </p>
+                      <label style={S.label}>Время доставки</label>
+                      <Input type="time" value={formData.deliveryTime} onChange={(e) => handleFormChange('deliveryTime', e.target.value)} />
+                      <p style={S.hint}>К какому времени нужно привезти заказ</p>
                     </div>
                   </div>
 
-                  {/* Form Actions */}
-                  <div className="flex gap-3 mt-6">
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowAddForm(false)}
-                      className="flex-1"
-                    >
-                      Отмена
-                    </Button>
-                    <Button
+                  {/* Actions */}
+                  <div style={S.actions}>
+                    <button style={S.btnOutline} onClick={() => setShowAddForm(false)}>Отмена</button>
+                    <button
+                      style={{ ...S.btnPrimary, ...(!formData.name || !formData.address || !formData.phone || saving ? S.btnDisabled : {}) }}
                       onClick={handleAddOutlet}
                       disabled={!formData.name || !formData.address || !formData.phone || saving}
-                      className="flex-1"
                     >
                       {saving ? (
-                        <span className="flex items-center gap-2">
-                          <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        <>
+                          <svg style={{ width: 16, height: 16, display: 'block', animation: 'spin 1s linear infinite' }} fill="none" viewBox="0 0 24 24">
+                            <style>{`@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }`}</style>
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.3" />
+                            <path d="M12 2a10 10 0 0110 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
                           </svg>
                           Сохранение...
-                        </span>
+                        </>
                       ) : (
-                        <span className="flex items-center gap-2">
-                          <CheckIcon className="w-4 h-4" />
+                        <>
+                          <CheckIcon style={{ width: 16, height: 16, display: 'block' }} />
                           Добавить
-                        </span>
+                        </>
                       )}
-                    </Button>
+                    </button>
                   </div>
-                </CardBody>
-              </Card>
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Empty State Help */}
+        {/* Empty State */}
         {outlets.length === 0 && !showAddForm && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="text-center py-8"
-          >
-            <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <BuildingStorefrontIcon className="w-10 h-10 text-slate-300" />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} style={S.emptyState}>
+            <div style={S.emptyCircle}>
+              <BuildingStorefrontIcon style={{ width: 44, height: 44, color: '#92400e', display: 'block' }} />
             </div>
-            <h3 className="text-lg font-medium text-slate-900 mb-2">
-              Начните с добавления точки
-            </h3>
-            <p className="text-slate-500 text-sm max-w-xs mx-auto">
-              Добавьте адрес вашей кофейни или ресторана, чтобы начать делать заказы
-            </p>
+            <p style={S.emptyTitle}>Начните с добавления точки</p>
+            <p style={S.emptyText}>Добавьте адрес вашей кофейни или ресторана, чтобы начать делать заказы</p>
           </motion.div>
         )}
       </div>

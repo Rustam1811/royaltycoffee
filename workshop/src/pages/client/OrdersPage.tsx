@@ -17,7 +17,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useUser } from '@/contexts/UserContext';
 import { useCart } from '@/contexts/CartContext';
-import { Button, Textarea, WorkshopLoader } from '@/components/ui';
+import { Textarea, WorkshopLoader } from '@/components/ui';
 import { getClientOrders, getClientByUid, cancelOrder, updateOrderItems, getWorkshopSettings, getProducts, getAllOrders } from '@/services';
 import { WorkshopOrder, OrderStatus, OrderItem, LocalizedString, WorkshopProduct } from '@/types';
 import { doc, updateDoc, Timestamp } from 'firebase/firestore';
@@ -69,6 +69,7 @@ const EditQtyInput: React.FC<{ value: number; onChange: (q: number) => void }> =
         onBlur={commit}
         onKeyDown={e => { if (e.key === 'Enter') commit(); }}
         className="w-10 h-7 text-center text-sm font-semibold text-slate-900 border border-workshop-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-workshop-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        style={{ width: 40, height: 28, textAlign: 'center', fontSize: 14, fontWeight: 600, color: '#0f172a', border: '1px solid #d4a574', borderRadius: 8, background: '#fff', outline: 'none' }}
         min={1}
         autoFocus
       />
@@ -78,7 +79,7 @@ const EditQtyInput: React.FC<{ value: number; onChange: (q: number) => void }> =
   return (
     <button
       onClick={() => { setDraft(value.toString()); setEditing(true); setTimeout(() => inputRef.current?.select(), 0); }}
-      className="w-10 h-7 text-center text-sm font-semibold text-slate-900 rounded-lg hover:bg-slate-100 transition-colors cursor-text"
+      style={{ width: 40, height: 28, textAlign: 'center', fontSize: 14, fontWeight: 600, color: '#0f172a', borderRadius: 8, background: 'none', border: 'none', cursor: 'text' }}
     >
       {value}
     </button>
@@ -400,25 +401,44 @@ const OrdersPage: React.FC = () => {
                     )}
 
                     {/* Total + Actions */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                       <span style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>{order.totalAmount.toLocaleString()} ₸</span>
                       {isPending && (
-                        <div style={{ display: 'flex', gap: 8 }}>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                           {isSuperowner && order.requiresApproval && !order.approvedBy && (
-                            <Button size="sm" variant="outline" onClick={() => handleApproveOrder(order.id)} loading={approvingId === order.id} disabled={approvingId === order.id}>✅ Одобрить</Button>
+                            <button
+                              onClick={() => handleApproveOrder(order.id)}
+                              disabled={approvingId === order.id}
+                              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, border: 'none', background: '#dcfce7', color: '#15803d', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                            >
+                              ✅ Одобрить
+                            </button>
                           )}
-                          <Button size="sm" variant="outline" onClick={() => handleStartEdit(order)}>
-                            <PencilSquareIcon style={{ width: 16, height: 16, marginRight: 4 }} />Изменить
-                          </Button>
-                          <Button size="sm" variant="danger" onClick={() => handleCancel(order.id)} loading={cancellingId === order.id} disabled={cancellingId === order.id}>
-                            <XCircleIcon style={{ width: 16, height: 16, marginRight: 4 }} />Отменить
-                          </Button>
+                          <button
+                            onClick={() => handleStartEdit(order)}
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, border: '1.5px solid #e2e8f0', background: '#fff', color: '#374151', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                          >
+                            <PencilSquareIcon style={{ width: 15, height: 15, display: 'block' }} />
+                            Изменить
+                          </button>
+                          <button
+                            onClick={() => handleCancel(order.id)}
+                            disabled={cancellingId === order.id}
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, border: 'none', background: '#fef2f2', color: '#dc2626', fontSize: 13, fontWeight: 600, cursor: cancellingId === order.id ? 'not-allowed' : 'pointer', opacity: cancellingId === order.id ? 0.6 : 1 }}
+                          >
+                            <XCircleIcon style={{ width: 15, height: 15, display: 'block' }} />
+                            {cancellingId === order.id ? '...' : 'Отменить'}
+                          </button>
                         </div>
                       )}
                       {!isPending && !isSuperowner && (order.status === 'delivered' || order.status === 'ready') && (
-                        <Button size="sm" variant="outline" onClick={() => handleRepeatOrder(order)}>
-                          <ArrowPathIcon style={{ width: 16, height: 16, marginRight: 4 }} />Повторить
-                        </Button>
+                        <button
+                          onClick={() => handleRepeatOrder(order)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, border: '1.5px solid #e2e8f0', background: '#fff', color: '#374151', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          <ArrowPathIcon style={{ width: 15, height: 15, display: 'block' }} />
+                          Повторить
+                        </button>
                       )}
                     </div>
                   </div>
@@ -525,9 +545,18 @@ const OrdersPage: React.FC = () => {
                   <span style={{ fontSize: 14, color: '#64748b' }}>Итого:</span>
                   <span style={{ fontSize: 20, fontWeight: 700, color: '#0f172a' }}>{editTotal.toLocaleString()} ₸</span>
                 </div>
-                <div style={{ display: 'flex', gap: 12 }}>
-                  <Button variant="outline" fullWidth onClick={() => setEditingOrder(null)}>Отмена</Button>
-                  <Button fullWidth onClick={handleSaveEdit} loading={savingEdit} disabled={savingEdit || editItems.length === 0}>Сохранить</Button>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    onClick={() => setEditingOrder(null)}
+                    style={{ flex: 1, padding: '13px', borderRadius: 12, border: '1.5px solid #e2e8f0', background: '#fff', color: '#374151', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}
+                  >Отмена</button>
+                  <button
+                    onClick={handleSaveEdit}
+                    disabled={savingEdit || editItems.length === 0}
+                    style={{ flex: 1, padding: '13px', borderRadius: 12, border: 'none', background: savingEdit || editItems.length === 0 ? '#cbd5e1' : 'linear-gradient(135deg, #3D0A11, #5A0D17)', color: savingEdit || editItems.length === 0 ? '#94a3b8' : '#fff', fontWeight: 600, fontSize: 15, cursor: savingEdit || editItems.length === 0 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                  >
+                    {savingEdit ? 'Сохранение...' : 'Сохранить'}
+                  </button>
                 </div>
               </div>
             </motion.div>
