@@ -10,7 +10,6 @@ import {
 } from '@heroicons/react/24/outline';
 import { useCart } from '@/contexts/CartContext';
 import { useUser } from '@/contexts/UserContext';
-import { Card, CardBody, Button, Textarea } from '@/components/ui';
 import { createOrder, getClientByUid, getWorkshopSettings, isOrderingAllowed } from '@/services';
 import { LocalizedString } from '@/types';
 
@@ -58,7 +57,7 @@ const QuantityInput: React.FC<{
         onChange={e => setDraft(e.target.value)}
         onBlur={commit}
         onKeyDown={e => { if (e.key === 'Enter') commit(); }}
-        className="w-14 h-8 text-center font-semibold text-slate-900 border border-workshop-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-workshop-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        style={{ width: 56, height: 32, textAlign: 'center', fontWeight: 600, color: '#0f172a', border: '1px solid #d4a574', borderRadius: 8, background: '#fff', outline: 'none', fontSize: 14 }}
         min={min}
         autoFocus
       />
@@ -68,7 +67,7 @@ const QuantityInput: React.FC<{
   return (
     <button
       onClick={startEdit}
-      className="w-14 h-8 text-center font-semibold text-slate-900 rounded-lg hover:bg-slate-100 transition-colors cursor-text"
+      style={{ width: 56, height: 32, textAlign: 'center', fontWeight: 600, color: '#0f172a', borderRadius: 8, background: 'none', border: 'none', cursor: 'text', fontSize: 14 }}
       title="Нажмите чтобы ввести число"
     >
       {value}
@@ -180,21 +179,13 @@ const CartPage: React.FC = () => {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="text-center"
-        >
-          <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-            <CheckCircleIcon className="w-10 h-10 text-green-500" />
+      <div style={{ minHeight: '100%', background: 'linear-gradient(135deg, #3D0A11 0%, #5A0D17 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <motion.div initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', damping: 20 }} style={{ textAlign: 'center' }}>
+          <div style={{ width: 96, height: 96, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+            <CheckCircleIcon style={{ width: 52, height: 52, color: '#fff', display: 'block' }} />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">
-            Заказ отправлен!
-          </h2>
-          <p className="text-slate-500">
-            Ожидайте подтверждения от цеха
-          </p>
+          <h2 style={{ fontSize: 26, fontWeight: 800, color: '#fff', margin: '0 0 8px' }}>Заказ отправлен!</h2>
+          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 15 }}>Ожидайте подтверждения от цеха</p>
         </motion.div>
       </div>
     );
@@ -202,207 +193,191 @@ const CartPage: React.FC = () => {
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-slate-50">
-        <div className="bg-white border-b border-slate-200 sticky top-0 z-20">
-          <div className="flex items-center gap-3 px-4 py-3">
-            <button
-              onClick={() => history.goBack()}
-              className="p-2 -ml-2 rounded-lg hover:bg-slate-100"
-            >
-              <ArrowLeftIcon className="w-5 h-5 text-slate-600" />
+      <div style={{ minHeight: '100%', background: '#f8fafc' }}>
+        {/* Header */}
+        <div style={{ background: 'linear-gradient(135deg, #3D0A11 0%, #5A0D17 100%)', padding: '44px 20px 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button onClick={() => history.goBack()} style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', flexShrink: 0 }}>
+              <ArrowLeftIcon style={{ width: 20, height: 20, display: 'block' }} />
             </button>
-            <h1 className="font-semibold text-slate-900">Корзина</h1>
+            <h1 style={{ fontWeight: 700, fontSize: 20, color: '#fff', margin: 0 }}>Корзина</h1>
           </div>
         </div>
-        
-        <div className="flex flex-col items-center justify-center py-20 px-4">
-          <div className="text-6xl mb-4">🛒</div>
-          <h2 className="text-xl font-semibold text-slate-900 mb-2">
-            Корзина пуста
-          </h2>
-          <p className="text-slate-500 text-center mb-6">
-            Добавьте продукцию из меню
-          </p>
-          <Button onClick={() => history.goBack()}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 24px', textAlign: 'center' }}>
+          <div style={{ width: 96, height: 96, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, fontSize: 48 }}>🛒</div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', margin: '0 0 8px' }}>Корзина пуста</h2>
+          <p style={{ color: '#94a3b8', marginBottom: 28, fontSize: 15 }}>Добавьте продукцию из меню</p>
+          <button onClick={() => history.goBack()} style={{ padding: '14px 32px', background: 'linear-gradient(135deg, #3D0A11, #5A0D17)', color: '#fff', border: 'none', borderRadius: 14, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
             Перейти в меню
-          </Button>
+          </button>
         </div>
       </div>
     );
   }
 
+  const discountPercent = clientData?.discountPercent || 0;
+  const discountAmount = discountPercent > 0 ? Math.round(totalAmount * discountPercent / 100) : 0;
+  const finalTotal = totalAmount - discountAmount;
+  const isBelowMin = finalTotal < minOrderAmount;
+
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-20">
-        <div className="flex items-center gap-3 px-4 py-3 max-w-3xl mx-auto">
-          <button
-            onClick={() => history.goBack()}
-            className="p-2 -ml-2 rounded-lg hover:bg-slate-100"
-          >
-            <ArrowLeftIcon className="w-5 h-5 text-slate-600" />
+    <div style={{ minHeight: '100%', background: '#f8fafc' }}>
+      {/* Gradient header */}
+      <div style={{ background: 'linear-gradient(135deg, #3D0A11 0%, #5A0D17 100%)', padding: '44px 20px 20px', position: 'sticky', top: 0, zIndex: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, maxWidth: 720, margin: '0 auto' }}>
+          <button onClick={() => history.goBack()} style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', flexShrink: 0 }}>
+            <ArrowLeftIcon style={{ width: 20, height: 20, display: 'block' }} />
           </button>
-          <div className="flex-1">
-            <h1 className="font-semibold text-slate-900">Корзина</h1>
-            <p className="text-sm text-slate-500">{outletName}</p>
+          <div style={{ flex: 1 }}>
+            <h1 style={{ fontWeight: 700, fontSize: 20, color: '#fff', margin: 0 }}>Оформление заказа</h1>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', margin: '2px 0 0' }}>{outletName} · {items.length} поз.</p>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <p style={{ fontSize: 18, fontWeight: 800, color: '#fff', margin: 0 }}>{finalTotal.toLocaleString()} ₸</p>
+            {discountPercent > 0 && <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', margin: 0 }}>скидка {discountPercent}%</p>}
           </div>
         </div>
       </div>
 
-      {/* Cart Items — pb accounts for bottom bar + navbar */}
-      <div className="px-4 py-4 space-y-3 max-w-3xl mx-auto pb-52">
+      {/* Content */}
+      <div style={{ padding: '16px', maxWidth: 720, margin: '0 auto', paddingBottom: 240, display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+        {/* Section label */}
+        <p style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '4px 0 2px', padding: '0 4px' }}>Состав заказа</p>
+
+        {/* Cart items */}
         {items.map((item, index) => (
           <motion.div
             key={item.productId}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.05 }}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.04 }}
+            style={{ background: '#fff', borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}
           >
-            <Card>
-              <CardBody className="p-3">
-                <div className="flex items-start gap-3">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-slate-900">
-                      {getLocalizedName(item.productName)}
-                    </h3>
-                    <p className="text-sm text-slate-500">
-                      {item.price.toLocaleString()} ₸ / {item.unit}
-                    </p>
-                  </div>
-                  
-                  {/* Remove */}
+            <div style={{ padding: '12px 14px' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontWeight: 600, fontSize: 15, color: '#0f172a', margin: 0, lineHeight: 1.3 }}>{getLocalizedName(item.productName)}</p>
+                  <p style={{ fontSize: 13, color: '#94a3b8', margin: '3px 0 0' }}>{item.price.toLocaleString()} ₸ / {item.unit}</p>
+                </div>
+                <button
+                  onClick={() => removeItem(item.productId)}
+                  style={{ width: 32, height: 32, borderRadius: 10, background: '#fef2f2', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
+                >
+                  <TrashIcon style={{ width: 16, height: 16, color: '#ef4444', display: 'block' }} />
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', borderRadius: 12, padding: '4px 6px' }}>
                   <button
-                    onClick={() => removeItem(item.productId)}
-                    className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg shrink-0"
+                    onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                    style={{ width: 32, height: 32, borderRadius: 9, background: '#e2e8f0', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                   >
-                    <TrashIcon className="w-4 h-4" />
+                    <MinusIcon style={{ width: 16, height: 16, display: 'block' }} />
+                  </button>
+                  <QuantityInput value={item.quantity} onChange={(q) => updateQuantity(item.productId, q)} min={1} />
+                  <button
+                    onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                    style={{ width: 32, height: 32, borderRadius: 9, background: '#5A0D17', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}
+                  >
+                    <PlusIcon style={{ width: 16, height: 16, display: 'block' }} />
                   </button>
                 </div>
-                
-                <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-100">
-                  {/* Quantity Controls */}
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                      className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200"
-                    >
-                      <MinusIcon className="w-4 h-4" />
-                    </button>
-                    <QuantityInput
-                      value={item.quantity}
-                      onChange={(q) => updateQuantity(item.productId, q)}
-                      min={1}
-                    />
-                    <button
-                      onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                      className="w-8 h-8 rounded-full bg-workshop-500 text-white flex items-center justify-center hover:bg-workshop-600"
-                    >
-                      <PlusIcon className="w-4 h-4" />
-                    </button>
-                  </div>
-                  
-                  {/* Subtotal */}
-                  <span className="font-bold text-slate-900">
-                    {item.subtotal.toLocaleString()} ₸
-                  </span>
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ fontWeight: 700, fontSize: 16, color: '#0f172a', margin: 0 }}>{item.subtotal.toLocaleString()} ₸</p>
+                  {discountPercent > 0 && (
+                    <p style={{ fontSize: 12, color: '#16a34a', margin: 0 }}>→ {Math.round(item.subtotal * (1 - discountPercent / 100)).toLocaleString()} ₸</p>
+                  )}
                 </div>
-              </CardBody>
-            </Card>
+              </div>
+            </div>
           </motion.div>
         ))}
-        
-        {/* Delivery date */}
-        <Card>
-          <CardBody>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              Дата доставки
-            </label>
-            <input
-              type="date"
-              value={deliveryDate}
-              min={new Date().toISOString().split('T')[0]}
-              onChange={(e) => setDeliveryDate(e.target.value)}
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-workshop-500"
-            />
-          </CardBody>
-        </Card>
 
-        {/* Notes */}
-        <Card>
-          <CardBody>
-            <Textarea
-              label="Комментарий к заказу"
-              placeholder="Например: доставить до 8:00"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-            />
-          </CardBody>
-        </Card>
+        {/* Delivery + Notes */}
+        <p style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '8px 0 2px', padding: '0 4px' }}>Детали доставки</p>
+
+        <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,0.06)', padding: '14px 16px' }}>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>📅 Дата доставки</label>
+          <input
+            type="date"
+            value={deliveryDate}
+            min={new Date().toISOString().split('T')[0]}
+            onChange={(e) => setDeliveryDate(e.target.value)}
+            style={{ width: '100%', padding: '11px 14px', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: 12, color: '#0f172a', outline: 'none', fontSize: 15, boxSizing: 'border-box' }}
+          />
+        </div>
+
+        <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 1px 8px rgba(0,0,0,0.06)', padding: '14px 16px' }}>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>💬 Комментарий</label>
+          <textarea
+            placeholder="Например: доставить до 8:00"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={3}
+            style={{ width: '100%', padding: '11px 14px', background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: 12, color: '#0f172a', outline: 'none', fontSize: 15, resize: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+          />
+        </div>
       </div>
 
-      {/* Submit Button — above bottom navbar */}
-      <div className="fixed bottom-20 left-0 right-0 px-4 pb-2 pt-2 z-40 bg-gradient-to-t from-white via-white to-white/0">
-        <div className="max-w-3xl mx-auto">
-          {/* Blocked by cutoff time */}
-          {orderBlocked && (
-            <div className="mb-2 p-3 bg-red-50 border border-red-200 rounded-2xl text-sm text-red-700 text-center">
-              🕐 {orderBlocked}
-            </div>
-          )}
-
-          {/* Minimum order warning */}
-          {!orderBlocked && (() => {
-            const discountPercent = clientData?.discountPercent || 0;
-            const discountAmount = discountPercent > 0 ? Math.round(totalAmount * discountPercent / 100) : 0;
-            const finalTotal = totalAmount - discountAmount;
-            if (finalTotal < minOrderAmount) {
-              const remaining = minOrderAmount - finalTotal;
-              return (
-                <div className="mb-2 p-3 bg-orange-50 border border-orange-200 rounded-2xl text-sm text-orange-700 text-center">
-                  🛒 Минимальный заказ — {minOrderAmount.toLocaleString()} ₸. Добавьте ещё на {remaining.toLocaleString()} ₸
-                </div>
-              );
-            }
-            return null;
-          })()}
-
-          <div className="bg-white rounded-2xl shadow-lg border border-slate-100 p-4">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-slate-600">{items.length} позиций</span>
-              <span className={`font-bold text-slate-900 ${clientData?.discountPercent ? 'text-base line-through text-slate-400' : 'text-xl'}`}>
-                {totalAmount.toLocaleString()} ₸
-              </span>
-            </div>
-            {clientData && clientData.discountPercent > 0 && (
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-amber-600 text-sm font-medium">Скидка {clientData.discountPercent}%</span>
-                <span className="text-amber-600 text-sm font-medium">
-                  −{Math.round(totalAmount * clientData.discountPercent / 100).toLocaleString()} ₸
-                </span>
+      {/* Fixed bottom bar */}
+      <div style={{ position: 'fixed', bottom: 60, left: 0, right: 0, zIndex: 40 }}>
+        {/* Alerts */}
+        {(orderBlocked || (!orderBlocked && isBelowMin)) && (
+          <div style={{ padding: '0 16px 8px', maxWidth: 720, margin: '0 auto' }}>
+            {orderBlocked ? (
+              <div style={{ padding: '12px 16px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 14, fontSize: 14, color: '#b91c1c', textAlign: 'center' }}>
+                🕐 {orderBlocked}
+              </div>
+            ) : (
+              <div style={{ padding: '12px 16px', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 14, fontSize: 14, color: '#c2410c', textAlign: 'center' }}>
+                Минимальный заказ — {minOrderAmount.toLocaleString()} ₸, ещё {(minOrderAmount - finalTotal).toLocaleString()} ₸
               </div>
             )}
-            {clientData && clientData.discountPercent > 0 && (
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-slate-900 font-semibold">Итого</span>
-                <span className="text-xl font-bold text-slate-900">
-                  {(totalAmount - Math.round(totalAmount * clientData.discountPercent / 100)).toLocaleString()} ₸
-                </span>
+          </div>
+        )}
+
+        {/* Summary card */}
+        <div style={{ background: '#fff', borderTop: '1px solid #f1f5f9', boxShadow: '0 -4px 24px rgba(0,0,0,0.08)', padding: '14px 16px 16px' }}>
+          <div style={{ maxWidth: 720, margin: '0 auto' }}>
+            {/* Price breakdown */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: discountPercent > 0 ? 6 : 12 }}>
+              <span style={{ color: '#64748b', fontSize: 14 }}>{items.reduce((s, i) => s + i.quantity, 0)} {items.reduce((s, i) => s + i.quantity, 0) === 1 ? 'позиция' : 'позиций'}</span>
+              {discountPercent > 0 ? (
+                <span style={{ fontSize: 14, color: '#94a3b8', textDecoration: 'line-through' }}>{totalAmount.toLocaleString()} ₸</span>
+              ) : (
+                <span style={{ fontWeight: 800, fontSize: 20, color: '#0f172a' }}>{finalTotal.toLocaleString()} ₸</span>
+              )}
+            </div>
+            {discountPercent > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <span style={{ fontSize: 14, color: '#16a34a', fontWeight: 600 }}>Скидка {discountPercent}%</span>
+                <span style={{ fontWeight: 800, fontSize: 20, color: '#0f172a' }}>{finalTotal.toLocaleString()} ₸</span>
               </div>
             )}
-            <Button
-              fullWidth
-              size="lg"
+
+            <button
               onClick={handleSubmitOrder}
-              loading={submitting}
-              disabled={submitting || items.length === 0 || !!orderBlocked || (() => {
-                const discountPercent = clientData?.discountPercent || 0;
-                const discountAmount = discountPercent > 0 ? Math.round(totalAmount * discountPercent / 100) : 0;
-                return (totalAmount - discountAmount) < minOrderAmount;
-              })()}
+              disabled={submitting || items.length === 0 || !!orderBlocked || isBelowMin}
+              style={{
+                width: '100%', padding: '15px', border: 'none', borderRadius: 14, fontSize: 16, fontWeight: 700, cursor: submitting || !!orderBlocked || isBelowMin ? 'not-allowed' : 'pointer',
+                background: submitting || !!orderBlocked || isBelowMin ? '#cbd5e1' : 'linear-gradient(135deg, #3D0A11, #5A0D17)',
+                color: submitting || !!orderBlocked || isBelowMin ? '#94a3b8' : '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                boxShadow: submitting || !!orderBlocked || isBelowMin ? 'none' : '0 4px 16px rgba(61,10,17,0.35)',
+              }}
             >
-              {orderBlocked ? 'Заказ закрыт' : 'Оформить заказ'}
-            </Button>
+              {submitting ? (
+                <>
+                  <svg style={{ width: 20, height: 20, display: 'block' }} viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.3" />
+                    <path d="M12 2a10 10 0 0110 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                  </svg>
+                  Отправляем...
+                </>
+              ) : orderBlocked ? '🔒 Заказ закрыт' : isBelowMin ? `Минимум ${minOrderAmount.toLocaleString()} ₸` : '✓ Оформить заказ'}
+            </button>
           </div>
         </div>
       </div>

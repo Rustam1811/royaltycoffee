@@ -29,6 +29,15 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Hide all scrollbars globally — mobile app feel */
+* {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+}
+
 /* Safe area for mobile devices */
 .safe-area-pb {
   padding-bottom: max(env(safe-area-inset-bottom), 10px);
