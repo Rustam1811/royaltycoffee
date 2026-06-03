@@ -4,7 +4,18 @@
     <meta charset="utf-8" />
     <title>Royalty Coffee</title>
     
-    <base href="/" />
+    <script>
+      // На Capacitor (нативные приложения) НЕ ставим <base href="/">,
+      // потому что webDir обслуживается из корня и абсолютные пути ломаются.
+      (function(){
+        var isNative = window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+        if (!isNative) {
+          var b = document.createElement('base');
+          b.setAttribute('href', '/');
+          document.currentScript.parentNode.insertBefore(b, document.currentScript);
+        }
+      })();
+    </script>
     
     <meta name="theme-color" content="#F4EDE4" />
 <!-- Для iOS ярлыка: -->

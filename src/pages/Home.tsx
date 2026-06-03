@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { InstagramStoriesNew } from '../components/InstagramStoriesNew';
 import { PromotionBanner } from '../components/PromotionBanner';
 import { getCashbackPercent } from '../components/AchievementBadge';
+import { usePersonalDiscounts } from '../hooks/usePersonalDiscounts';
 import { auth, db } from '../lib/firebase';
 import { useAuth } from '../auth/AuthContext';
 import { API_CONFIG } from '../services/apiConfig';
@@ -715,6 +716,7 @@ const LeaderboardCarousel: React.FC<{
 
 const HomePage: React.FC = () => {
   const { user: authUser } = useAuth();
+  const { discounts: personalDiscounts, maxPercent: discountPercent } = usePersonalDiscounts();
   // dataReady — только профиль + бонусы (карточка кешбэка)
   const [dataReady, setDataReady] = useState(false);
   // leaderboardReady — лидерборд загружается независимо
@@ -1091,6 +1093,38 @@ const HomePage: React.FC = () => {
               )}
             </div>
           </motion.section>
+
+          {/* Персональная скидка от заведения */}
+          {discountPercent > 0 && (
+            <motion.section
+              initial={{ opacity: 0, scale: 0.96, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ delay: 0.14, type: 'spring', damping: 22 }}
+              className="mt-4"
+            >
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#7C3AED] via-[#A855F7] to-[#EC4899] p-4 shadow-lg shadow-purple-300/30">
+                <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/10 blur-2xl" />
+                <div className="absolute -left-4 -bottom-4 w-20 h-20 rounded-full bg-white/10 blur-xl" />
+                <div className="relative flex items-center gap-4">
+                  <div className="flex-shrink-0 w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white font-black text-lg shadow-inner">
+                    −{discountPercent}%
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-white font-bold text-base leading-tight">Личная скидка</div>
+                    <div className="text-white/85 text-xs mt-1 leading-snug">
+                      {personalDiscounts['*']
+                        ? 'Действует во всех точках сети'
+                        : Object.keys(personalDiscounts).length > 1
+                          ? `Активна в ${Object.keys(personalDiscounts).length} точках`
+                          : 'Активна в выбранной точке'}
+                      {' · '}применится при заказе через бариста
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.section>
+          )}
+
           <motion.section
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
