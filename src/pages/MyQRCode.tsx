@@ -11,7 +11,6 @@ const MyQRCodePage: React.FC = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>('');
   const [userPhone, setUserPhone] = useState<string>('');
-  const [totalSpent, setTotalSpent] = useState<number>(0);
   const [ordersCount, setOrdersCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
@@ -35,7 +34,6 @@ const MyQRCodePage: React.FC = () => {
         const bonusDoc = await getDoc(doc(db, 'bonuses', user.uid));
         if (bonusDoc.exists()) {
           const bonusData = bonusDoc.data();
-          setTotalSpent(bonusData.totalSpent || 0);
           setOrdersCount(bonusData.ordersCount || 0);
         }
       } catch (error) {
@@ -88,10 +86,6 @@ const MyQRCodePage: React.FC = () => {
               {userPhone && (
                 <div className="text-xs text-[#3D0A11]/50">{userPhone}</div>
               )}
-            </div>
-            <div className="text-right">
-              <div className="text-xs text-[#3D0A11]/50 uppercase tracking-wide">Потрачено</div>
-              <div className="text-lg font-bold text-[#D4AF37]">{totalSpent.toLocaleString()} ₸</div>
             </div>
           </div>
         </div>

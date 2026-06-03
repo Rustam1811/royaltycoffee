@@ -16,7 +16,7 @@ const HomeSvgIcon: React.FC<{ className?: string; active?: boolean }> = ({ class
   <img
     src="/images/home.png"
     alt=""
-    className={className}
+    className={`${className ?? ''} object-contain scale-[1.35]`}
     style={{
       filter: active
         ? 'brightness(0) saturate(100%) invert(72%) sepia(80%) saturate(600%) hue-rotate(5deg) brightness(90%) drop-shadow(0 0 6px rgba(184,134,11,0.55))'   // rich gold #B8860B
@@ -25,12 +25,12 @@ const HomeSvgIcon: React.FC<{ className?: string; active?: boolean }> = ({ class
   />
 );
 
-/** Иконка профиля из public/images/profile_0.png */
+/** Иконка профиля из public/images/profile.png */
 const ProfileSvgIcon: React.FC<{ className?: string; active?: boolean }> = ({ className, active }) => (
   <img
     src="/images/profile.png"
     alt=""
-    className={className}
+    className={`${className ?? ''} object-contain scale-[1.45]`}
     style={{
       filter: active
         ? 'brightness(0) saturate(100%) invert(72%) sepia(80%) saturate(600%) hue-rotate(5deg) brightness(90%) drop-shadow(0 0 6px rgba(184,134,11,0.55))'
