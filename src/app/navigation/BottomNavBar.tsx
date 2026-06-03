@@ -28,7 +28,7 @@ const HomeSvgIcon: React.FC<{ className?: string; active?: boolean }> = ({ class
 /** Иконка профиля из public/images/profile_0.png */
 const ProfileSvgIcon: React.FC<{ className?: string; active?: boolean }> = ({ className, active }) => (
   <img
-    src="/images/profile_0.png"
+    src="/images/profile.png"
     alt=""
     className={className}
     style={{
