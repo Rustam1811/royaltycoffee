@@ -199,8 +199,8 @@ workflows:
           NEW_BUILD_NUMBER=$(($BUILD_NUMBER + 100))
           echo "Setting build number to: $NEW_BUILD_NUMBER"
           agvtool new-version -all $NEW_BUILD_NUMBER
-          # Поднимаем версию до 1.7.0 (1.6.0 уже занята в App Store)
-          agvtool new-marketing-version 1.7.0
+          # Поднимаем версию до 1.8.1 (1.7.0 уже закрыта в App Store)
+          agvtool new-marketing-version 1.8.1
 
       - name: Build iOS release IPA
         script: |
