@@ -66,6 +66,11 @@ service cloud.firestore {
       allow update: if isOwner(userId) && 
         request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['phone', 'name', 'email', 'avatar', 'updatedAt', 'pushOptIn', 'marketingOptIn', 'subscribePromotions', 'subscribeStories', 'lastOrderAt', 'fcmToken', 'notificationsEnabled', 'lastTokenUpdate']);
+
+      // Стафф (admin/owner/superowner/barista) может назначать персональные скидки и трогать поля заказа/обновления
+      allow update: if isStaff() &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['personalDiscounts', 'personalDiscountUpdatedAt', 'updatedAt', 'lastOrderAt', 'ordersCount', 'totalSpent']);
       
       // User FCM tokens subcollection
       match /tokens/{tokenId} {

@@ -1,5 +1,5 @@
 import { initializeApp, getApps, FirebaseApp, FirebaseError } from 'firebase/app';
-import { getAuth, initializeAuth, browserLocalPersistence, indexedDBLocalPersistence, Auth } from 'firebase/auth';
+import { getAuth, initializeAuth, browserLocalPersistence, Auth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getMessaging, isSupported as isMessagingSupported, Messaging } from 'firebase/messaging';
@@ -58,7 +58,9 @@ export const db = getFirestore(app);
 export const storage = getStorage(app);
 
 let messaging: Messaging | null = null;
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && !Capacitor.isNativePlatform()) {
+  // На Capacitor (Android/iOS) Web Push не работает и может крашить старые WebView (Huawei/Xiaomi).
+  // Используется только @capacitor/push-notifications.
   isMessagingSupported().then(supported => {
     if (supported) {
       try {
@@ -69,7 +71,7 @@ if (typeof window !== 'undefined') {
       }
     }
   }).catch(() => {
-    // Silently ignore — messaging not supported (e.g., Capacitor WebView)
+    // Silently ignore — messaging not supported
   });
 }
 

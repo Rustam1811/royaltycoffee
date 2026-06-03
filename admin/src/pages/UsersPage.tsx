@@ -1,8 +1,10 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useContext } from 'react';
 import { motion } from 'framer-motion';
-import { UserGroupIcon, ArrowPathIcon, TrophyIcon, HeartIcon, MagnifyingGlassIcon, FunnelIcon, EnvelopeIcon, PhoneIcon, ArrowTrendingUpIcon, ShoppingBagIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
+import { UserGroupIcon, ArrowPathIcon, TrophyIcon, HeartIcon, MagnifyingGlassIcon, FunnelIcon, EnvelopeIcon, PhoneIcon, ArrowTrendingUpIcon, ShoppingBagIcon, CurrencyDollarIcon, TagIcon } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import BottomSheet from '@/components/BottomSheet';
+import UserDiscountModal from '@/components/UserDiscountModal';
+import { UserContext } from '@/contexts/UserContext';
 import { api } from '../services/api';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -48,6 +50,8 @@ const sortLabels: Record<SortOption, string> = {
 };
 
 const UsersPage: React.FC = () => {
+  const { user: currentAdmin } = useContext(UserContext);
+  const [discountUser, setDiscountUser] = useState<{ uid: string; name?: string | null; phone?: string | null } | null>(null);
   const [users, setUsers] = useState<ListedUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -479,6 +483,17 @@ const UsersPage: React.FC = () => {
 
             {detailLoading && <div className="text-sm text-slate-600 mb-4">Загрузка...</div>}
 
+            {/* Назначить персональную скидку — только для owner/superowner/barista */}
+            {(['superowner','owner','barista'] as const).includes((currentAdmin?.role || '') as never) && (
+              <button
+                onClick={() => setDiscountUser({ uid: activeUser.id, name: activeUser.name, phone: activeUser.phone })}
+                className="mb-6 w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 active:scale-[0.98] transition shadow-lg shadow-emerald-200"
+              >
+                <TagIcon className="w-5 h-5" />
+                Персональная скидка
+              </button>
+            )}
+
             <div className="space-y-6">
               <section>
                 <h3 className="font-medium mb-2">Заказы <span className="text-xs text-slate-600">{userOrders?.length ?? 0}</span></h3>
@@ -532,6 +547,14 @@ const UsersPage: React.FC = () => {
           </div>
         )}
       </BottomSheet>
+
+      <UserDiscountModal
+        open={!!discountUser}
+        user={discountUser}
+        role={currentAdmin?.role || 'admin'}
+        restrictedOutletId={currentAdmin?.role === 'barista' ? currentAdmin?.locationId : null}
+        onClose={() => setDiscountUser(null)}
+      />
     </motion.div>
   );
 };

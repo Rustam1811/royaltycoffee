@@ -306,13 +306,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginWithEmail = async (email: string, password: string) => {
+    // Сбрасываем кэш старого пользователя чтобы избежать преждевременного редиректа:
+    // если в localStorage остался user с role='user', он не должен триггерить
+    // history.replace('/') до того как onAuthStateChanged прочитает claims нового юзера.
+    setUser(null);
+    localStorage.removeItem('user');
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // onAuthStateChanged будет вызван автоматически
+      // НЕ делаем setLoading(false) здесь — onAuthStateChanged сам сбросит loading
+      // после того как прочитает claims и установит правильную роль.
     } catch (error: unknown) {
       console.error('Email auth error:', error);
-      // Преобразуем Firebase ошибки в понятные сообщения
+      // При ошибке onAuthStateChanged не сработает — сбрасываем loading вручную
+      setLoading(false);
       const firebaseError = error as { code?: string; message?: string };
       let errorMessage = 'Ошибка входа';
       
@@ -337,8 +344,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
     }
   };
 

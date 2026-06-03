@@ -140,10 +140,12 @@ const ThermosProgressRing: React.FC<{ percent: number; size: number; stroke: num
 /* ── Bonus info bottom-sheet / modal ── */
 const BonusInfoSheet: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
   const levels = [
-    { name: 'Бронза', from: '0 ₸', cashback: '5%', color: '#CD7F32' },
-    { name: 'Серебро', from: '5 000 ₸', cashback: '10%', color: '#C0C0C0' },
-    { name: 'Золото', from: '15 000 ₸', cashback: '15%', color: '#D4AF37' },
-    { name: 'Платинум', from: '25 000 ₸', cashback: '20%', color: '#E5E4E2' },
+    { name: 'Бронза',     from: 'приветственный',  cashback: '3%',  color: '#CD7F32' },
+    { name: 'Серебро',    from: 'от 50 напитков',  cashback: '5%',  color: '#C0C0C0' },
+    { name: 'Золото',     from: 'от 80 напитков',  cashback: '8%',  color: '#D4AF37' },
+    { name: 'Платина',    from: 'от 100 напитков', cashback: '10%', color: '#87CEEB' },
+    { name: 'Бриллиант',  from: 'от 250 напитков', cashback: '12%', color: '#7DD3FC' },
+    { name: 'VIP',        from: 'от 400 напитков', cashback: '15%', color: '#A855F7' },
   ];
   return (
     <AnimatePresence>
@@ -216,7 +218,7 @@ const BonusInfoSheet: React.FC<{ open: boolean; onClose: () => void }> = ({ open
                     <div className="flex items-start gap-2.5">
                       <span className="leading-none mt-0.5 flex-shrink-0"><TrophyIcon className="w-4 h-4 text-[#D4AF37]" /></span>
                       <span className="text-white/70 text-[12px] leading-snug">
-                        Потратьте <span className="text-[#D4AF37] font-bold">50 000 ₸</span> суммарно и получите фирменный термос Royalty Coffee в подарок!
+                        Потратьте <span className="text-[#D4AF37] font-bold">70 000 ₸</span> суммарно и получите фирменный термос Royalty Coffee в подарок!
                       </span>
                     </div>
                   </div>
@@ -245,24 +247,26 @@ const LoyaltyCard: React.FC<{
   totalOrders: number;
   totalSpent: number;
   userName: string;
-}> = ({ totalSpent, userName }) => {
+}> = ({ totalOrders, totalSpent, userName }) => {
   const [showInfo, setShowInfo] = useState(false);
-  const cashback = getCashbackPercent(totalSpent);
-  
-  const levelThresholds = [0, 5000, 15000, 25000];
-  const levelNames = ['Бронза', 'Серебро', 'Золото', 'Платинум'];
-  const levelColors = ['#CD7F32', '#C0C0C0', '#D4AF37', '#E5E4E2'];
+  // Уровни считаем по количеству напитков (totalOrders ≈ количество заказов/напитков)
+  const drinks = totalOrders || 0;
+  const cashback = getCashbackPercent(drinks);
+
+  const levelThresholds = [0, 50, 80, 100, 250, 400];
+  const levelNames = ['Бронза', 'Серебро', 'Золото', 'Платина', 'Бриллиант', 'VIP'];
+  const levelColors = ['#CD7F32', '#C0C0C0', '#D4AF37', '#87CEEB', '#7DD3FC', '#A855F7'];
   let currentLevelIdx = 0;
   for (let i = levelThresholds.length - 1; i >= 0; i--) {
-    if (totalSpent >= levelThresholds[i]) { currentLevelIdx = i; break; }
+    if (drinks >= levelThresholds[i]) { currentLevelIdx = i; break; }
   }
   const isMaxLevel = currentLevelIdx >= levelThresholds.length - 1;
   const nextThreshold = isMaxLevel ? levelThresholds[currentLevelIdx] : levelThresholds[currentLevelIdx + 1];
   const currentThreshold = levelThresholds[currentLevelIdx];
-  const progressPercent = isMaxLevel ? 100 : Math.min(((totalSpent - currentThreshold) / (nextThreshold - currentThreshold)) * 100, 100);
-  const spentToNext = isMaxLevel ? 0 : nextThreshold - totalSpent;
-  
-  const THERMOS_GOAL = 50000;
+  const progressPercent = isMaxLevel ? 100 : Math.min(((drinks - currentThreshold) / (nextThreshold - currentThreshold)) * 100, 100);
+  const drinksToNext = isMaxLevel ? 0 : nextThreshold - drinks;
+
+  const THERMOS_GOAL = 70000;
   const thermosPercent = Math.min((totalSpent / THERMOS_GOAL) * 100, 100);
   const thermosEarned = totalSpent >= THERMOS_GOAL;
   const thermosRemaining = Math.max(THERMOS_GOAL - totalSpent, 0);
@@ -308,7 +312,7 @@ const LoyaltyCard: React.FC<{
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[#3D0A11]/50 text-[10px]">До {levelNames[currentLevelIdx + 1]}</span>
-                    <span className="text-[#3D0A11]/60 text-[10px] font-semibold">{spentToNext.toLocaleString()} ₸</span>
+                    <span className="text-[#3D0A11]/60 text-[10px] font-semibold">ещё {drinksToNext} 🥤</span>
                   </div>
                   <div className="w-full bg-[#3D0A11]/10 rounded-full h-1.5">
                     <motion.div
@@ -320,8 +324,8 @@ const LoyaltyCard: React.FC<{
                     />
                   </div>
                   <div className="flex items-center justify-between mt-0.5">
-                    <span className="text-[#3D0A11]/25 text-[9px]">{totalSpent.toLocaleString()} ₸</span>
-                    <span className="text-[#3D0A11]/25 text-[9px]">{nextThreshold.toLocaleString()} ₸</span>
+                    <span className="text-[#3D0A11]/25 text-[9px]">{drinks} 🥤</span>
+                    <span className="text-[#3D0A11]/25 text-[9px]">{nextThreshold} 🥤</span>
                   </div>
                 </div>
               ) : (

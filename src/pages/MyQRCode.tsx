@@ -11,7 +11,7 @@ const MyQRCodePage: React.FC = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>('');
   const [userPhone, setUserPhone] = useState<string>('');
-  const [bonusBalance, setBonusBalance] = useState<number>(0);
+  const [totalSpent, setTotalSpent] = useState<number>(0);
   const [ordersCount, setOrdersCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
@@ -35,7 +35,7 @@ const MyQRCodePage: React.FC = () => {
         const bonusDoc = await getDoc(doc(db, 'bonuses', user.uid));
         if (bonusDoc.exists()) {
           const bonusData = bonusDoc.data();
-          setBonusBalance(bonusData.balance || 0);
+          setTotalSpent(bonusData.totalSpent || 0);
           setOrdersCount(bonusData.ordersCount || 0);
         }
       } catch (error) {
@@ -70,7 +70,7 @@ const MyQRCodePage: React.FC = () => {
 
       <div className="flex-1 flex flex-col items-center px-5 pt-4 pb-32">
         {/* QR Code — first */}
-        <p className="text-[#3D0A11]/50 text-sm mb-4">Покажите бариста для начисления бонусов</p>
+        <p className="text-[#3D0A11]/50 text-sm mb-4">Покажите бариста, чтобы засчитать заказ</p>
         <div className="p-5 rounded-2xl bg-white shadow-lg mb-6">
           <QRCodeCanvas
             value={`loyalty:uid=${encodeURIComponent(userId)}&v=1`}
@@ -90,8 +90,8 @@ const MyQRCodePage: React.FC = () => {
               )}
             </div>
             <div className="text-right">
-              <div className="text-xs text-[#3D0A11]/50 uppercase tracking-wide">Бонусы</div>
-              <div className="text-lg font-bold text-[#D4AF37]">{bonusBalance.toLocaleString()} ₸</div>
+              <div className="text-xs text-[#3D0A11]/50 uppercase tracking-wide">Потрачено</div>
+              <div className="text-lg font-bold text-[#D4AF37]">{totalSpent.toLocaleString()} ₸</div>
             </div>
           </div>
         </div>
@@ -118,9 +118,9 @@ const MyQRCodePage: React.FC = () => {
                 2
               </div>
               <div>
-                <div className="font-medium text-[#3D0A11] mb-0.5">Используйте бонусы</div>
+                <div className="font-medium text-[#3D0A11] mb-0.5">Получите скидку</div>
                 <div className="text-sm text-[#3D0A11]/50">
-                  Оплатите часть заказа накопленными баллами
+                  Скидка по уровню применяется автоматически
                 </div>
               </div>
             </div>
@@ -132,9 +132,9 @@ const MyQRCodePage: React.FC = () => {
                 3
               </div>
               <div>
-                <div className="font-medium text-[#3D0A11] mb-0.5">Накапливайте баллы</div>
+                <div className="font-medium text-[#3D0A11] mb-0.5">Копите напитки</div>
                 <div className="text-sm text-[#3D0A11]/50">
-                  Получайте бонусы с каждой покупки
+                  Чем больше выпито — тем выше уровень и скидка
                 </div>
               </div>
             </div>

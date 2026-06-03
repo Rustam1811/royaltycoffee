@@ -78,25 +78,68 @@ const LoadingFallback: React.FC = () => (
 
 interface Cup3DProps { className?: string; }
 
-export const Cup3D: React.FC<Cup3DProps> = ({ className = '' }) => (
-  <div className={className} style={{ minWidth: 1, minHeight: 1 }}>
-    <Canvas
-      camera={{ position: [0, 0.3, 3.2], fov: 42 }}
-      style={{ width: '100%', height: '100%', background: 'transparent' }}
-      gl={{ alpha: true, antialias: true }}
-      dpr={[1, Math.min(window.devicePixelRatio, 2)]}
-      resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}
-    >
-      <ambientLight intensity={0.8} />
-      <hemisphereLight args={['#ffffff', '#D4AF37', 0.6]} />
-      <directionalLight position={[5, 5, 5]} intensity={1} />
-      <directionalLight position={[-3, -3, -3]} intensity={0.25} />
-      <pointLight position={[0, 2, 0]} intensity={0.5} color="#D4AF37" />
-      <Suspense fallback={<LoadingFallback />}>
-        <CupModel url={GLB_URL} />
-      </Suspense>
-    </Canvas>
+// Детектор поддержки WebGL — на старых WebView (Huawei/Xiaomi/Poco)
+// инициализация Three.js может крашить процесс целиком. Проверяем заранее.
+let _webglSupported: boolean | null = null;
+const isWebGLSupported = (): boolean => {
+  if (_webglSupported !== null) return _webglSupported;
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    _webglSupported = !!gl;
+  } catch {
+    _webglSupported = false;
+  }
+  return _webglSupported;
+};
+
+const StaticThermosFallback: React.FC<{ className?: string }> = ({ className = '' }) => (
+  <div
+    className={className}
+    style={{
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'linear-gradient(135deg, #FFF7E0 0%, #F4EDE4 100%)',
+    }}
+  >
+    <span style={{ fontSize: '2.2em', filter: 'drop-shadow(0 2px 4px rgba(212,175,55,0.4))' }}>☕</span>
   </div>
 );
+
+export const Cup3D: React.FC<Cup3DProps> = ({ className = '' }) => {
+  if (!isWebGLSupported()) {
+    return <StaticThermosFallback className={className} />;
+  }
+  return (
+    <div className={className} style={{ minWidth: 1, minHeight: 1 }}>
+      <Canvas
+        camera={{ position: [0, 0.3, 3.2], fov: 42 }}
+        style={{ width: '100%', height: '100%', background: 'transparent' }}
+        gl={{ alpha: true, antialias: true, powerPreference: 'low-power', failIfMajorPerformanceCaveat: false }}
+        dpr={[1, Math.min(window.devicePixelRatio, 2)]}
+        resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}
+        onCreated={({ gl }) => {
+          // Гарантированно освобождаем контекст при размонтировании
+          gl.domElement.addEventListener('webglcontextlost', (e) => {
+            e.preventDefault();
+            console.warn('[Cup3D] WebGL context lost');
+          });
+        }}
+      >
+        <ambientLight intensity={0.8} />
+        <hemisphereLight args={['#ffffff', '#D4AF37', 0.6]} />
+        <directionalLight position={[5, 5, 5]} intensity={1} />
+        <directionalLight position={[-3, -3, -3]} intensity={0.25} />
+        <pointLight position={[0, 2, 0]} intensity={0.5} color="#D4AF37" />
+        <Suspense fallback={<LoadingFallback />}>
+          <CupModel url={GLB_URL} />
+        </Suspense>
+      </Canvas>
+    </div>
+  );
+};
 
 export default Cup3D;

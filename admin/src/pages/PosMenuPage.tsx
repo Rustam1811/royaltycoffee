@@ -1,13 +1,15 @@
 ﻿import React, { useCallback, useMemo, useState, useEffect, useRef, useContext } from 'react';
 import { useCart } from '../../../src/contexts/CartContext';
 import { MenuService, MenuCategory, MenuItem } from '@/services/menuService';
-import { ShoppingCartIcon, TrashIcon, MinusIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { ShoppingCartIcon, TrashIcon, MinusIcon, PlusIcon, XMarkIcon, TagIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRScanner } from '../components/QRScanner';
 import { PremiumMenuModal } from '../components/PremiumMenuModal';
 import { parseLoyaltyPayload } from '@/utils/parseLoyaltyPayload';
 import { UserContext } from '../contexts/UserContext';
 import { useLocation } from '@/contexts/LocationContext';
+import { getUserDiscounts, resolveDiscountForOutlet } from '../services/personalDiscounts';
+import UserDiscountModal from '../components/UserDiscountModal';
 
 // Helper for authenticated API calls
 async function callApi(path: string, body: unknown) {
@@ -89,6 +91,11 @@ export default function PosMenuPage() {
   const [loadingBonus, setLoadingBonus] = useState(false);
   const [useBonuses, setUseBonuses] = useState(false);
   const [bonusError, setBonusError] = useState<string | null>(null);
+
+  // Personal discount (per-outlet)
+  const [personalDiscountPct, setPersonalDiscountPct] = useState(0);
+  const [personalDiscountComment, setPersonalDiscountComment] = useState<string | null>(null);
+  const [showDiscountModal, setShowDiscountModal] = useState(false);
 
   // ─── Pistol scanner state ───
   const [pistolListen, setPistolListen] = useState(true);
@@ -332,13 +339,21 @@ export default function PosMenuPage() {
   );
 
   const total = useMemo(() => cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0), [cartItems]);
+  const personalDiscountAmount = useMemo(
+    () => (personalDiscountPct > 0 ? Math.floor((total * personalDiscountPct) / 100) : 0),
+    [total, personalDiscountPct]
+  );
+  const totalAfterDiscount = useMemo(
+    () => Math.max(0, total - personalDiscountAmount),
+    [total, personalDiscountAmount]
+  );
 
   const handleCheckout = useCallback(() => {
     if (cartItems.length === 0) return;
     
     const normalizedPhone = customerPhone ? normalizePhone(customerPhone) : null;
-    const bonusToUse = useBonuses ? customerBonus : 0;
-    const finalTotal = Math.max(0, total - bonusToUse);
+    const bonusToUse = useBonuses ? Math.min(customerBonus, totalAfterDiscount) : 0;
+    const finalTotal = Math.max(0, totalAfterDiscount - bonusToUse);
     
     const currentCartItems = [...cartItems];
     const currentCustomerName = customerName;
@@ -403,10 +418,36 @@ export default function PosMenuPage() {
       .catch(() => {
         setOrderNumber('ERROR');
       });
-  }, [cartItems, dispatch, total, customerPhone, customerName, customerBonus, useBonuses, targetUid, posLocationId, posLocationName]);
+  }, [cartItems, dispatch, customerPhone, customerName, customerBonus, useBonuses, targetUid, posLocationId, posLocationName, totalAfterDiscount]);
 
   // Keep checkoutRef in sync for pistol scanner auto-checkout
   useEffect(() => { checkoutRef.current = handleCheckout; }, [handleCheckout]);
+
+  // Fetch personal discount whenever linked user OR outlet changes
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!targetUid) {
+        setPersonalDiscountPct(0);
+        setPersonalDiscountComment(null);
+        return;
+      }
+      try {
+        const map = await getUserDiscounts(targetUid);
+        const pct = resolveDiscountForOutlet(map, posLocationId);
+        if (cancelled) return;
+        setPersonalDiscountPct(pct);
+        const direct = map[posLocationId]?.comment || map['*']?.comment || null;
+        setPersonalDiscountComment(direct);
+      } catch {
+        if (!cancelled) {
+          setPersonalDiscountPct(0);
+          setPersonalDiscountComment(null);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [targetUid, posLocationId]);
 
   // ─── Loading state ───
   if (menuLoading) {
@@ -743,6 +784,25 @@ export default function PosMenuPage() {
         onClose={() => setShowProductModal(false)}
         type="drinks"
       />
+
+      {/* Personal Discount Modal */}
+      <UserDiscountModal
+        open={showDiscountModal}
+        user={targetUid ? { uid: targetUid, name: customerName || 'Клиент', phone: customerPhone } : null}
+        role={adminUser?.role || 'admin'}
+        restrictedOutletId={adminUser?.role === 'barista' ? posLocationId : null}
+        onClose={() => setShowDiscountModal(false)}
+        onSaved={async () => {
+          if (!targetUid) return;
+          try {
+            const map = await getUserDiscounts(targetUid);
+            const pct = resolveDiscountForOutlet(map, posLocationId);
+            setPersonalDiscountPct(pct);
+            const c = map[posLocationId]?.comment || map['*']?.comment || null;
+            setPersonalDiscountComment(c);
+          } catch { /* ignore */ }
+        }}
+      />
     </div>
   );
 
@@ -853,11 +913,26 @@ export default function PosMenuPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-semibold text-emerald-900 truncate">{customerName || 'Клиент'}</div>
-                  <div className="flex items-center gap-2 text-xs text-emerald-700">
+                  <div className="flex items-center gap-2 text-xs text-emerald-700 flex-wrap">
                     {customerPhone && <span>{customerPhone}</span>}
                     {customerBonus > 0 && <span className="font-semibold text-amber-700">🎁 {customerBonus} ₸</span>}
+                    {personalDiscountPct > 0 && (
+                      <span className="font-bold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded">
+                        🏷️ −{personalDiscountPct}%{personalDiscountComment ? ` (${personalDiscountComment})` : ''}
+                      </span>
+                    )}
                   </div>
                 </div>
+                {(adminUser?.role === 'superowner' || adminUser?.role === 'owner' || adminUser?.role === 'barista') && targetUid && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDiscountModal(true)}
+                    className="flex-shrink-0 p-1.5 rounded-lg hover:bg-purple-100 active:bg-purple-200 transition text-purple-600"
+                    title="Назначить персональную скидку"
+                  >
+                    <TagIcon className="w-5 h-5" />
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => { setCustomerLinked(false); setCustomerPhone(''); setCustomerName(''); setCustomerBonus(0); setUseBonuses(false); setTargetUid(null); }}
@@ -982,13 +1057,19 @@ export default function PosMenuPage() {
 
         {/* ═══ BLOCK 3 (FIXED BOTTOM): Total + Checkout — ALWAYS visible ═══ */}
         <div className="flex-shrink-0 border-t-2 border-slate-200 bg-white px-4 py-3 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
+          {personalDiscountPct > 0 && cartItems.length > 0 && (
+            <div className="flex items-center justify-between mb-1 text-xs text-purple-700">
+              <span className="font-medium">🏷️ Персональная скидка {personalDiscountPct}%</span>
+              <span className="font-bold">−{personalDiscountAmount.toLocaleString('ru')} ₸</span>
+            </div>
+          )}
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-slate-500">Итого</span>
             <div className="text-right">
-              {useBonuses && customerBonus > 0 ? (
+              {(useBonuses && customerBonus > 0) || personalDiscountAmount > 0 ? (
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-slate-400 line-through">{total.toLocaleString('ru')} ₸</span>
-                  <span className="text-xl font-bold text-emerald-600">{Math.max(0, total - customerBonus).toLocaleString('ru')} ₸</span>
+                  <span className="text-xl font-bold text-emerald-600">{Math.max(0, totalAfterDiscount - (useBonuses ? Math.min(customerBonus, totalAfterDiscount) : 0)).toLocaleString('ru')} ₸</span>
                 </div>
               ) : (
                 <span className="text-xl font-bold text-slate-900">{total.toLocaleString('ru')} ₸</span>
@@ -1001,7 +1082,7 @@ export default function PosMenuPage() {
             disabled={cartItems.length === 0}
             className="w-full rounded-2xl bg-orange-500 px-4 py-5 text-xl font-bold text-white transition-all hover:bg-orange-600 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-orange-500/30"
           >
-            {cartItems.length === 0 ? 'Корзина пуста' : `Оформить заказ · ${(useBonuses ? Math.max(0, total - customerBonus) : total).toLocaleString('ru')} ₸`}
+            {cartItems.length === 0 ? 'Корзина пуста' : `Оформить заказ · ${Math.max(0, totalAfterDiscount - (useBonuses ? Math.min(customerBonus, totalAfterDiscount) : 0)).toLocaleString('ru')} ₸`}
           </button>
         </div>
       </div>

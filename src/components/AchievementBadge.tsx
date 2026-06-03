@@ -7,53 +7,79 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
-export type AchievementTier = 'bronze' | 'silver' | 'gold' | 'platinum';
+export type AchievementTier = 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | 'vip';
 
 interface AchievementBadgeProps {
   ordersCount: number;
   totalSpent?: number;
+  /** Количество выпитых напитков (опционально, используется для новой шкалы уровней) */
+  drinksCount?: number;
   size?: 'sm' | 'md' | 'lg';
   showLabel?: boolean;
   className?: string;
 }
 
-// Определяем уровни по сумме потраченных денег (₸)
-export const getTierBySpent = (spent: number): AchievementTier => {
-  if (spent >= 25000) return 'platinum';
-  if (spent >= 15000) return 'gold';
-  if (spent >= 5000) return 'silver';
-  return 'bronze';
+/**
+ * Новая шкала уровней — по количеству заказанных напитков.
+ *   3%  — Бронза (приветственный, сразу)
+ *   5%  — Серебро (от 50 напитков)
+ *   8%  — Золото (от 80)
+ *   10% — Платина (от 100)
+ *   12% — Бриллиант (от 250)
+ *   15% — VIP (от 400)
+ */
+const TIER_THRESHOLDS: Array<{ tier: AchievementTier; minDrinks: number; cashback: number }> = [
+  { tier: 'bronze',   minDrinks: 0,   cashback: 3 },
+  { tier: 'silver',   minDrinks: 50,  cashback: 5 },
+  { tier: 'gold',     minDrinks: 80,  cashback: 8 },
+  { tier: 'platinum', minDrinks: 100, cashback: 10 },
+  { tier: 'diamond',  minDrinks: 250, cashback: 12 },
+  { tier: 'vip',      minDrinks: 400, cashback: 15 },
+];
+
+export const getTierByDrinks = (drinks: number): AchievementTier => {
+  let result: AchievementTier = 'bronze';
+  for (const t of TIER_THRESHOLDS) {
+    if (drinks >= t.minDrinks) result = t.tier;
+  }
+  return result;
 };
 
-// Обратная совместимость — алиас
-export const getTierByOrders = (orders: number): AchievementTier => {
-  return getTierBySpent(orders);
+export const getCashbackByDrinks = (drinks: number): number => {
+  const tier = getTierByDrinks(drinks);
+  return TIER_THRESHOLDS.find(t => t.tier === tier)?.cashback ?? 3;
 };
 
-// Прогресс до следующего уровня (по сумме ₸)
-export const getNextTierProgress = (spent: number): { current: number; next: number; percent: number; nextTier: AchievementTier | null } => {
-  if (spent >= 25000) {
-    return { current: spent, next: 25000, percent: 100, nextTier: null };
+export const getNextTierByDrinks = (drinks: number): { current: number; next: number; percent: number; nextTier: AchievementTier | null } => {
+  const currentIdx = TIER_THRESHOLDS.findIndex(t => t.tier === getTierByDrinks(drinks));
+  const current = TIER_THRESHOLDS[currentIdx];
+  const next = TIER_THRESHOLDS[currentIdx + 1];
+  if (!next) {
+    return { current: drinks, next: current.minDrinks, percent: 100, nextTier: null };
   }
-  if (spent >= 15000) {
-    return { current: spent, next: 25000, percent: ((spent - 15000) / 10000) * 100, nextTier: 'platinum' };
-  }
-  if (spent >= 5000) {
-    return { current: spent, next: 15000, percent: ((spent - 5000) / 10000) * 100, nextTier: 'gold' };
-  }
-  return { current: spent, next: 5000, percent: (spent / 5000) * 100, nextTier: 'silver' };
-};
-
-// Кешбэк по сумме потраченных денег
-export const getCashbackPercent = (spent: number): number => {
-  const tier = getTierBySpent(spent);
-  const cashbackMap: Record<AchievementTier, number> = {
-    bronze: 5,
-    silver: 10,
-    gold: 15,
-    platinum: 20,
+  const span = next.minDrinks - current.minDrinks;
+  const progressed = drinks - current.minDrinks;
+  return {
+    current: drinks,
+    next: next.minDrinks,
+    percent: span > 0 ? Math.min(100, (progressed / span) * 100) : 100,
+    nextTier: next.tier,
   };
-  return cashbackMap[tier];
+};
+
+// ─── Обратная совместимость со старым API (spent в ₸) ───
+// Старый код в нескольких местах ещё дёргает getTierBySpent / getCashbackPercent.
+// Переопределяем их через шкалу напитков (1 напиток ≈ 1000 ₸) чтобы не ломать билд.
+export const getTierBySpent = (spent: number): AchievementTier => getTierByDrinks(Math.floor(spent / 1000));
+export const getTierByOrders = (orders: number): AchievementTier => getTierByDrinks(orders);
+export const getNextTierProgress = (spent: number) => {
+  const p = getNextTierByDrinks(Math.floor(spent / 1000));
+  return { current: spent, next: p.next * 1000, percent: p.percent, nextTier: p.nextTier };
+};
+export const getCashbackPercent = (spentOrDrinks: number): number => {
+  // если значение похоже на сумму (>1000) — конвертируем
+  const drinks = spentOrDrinks > 1000 ? Math.floor(spentOrDrinks / 1000) : spentOrDrinks;
+  return getCashbackByDrinks(drinks);
 };
 
 // Маппинг уровень → русское имя (для обратной совместимости)
@@ -78,7 +104,7 @@ const tierConfig: Record<AchievementTier, {
   bronze: {
     name: 'Bronze',
     nameRu: 'Бронза',
-    cashbackPercent: 5,
+    cashbackPercent: 3,
     colors: {
       from: '#CD7F32',
       via: '#B8860B',
@@ -93,7 +119,7 @@ const tierConfig: Record<AchievementTier, {
   silver: {
     name: 'Silver', 
     nameRu: 'Серебро',
-    cashbackPercent: 10,
+    cashbackPercent: 5,
     colors: {
       from: '#E8E8E8',
       via: '#C0C0C0',
@@ -103,12 +129,12 @@ const tierConfig: Record<AchievementTier, {
       glow: 'rgba(192, 192, 192, 0.5)',
       shine: 'rgba(255, 255, 255, 0.6)'
     },
-    minSpent: 5000
+    minSpent: 50
   },
   gold: {
     name: 'Gold',
     nameRu: 'Золото',
-    cashbackPercent: 15,
+    cashbackPercent: 8,
     colors: {
       from: '#FFD700',
       via: '#FFC125',
@@ -118,12 +144,12 @@ const tierConfig: Record<AchievementTier, {
       glow: 'rgba(255, 215, 0, 0.6)',
       shine: 'rgba(255, 255, 200, 0.7)'
     },
-    minSpent: 15000
+    minSpent: 80
   },
   platinum: {
     name: 'Platinum',
-    nameRu: 'Платинум',
-    cashbackPercent: 20,
+    nameRu: 'Платина',
+    cashbackPercent: 10,
     colors: {
       from: '#E5E4E2',
       via: '#A7D8FF',
@@ -133,7 +159,37 @@ const tierConfig: Record<AchievementTier, {
       glow: 'rgba(167, 216, 255, 0.6)',
       shine: 'rgba(255, 255, 255, 0.8)'
     },
-    minSpent: 25000
+    minSpent: 100
+  },
+  diamond: {
+    name: 'Diamond',
+    nameRu: 'Бриллиант',
+    cashbackPercent: 12,
+    colors: {
+      from: '#B9F2FF',
+      via: '#7DD3FC',
+      to: '#38BDF8',
+      border: '#B9F2FF',
+      text: '#B9F2FF',
+      glow: 'rgba(125, 211, 252, 0.7)',
+      shine: 'rgba(255, 255, 255, 0.9)'
+    },
+    minSpent: 250
+  },
+  vip: {
+    name: 'VIP',
+    nameRu: 'VIP',
+    cashbackPercent: 15,
+    colors: {
+      from: '#7C3AED',
+      via: '#A855F7',
+      to: '#D946EF',
+      border: '#A855F7',
+      text: '#D8B4FE',
+      glow: 'rgba(168, 85, 247, 0.7)',
+      shine: 'rgba(255, 255, 255, 0.85)'
+    },
+    minSpent: 400
   }
 };
 
@@ -182,6 +238,10 @@ const getTierIcon = (tier: AchievementTier, color: string, size: string) => {
   const sizeClass = size === 'sm' ? 'w-5 h-5' : size === 'md' ? 'w-7 h-7' : 'w-10 h-10';
   
   switch (tier) {
+    case 'vip':
+      return <CrownIcon className={sizeClass} color={color} />;
+    case 'diamond':
+      return <DiamondIcon className={sizeClass} color={color} />;
     case 'platinum':
       return <DiamondIcon className={sizeClass} color={color} />;
     case 'gold':
@@ -194,14 +254,16 @@ const getTierIcon = (tier: AchievementTier, color: string, size: string) => {
 export const AchievementBadge: React.FC<AchievementBadgeProps> = ({
   ordersCount,
   totalSpent,
+  drinksCount,
   size = 'md',
   showLabel = true,
   className = ''
 }) => {
-  const spent = totalSpent ?? ordersCount;
-  const tier = getTierBySpent(spent);
+  // Приоритет: drinksCount → ordersCount → totalSpent (как fallback)
+  const drinks = drinksCount ?? ordersCount ?? (totalSpent ? Math.floor(totalSpent / 1000) : 0);
+  const tier = getTierByDrinks(drinks);
   const config = tierConfig[tier];
-  const progress = getNextTierProgress(spent);
+  const progress = getNextTierByDrinks(drinks);
   
   const sizeClasses = {
     sm: 'w-12 h-12',
@@ -311,7 +373,7 @@ export const AchievementBadge: React.FC<AchievementBadgeProps> = ({
           </div>
           {progress.nextTier && (
             <div className="text-gray-400 text-[10px] mt-0.5">
-              {spent} / {progress.next} ₸
+              {drinks} / {progress.next} 🥤
             </div>
           )}
         </div>
@@ -321,13 +383,14 @@ export const AchievementBadge: React.FC<AchievementBadgeProps> = ({
 };
 
 // Компактный значок для шапки - премиальный
-export const AchievementBadgeCompact: React.FC<{ ordersCount: number; totalSpent?: number; className?: string }> = ({ 
+export const AchievementBadgeCompact: React.FC<{ ordersCount: number; totalSpent?: number; drinksCount?: number; className?: string }> = ({ 
   ordersCount, 
   totalSpent,
+  drinksCount,
   className = '' 
 }) => {
-  const spent = totalSpent ?? ordersCount;
-  const tier = getTierBySpent(spent);
+  const drinks = drinksCount ?? ordersCount ?? (totalSpent ? Math.floor(totalSpent / 1000) : 0);
+  const tier = getTierByDrinks(drinks);
   const config = tierConfig[tier];
   
   return (

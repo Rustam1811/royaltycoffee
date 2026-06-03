@@ -9,6 +9,12 @@ window.addEventListener('vite:preloadError', () => {
   window.location.reload();
 });
 window.addEventListener('error', (e) => {
+  // ResizeObserver loop ошибки безобидны, но крашат на старых WebView (Huawei/Xiaomi)
+  if (e.message?.includes('ResizeObserver loop') ||
+      e.message?.includes('ResizeObserver loop completed with undelivered notifications')) {
+    e.stopImmediatePropagation();
+    return;
+  }
   if (e.message?.includes('Failed to fetch dynamically imported module') ||
       e.message?.includes('Importing a module script failed')) {
     window.location.reload();
@@ -20,6 +26,15 @@ window.addEventListener('unhandledrejection', (e) => {
       msg.includes('Importing a module script failed') ||
       msg.includes('error loading dynamically imported module')) {
     window.location.reload();
+    return;
+  }
+  // Не валим приложение из-за неважных промисов (Firebase Messaging, network blips и т.п.)
+  if (msg.includes('messaging/') ||
+      msg.includes('FirebaseError') ||
+      msg.includes('NetworkError') ||
+      msg.includes('Failed to fetch')) {
+    e.preventDefault();
+    console.warn('[unhandledrejection suppressed]', msg);
   }
 });
 

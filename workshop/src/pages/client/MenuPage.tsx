@@ -159,18 +159,19 @@ const MenuPage: React.FC = () => {
   };
 
   const handleAddProduct = (product: WorkshopProduct) => {
-    addItem(product, product.minOrder || 1);
+    // Клиент всегда добавляет по 1 единице, независимо от minOrder.
+    // minOrder валидируется только при оформлении заказа.
+    addItem(product, 1);
   };
 
   const handleSetQuantity = (productId: string, qty: number) => {
     updateQuantity(productId, qty);
   };
 
-  const handleDelta = (productId: string, delta: number, minOrder: number) => {
+  const handleDelta = (productId: string, delta: number) => {
     const currentQty = getItemQuantity(productId);
     const next = currentQty + delta;
-    // Если снижаем ниже minOrder — убираем
-    if (next < minOrder) {
+    if (next <= 0) {
       updateQuantity(productId, 0);
     } else {
       updateQuantity(productId, next);
@@ -251,8 +252,7 @@ const MenuPage: React.FC = () => {
             <AnimatePresence mode="popLayout">
               {filteredProducts.map((product, index) => {
                 const quantity = getItemQuantity(product.id);
-                const step = product.minOrder || 1;
-                return (
+                                return (
                   <motion.div
                     key={product.id}
                     layout
@@ -307,11 +307,11 @@ const MenuPage: React.FC = () => {
                             <span style={{ fontSize: 12, fontWeight: 600, color: '#ef4444', background: '#fef2f2', padding: '4px 8px', borderRadius: 8 }}>Нет</span>
                           ) : quantity > 0 ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <button onClick={() => handleDelta(product.id, -step, step)} style={{ width: 32, height: 32, borderRadius: '50%', background: '#f1f5f9', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                              <button onClick={() => handleDelta(product.id, -1)} style={{ width: 32, height: 32, borderRadius: '50%', background: '#f1f5f9', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                                 <MinusIcon style={{ width: 16, height: 16 }} />
                               </button>
                               <QuantityInput value={quantity} onChange={(q) => handleSetQuantity(product.id, q)} min={0} />
-                              <button onClick={() => handleDelta(product.id, step, step)} style={{ width: 32, height: 32, borderRadius: '50%', background: '#92400e', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}>
+                              <button onClick={() => handleDelta(product.id, 1)} style={{ width: 32, height: 32, borderRadius: '50%', background: '#92400e', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}>
                                 <PlusIcon style={{ width: 16, height: 16 }} />
                               </button>
                             </div>
@@ -332,8 +332,7 @@ const MenuPage: React.FC = () => {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
             {filteredProducts.map((product, index) => {
               const quantity = getItemQuantity(product.id);
-              const step = product.minOrder || 1;
-              return (
+                            return (
                 <motion.div
                   key={product.id}
                   initial={{ opacity: 0, y: 20 }}
@@ -375,11 +374,11 @@ const MenuPage: React.FC = () => {
                         <div style={{ textAlign: 'center', fontSize: 14, fontWeight: 600, color: '#ef4444', background: '#fef2f2', padding: '8px', borderRadius: 12 }}>Нет в наличии</div>
                       ) : quantity > 0 ? (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                          <button onClick={() => handleDelta(product.id, -step, step)} style={{ width: 36, height: 36, borderRadius: '50%', background: '#f1f5f9', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                          <button onClick={() => handleDelta(product.id, -1)} style={{ width: 36, height: 36, borderRadius: '50%', background: '#f1f5f9', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                             <MinusIcon style={{ width: 16, height: 16 }} />
                           </button>
                           <QuantityInput value={quantity} onChange={(q) => handleSetQuantity(product.id, q)} min={0} />
-                          <button onClick={() => handleDelta(product.id, step, step)} style={{ width: 36, height: 36, borderRadius: '50%', background: '#92400e', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}>
+                          <button onClick={() => handleDelta(product.id, 1)} style={{ width: 36, height: 36, borderRadius: '50%', background: '#92400e', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}>
                             <PlusIcon style={{ width: 16, height: 16 }} />
                           </button>
                         </div>
@@ -434,7 +433,7 @@ const MenuPage: React.FC = () => {
             product={selectedProduct}
             quantity={getItemQuantity(selectedProduct.id)}
             onAddToCart={() => { handleAddProduct(selectedProduct); }}
-            onDelta={(delta) => { handleDelta(selectedProduct.id, delta, selectedProduct.minOrder || 1); }}
+            onDelta={(delta) => { handleDelta(selectedProduct.id, delta); }}
             onClose={() => setSelectedProduct(null)}
           />
         )}

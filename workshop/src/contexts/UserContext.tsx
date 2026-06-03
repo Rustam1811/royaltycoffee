@@ -18,7 +18,7 @@ const UserContext = createContext<UserContextType>({
 // Allowlist для ролей (можно заменить на серверную проверку)
 const SUPEROWNER_EMAILS = ["rustam.mukaev@gmail.com", "superowner121@royal.com"];
 const WORKSHOP_OWNER_EMAILS = ["workshop.owner@royal.com"];
-const WORKSHOP_ADMIN_EMAILS = ["workshop.admin@royal.com"];
+const WORKSHOP_ADMIN_EMAILS = ["workshop.admin@royal.com", "ceoworkshop@mail.ru"];
 // Остальные email будут workshop_client
 
 function resolveRole(email: string | null, claims: Record<string, unknown>): WorkshopRole {

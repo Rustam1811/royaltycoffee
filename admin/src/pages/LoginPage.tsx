@@ -1,7 +1,9 @@
 // admin/src/pages/LoginPage.tsx
 import React, { useState } from 'react';
-import { setPersistence, browserLocalPersistence, signInWithEmailAndPassword } from 'firebase/auth';
+import { setPersistence, browserLocalPersistence, signInWithEmailAndPassword, getIdTokenResult } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+
+const WORKSHOP_ROLES = ['workshop_admin', 'workshop_owner', 'workshop_client'];
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -16,9 +18,15 @@ export default function LoginPage() {
     try {
       const em = email.trim().toLowerCase();
       await setPersistence(auth, browserLocalPersistence);
-      await signInWithEmailAndPassword(auth, em, pass.trim());
-      // Проверка email убрана - делается в RequireAuth
-      window.location.replace('/admin/users');
+      const cred = await signInWithEmailAndPassword(auth, em, pass.trim());
+      // Читаем claims чтобы определить куда редиректить
+      const tokenResult = await getIdTokenResult(cred.user, false);
+      const role = String(tokenResult.claims?.role || '');
+      if (WORKSHOP_ROLES.includes(role)) {
+        window.location.replace('/workshop/');
+      } else {
+        window.location.replace('/admin/users');
+      }
     } catch (error) {
       console.error('Email login error', error);
       setErr('Ошибка входа');

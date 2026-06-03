@@ -234,7 +234,8 @@ const OrdersPage: React.FC = () => {
     if (exists) {
       handleEditQty(product.id, exists.quantity + 1);
     } else {
-      const qty = product.minOrder || 1;
+      // Клиент добавляет по 1 единице; minOrder проверяется при оформлении
+      const qty = 1;
       setEditItems(prev => [...prev, {
         productId: product.id,
         productName: product.name,
