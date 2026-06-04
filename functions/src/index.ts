@@ -1216,15 +1216,26 @@ httpApp.post('/api/placeOrder', async (req: Request, res: Response) => {
 
     // ─── Накопительная лояльность по напиткам ───
     // Подсчитываем кол-во напитков в заказе. Учитываем только если у клиента
-    // НЕТ персональной скидки на напитки/всё для этой точки (drinksPct === 0).
+    // НЕТ персональной скидки на напитки/всё для ЭТОЙ точки (drinksPct === 0 для текущего outlet).
+    // Если скидка только для outlet A, то в outlet B напитки всё равно засчитываются.
     try {
       const realUser = userId && userId !== 'pos_guest';
       const hasDrinksDiscount = !!personalDiscount && Number(personalDiscount.drinksPct) > 0;
       if (realUser && !hasDrinksDiscount) {
+        // Ключевые слова еды — всё остальное считаем напитком (как в POS classifyCategory)
+        const FOOD_KEYWORDS = ['food', 'bakery', 'выпеч', 'круасс', 'десерт', 'сэндв', 'sandwich', 'dessert', 'eat', 'croissant', 'snack'];
+        const isDrink = (cat: string) => {
+          const c = cat.toLowerCase();
+          // Если POS прислал уже классифицированное значение
+          if (c === 'drinks') return true;
+          if (c === 'food') return false;
+          // Fallback: проверяем по ключевым словам (raw categoryId от меню)
+          return !FOOD_KEYWORDS.some(kw => c.includes(kw));
+        };
         const drinksInOrder = (items as Array<{ category?: string; quantity?: number }>).reduce(
           (acc, it) => {
-            const cat = (it.category || 'drinks').toLowerCase();
-            return cat === 'drinks' ? acc + (Number(it.quantity) || 1) : acc;
+            const cat = it.category || 'drinks';
+            return isDrink(cat) ? acc + (Number(it.quantity) || 1) : acc;
           },
           0
         );
@@ -1239,7 +1250,7 @@ httpApp.post('/api/placeOrder', async (req: Request, res: Response) => {
             },
             { merge: true }
           );
-          console.log(`[PlaceOrder] +${drinksInOrder} drinks to loyalty for ${userId}`);
+          console.log(`[PlaceOrder] +${drinksInOrder} drinks to loyalty for ${userId} (outlet: ${locationId})`);
         }
       }
     } catch (loyaltyErr) {

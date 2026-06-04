@@ -9,7 +9,7 @@ import { auth, db } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useAuth } from '../auth/AuthContext';
 import { API_CONFIG } from '../services/apiConfig';
-import { doc, onSnapshot, collection, getDocs, query, where } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection, getDocs, query, where } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import { 
   TrophyIcon, 
@@ -798,9 +798,12 @@ const HomePage: React.FC = () => {
 
   // ── Effect 2: лидерборд — независимо, не блокирует UI ──
   useEffect(() => {
+    let loaded = false;
+    const authUnsub = onAuthStateChanged(auth, async (user) => {
+      if (loaded) return; // запускаем только один раз при первом auth-событии
+      loaded = true;
     const loadLeaderboard = async () => {
       try {
-        const user = auth.currentUser;
         if (!user) {
           setLeaderboardReady(true);
           return;
@@ -910,7 +913,9 @@ const HomePage: React.FC = () => {
       }
     };
 
-    loadLeaderboard();
+      await loadLeaderboard();
+    });
+    return () => authUnsub();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Данные загружаются после auth — скелет страницы рисуем сразу,

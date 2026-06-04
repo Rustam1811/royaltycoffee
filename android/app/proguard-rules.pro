@@ -15,6 +15,18 @@
 }
 
 # ──────────────────────────────────────────────────────────
+# @capacitor-firebase/authentication plugin (io.capawesome.*)
+# This plugin is NOT under com.getcapacitor.** so needs explicit keep
+# ──────────────────────────────────────────────────────────
+-keep class io.capawesome.** { *; }
+-dontwarn io.capawesome.**
+
+# ──────────────────────────────────────────────────────────
+# App's own classes
+# ──────────────────────────────────────────────────────────
+-keep class com.royalcoffee.** { *; }
+
+# ──────────────────────────────────────────────────────────
 # Firebase / Google Play Services
 # ──────────────────────────────────────────────────────────
 -keep class com.google.firebase.** { *; }
@@ -43,6 +55,21 @@
 -keep class com.huawei.** { *; }
 
 # ──────────────────────────────────────────────────────────
+# Xiaomi / MIUI compatibility
+# ──────────────────────────────────────────────────────────
+-dontwarn com.miui.**
+-keep class com.miui.** { *; }
+
+# ──────────────────────────────────────────────────────────
+# Serialization (Gson, JSON)
+# ──────────────────────────────────────────────────────────
+-keepattributes Signature
+-keepattributes *Annotation*
+-keep class sun.misc.Unsafe { *; }
+-keep class com.google.gson.** { *; }
+-dontwarn com.google.gson.**
+
+# ──────────────────────────────────────────────────────────
 # Native methods
 # ──────────────────────────────────────────────────────────
 -keepclasseswithmembernames class * {
@@ -61,7 +88,6 @@
 # Stack traces — keep source file + line numbers for crash reports
 # ──────────────────────────────────────────────────────────
 -keepattributes SourceFile,LineNumberTable
--keepattributes *Annotation*
 -renamesourcefileattribute SourceFile
 
 -dontwarn com.facebook.**
