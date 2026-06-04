@@ -8,8 +8,16 @@ import { PremiumMenuModal } from '../components/PremiumMenuModal';
 import { parseLoyaltyPayload } from '@/utils/parseLoyaltyPayload';
 import { UserContext } from '../contexts/UserContext';
 import { useLocation } from '@/contexts/LocationContext';
-import { getUserDiscounts, resolveDiscountForOutlet } from '../services/personalDiscounts';
+import { getUserDiscounts, resolveDiscountForOutlet, type PersonalDiscountsMap } from '../services/personalDiscounts';
 import UserDiscountModal from '../components/UserDiscountModal';
+
+// Классификация категории меню → drinks | food (по нормализованному названию).
+// Совпадение по подстрокам — устойчиво к переводам и id вида 'coffee', 'bakery'.
+const FOOD_KEYWORDS = ['food', 'bakery', 'выпеч', 'круасс', 'десерт', 'сэндв', 'sandwich', 'dessert', 'eat', 'croissant'];
+function classifyCategory(cat?: { id?: string; name?: string } | null): 'drinks' | 'food' {
+  const haystack = `${cat?.id || ''} ${cat?.name || ''}`.toLowerCase();
+  return FOOD_KEYWORDS.some(kw => haystack.includes(kw)) ? 'food' : 'drinks';
+}
 
 // Helper for authenticated API calls
 async function callApi(path: string, body: unknown) {
@@ -92,10 +100,19 @@ export default function PosMenuPage() {
   const [useBonuses, setUseBonuses] = useState(false);
   const [bonusError, setBonusError] = useState<string | null>(null);
 
-  // Personal discount (per-outlet)
-  const [personalDiscountPct, setPersonalDiscountPct] = useState(0);
-  const [personalDiscountComment, setPersonalDiscountComment] = useState<string | null>(null);
+  // Personal discount (per-outlet, per-category)
+  const [personalDiscountsMap, setPersonalDiscountsMap] = useState<PersonalDiscountsMap>({});
   const [showDiscountModal, setShowDiscountModal] = useState(false);
+
+  // Решённые % для текущей точки по двум категориям
+  const discountDrinksPct = useMemo(
+    () => resolveDiscountForOutlet(personalDiscountsMap, posLocationId, 'drinks'),
+    [personalDiscountsMap, posLocationId]
+  );
+  const discountFoodPct = useMemo(
+    () => resolveDiscountForOutlet(personalDiscountsMap, posLocationId, 'food'),
+    [personalDiscountsMap, posLocationId]
+  );
 
   // ─── Pistol scanner state ───
   const [pistolListen, setPistolListen] = useState(true);
@@ -339,10 +356,37 @@ export default function PosMenuPage() {
   );
 
   const total = useMemo(() => cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0), [cartItems]);
-  const personalDiscountAmount = useMemo(
-    () => (personalDiscountPct > 0 ? Math.floor((total * personalDiscountPct) / 100) : 0),
-    [total, personalDiscountPct]
+
+  // ── Карта category по id товара (для классификации drinks/food при чекауте) ──
+  const itemCategoryMap = useMemo(() => {
+    const map = new Map<string, 'drinks' | 'food'>();
+    for (const it of menuItems) {
+      const cat = categories.find(c => c.id === it.categoryId);
+      map.set(it.id, classifyCategory({ id: it.categoryId, name: cat?.name }));
+    }
+    return map;
+  }, [menuItems, categories]);
+
+  // Получить часть стоимости товара, относящуюся к категории
+  const sumByCategory = useCallback(
+    (cat: 'drinks' | 'food') =>
+      cartItems.reduce((acc, it) => {
+        // По товару из меню → классифицируем; если товар не найден (например, кастомный) — drinks
+        const c = itemCategoryMap.get(it.id) || 'drinks';
+        return c === cat ? acc + it.price * it.quantity : acc;
+      }, 0),
+    [cartItems, itemCategoryMap]
   );
+
+  const drinksSum = useMemo(() => sumByCategory('drinks'), [sumByCategory]);
+  const foodSum = useMemo(() => sumByCategory('food'), [sumByCategory]);
+
+  const personalDiscountAmount = useMemo(() => {
+    const dDrinks = Math.floor((drinksSum * discountDrinksPct) / 100);
+    const dFood = Math.floor((foodSum * discountFoodPct) / 100);
+    return dDrinks + dFood;
+  }, [drinksSum, foodSum, discountDrinksPct, discountFoodPct]);
+
   const totalAfterDiscount = useMemo(
     () => Math.max(0, total - personalDiscountAmount),
     [total, personalDiscountAmount]
@@ -358,6 +402,11 @@ export default function PosMenuPage() {
     const currentCartItems = [...cartItems];
     const currentCustomerName = customerName;
     const currentTargetUid = targetUid;
+    const currentDiscountDrinks = discountDrinksPct;
+    const currentDiscountFood = discountFoodPct;
+    const currentDrinksSum = drinksSum;
+    const currentFoodSum = foodSum;
+    const currentItemCategoryMap = new Map(itemCategoryMap);
     
     // Instantly clear UI & show success
     dispatch({ type: 'CLEAR_CART' });
@@ -368,6 +417,7 @@ export default function PosMenuPage() {
     setCustomerBonus(0);
     setUseBonuses(false);
     setTargetUid(null);
+    setPersonalDiscountsMap({});
     setOrderNumber('...'); 
     setShowSuccessModal(true);
     
@@ -385,32 +435,41 @@ export default function PosMenuPage() {
         sizeKey: item.sizeKey,
         milkKey: item.milkKey,
         syrupKey: item.syrupKey,
+        category: currentItemCategoryMap.get(item.id) || 'drinks',
       })),
       amount: finalTotal,
       customerName: currentCustomerName || 'POS Клиент',
       customerPhone: normalizedPhone,
       bonusToUse: bonusToUse,
       deliveryType: 'pickup',
+      personalDiscount: {
+        drinksPct: currentDiscountDrinks,
+        foodPct: currentDiscountFood,
+        drinksAmount: Math.floor(currentDrinksSum * currentDiscountDrinks / 100),
+        foodAmount: Math.floor(currentFoodSum * currentDiscountFood / 100),
+      },
     })
       .then(result => {
         if (result.ok) {
           setOrderNumber(result.orderNumberFormatted || String(result.orderNumber));
           
-          // If we had a target user, accrue bonuses (1%)
-          if (currentTargetUid && finalTotal > 0) {
-            const accrueAmount = Math.floor(finalTotal * 0.01);
-            if (accrueAmount > 0) {
+          // Накопительная лояльность: засчитываем только напитки БЕЗ персональной скидки.
+          // Если на этой точке у клиента есть фикс. скидка на напитки/всё — не накапливаем.
+          const accrueDrinks = currentDiscountDrinks === 0;
+          if (currentTargetUid && accrueDrinks) {
+            // Считаем кол-во проданных напитков (не еды)
+            const drinksCount = currentCartItems.reduce((acc, it) => {
+              const c = currentItemCategoryMap.get(it.id) || 'drinks';
+              return c === 'drinks' ? acc + it.quantity : acc;
+            }, 0);
+            if (drinksCount > 0) {
               callApi('/pos/accrue', {
                 uid: currentTargetUid,
-                amount: accrueAmount,
+                drinksCount,
                 reason: `Покупка в POS ${result.orderNumberFormatted || ''}`.trim(),
               }).catch(() => { /* ignore accrue errors */ });
             }
           }
-          
-          // Redeem bonuses if used (placeOrder already handles deduction,
-          // but POS may also call /pos/redeem for ledger sync)
-          // bonusToUse is already deducted by placeOrder endpoint
         } else {
           throw new Error(result.error || 'Ошибка создания заказа');
         }
@@ -418,7 +477,7 @@ export default function PosMenuPage() {
       .catch(() => {
         setOrderNumber('ERROR');
       });
-  }, [cartItems, dispatch, customerPhone, customerName, customerBonus, useBonuses, targetUid, posLocationId, posLocationName, totalAfterDiscount]);
+  }, [cartItems, dispatch, customerPhone, customerName, customerBonus, useBonuses, targetUid, posLocationId, posLocationName, totalAfterDiscount, discountDrinksPct, discountFoodPct, drinksSum, foodSum, itemCategoryMap]);
 
   // Keep checkoutRef in sync for pistol scanner auto-checkout
   useEffect(() => { checkoutRef.current = handleCheckout; }, [handleCheckout]);
@@ -428,22 +487,14 @@ export default function PosMenuPage() {
     let cancelled = false;
     (async () => {
       if (!targetUid) {
-        setPersonalDiscountPct(0);
-        setPersonalDiscountComment(null);
+        setPersonalDiscountsMap({});
         return;
       }
       try {
         const map = await getUserDiscounts(targetUid);
-        const pct = resolveDiscountForOutlet(map, posLocationId);
-        if (cancelled) return;
-        setPersonalDiscountPct(pct);
-        const direct = map[posLocationId]?.comment || map['*']?.comment || null;
-        setPersonalDiscountComment(direct);
+        if (!cancelled) setPersonalDiscountsMap(map);
       } catch {
-        if (!cancelled) {
-          setPersonalDiscountPct(0);
-          setPersonalDiscountComment(null);
-        }
+        if (!cancelled) setPersonalDiscountsMap({});
       }
     })();
     return () => { cancelled = true; };
@@ -796,10 +847,7 @@ export default function PosMenuPage() {
           if (!targetUid) return;
           try {
             const map = await getUserDiscounts(targetUid);
-            const pct = resolveDiscountForOutlet(map, posLocationId);
-            setPersonalDiscountPct(pct);
-            const c = map[posLocationId]?.comment || map['*']?.comment || null;
-            setPersonalDiscountComment(c);
+            setPersonalDiscountsMap(map);
           } catch { /* ignore */ }
         }}
       />
@@ -916,9 +964,14 @@ export default function PosMenuPage() {
                   <div className="flex items-center gap-2 text-xs text-emerald-700 flex-wrap">
                     {customerPhone && <span>{customerPhone}</span>}
                     {customerBonus > 0 && <span className="font-semibold text-amber-700">🎁 {customerBonus} ₸</span>}
-                    {personalDiscountPct > 0 && (
+                    {discountDrinksPct > 0 && (
                       <span className="font-bold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded">
-                        🏷️ −{personalDiscountPct}%{personalDiscountComment ? ` (${personalDiscountComment})` : ''}
+                        ☕ −{discountDrinksPct}%
+                      </span>
+                    )}
+                    {discountFoodPct > 0 && (
+                      <span className="font-bold text-orange-700 bg-orange-100 px-1.5 py-0.5 rounded">
+                        🥐 −{discountFoodPct}%
                       </span>
                     )}
                   </div>
@@ -1057,10 +1110,16 @@ export default function PosMenuPage() {
 
         {/* ═══ BLOCK 3 (FIXED BOTTOM): Total + Checkout — ALWAYS visible ═══ */}
         <div className="flex-shrink-0 border-t-2 border-slate-200 bg-white px-4 py-3 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
-          {personalDiscountPct > 0 && cartItems.length > 0 && (
+          {discountDrinksPct > 0 && drinksSum > 0 && (
             <div className="flex items-center justify-between mb-1 text-xs text-purple-700">
-              <span className="font-medium">🏷️ Персональная скидка {personalDiscountPct}%</span>
-              <span className="font-bold">−{personalDiscountAmount.toLocaleString('ru')} ₸</span>
+              <span className="font-medium">☕ Скидка на напитки −{discountDrinksPct}%</span>
+              <span className="font-bold">−{Math.floor(drinksSum * discountDrinksPct / 100).toLocaleString('ru')} ₸</span>
+            </div>
+          )}
+          {discountFoodPct > 0 && foodSum > 0 && (
+            <div className="flex items-center justify-between mb-1 text-xs text-orange-700">
+              <span className="font-medium">🥐 Скидка на выпечку −{discountFoodPct}%</span>
+              <span className="font-bold">−{Math.floor(foodSum * discountFoodPct / 100).toLocaleString('ru')} ₸</span>
             </div>
           )}
           <div className="flex items-center justify-between mb-2">

@@ -6,9 +6,10 @@ import { PromotionBanner } from '../components/PromotionBanner';
 import { getCashbackPercent } from '../components/AchievementBadge';
 import { usePersonalDiscounts } from '../hooks/usePersonalDiscounts';
 import { auth, db } from '../lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import { useAuth } from '../auth/AuthContext';
 import { API_CONFIG } from '../services/apiConfig';
-import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { doc, onSnapshot, collection, getDocs, query, where } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import { 
   TrophyIcon, 
@@ -731,49 +732,68 @@ const HomePage: React.FC = () => {
   const [drinkLeaders, setDrinkLeaders] = useState<Record<string, CategoryLeaderUser[]>>({});
   const [foodLeaders, setFoodLeaders] = useState<Record<string, CategoryLeaderUser[]>>({});
 
-  // ── Effect 1: профиль + бонусы → dataReady сразу после загрузки ──
+  // ── Effect 1: профиль + бонусы — real-time подписки ──
   useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const user = auth.currentUser;
-        if (!user) return;
+    let unsubUser: (() => void) | undefined;
+    let unsubBonus: (() => void) | undefined;
 
-        // Параллельно: профиль + заказы + бонусы
-        const [userDoc, ordersSnap, bonusDoc] = await Promise.all([
-          getDoc(doc(db, 'users', user.uid)),
-          getDocs(query(collection(db, 'orders'), where('userId', '==', user.uid))),
-          getDoc(doc(db, 'bonuses', user.uid)),
-        ]);
+    const authUnsub = onAuthStateChanged(auth, (user) => {
+      unsubUser?.();
+      unsubBonus?.();
 
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          setUserName(userData.name || user.displayName || authUser?.name || 'Гость');
-          setUserAvatar(userData.avatar || user.photoURL || null);
-          setTotalOrders(userData.ordersCount || 0);
-        } else {
-          setUserName(user.displayName || authUser?.name || 'Гость');
-          setUserAvatar(user.photoURL || null);
-        }
-
-        let spent = 0;
-        ordersSnap.forEach(d => {
-          const o = d.data();
-          spent += (o.amount || o.totalAmount || o.total || 0);
-        });
-        setTotalSpent(spent);
-
-        if (bonusDoc.exists()) {
-          setBonusBalance(bonusDoc.data().balance || 0);
-        }
-      } catch (error) {
-        console.error('Error loading profile:', error);
-      } finally {
-        // Карточка кешбэка готова отображаться
+      if (!user) {
         setDataReady(true);
+        return;
       }
-    };
 
-    loadProfile();
+      // Одноразово: сумма потраченного из заказов (дорогой запрос, real-time не нужен)
+      getDocs(query(collection(db, 'orders'), where('userId', '==', user.uid)))
+        .then(snap => {
+          let spent = 0;
+          snap.forEach(d => {
+            const o = d.data();
+            spent += (o.amount || o.totalAmount || o.total || 0);
+          });
+          setTotalSpent(spent);
+        })
+        .catch(() => {});
+
+      // Real-time: имя и аватар
+      unsubUser = onSnapshot(
+        doc(db, 'users', user.uid),
+        (snap) => {
+          if (snap.exists()) {
+            const d = snap.data();
+            setUserName(d.name || user.displayName || authUser?.name || 'Гость');
+            setUserAvatar(d.avatar || user.photoURL || null);
+          } else {
+            setUserName(user.displayName || authUser?.name || 'Гость');
+            setUserAvatar(user.photoURL || null);
+          }
+          setDataReady(true);
+        },
+        () => setDataReady(true)
+      );
+
+      // Real-time: баланс бонусов + кол-во напитков → карточка обновляется сразу после заказа
+      unsubBonus = onSnapshot(
+        doc(db, 'bonuses', user.uid),
+        (snap) => {
+          if (snap.exists()) {
+            const bd = snap.data();
+            setBonusBalance(bd.balance || 0);
+            setTotalOrders(bd.drinksCount ?? bd.ordersCount ?? 0);
+          }
+        },
+        () => {}
+      );
+    });
+
+    return () => {
+      authUnsub();
+      unsubUser?.();
+      unsubBonus?.();
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Effect 2: лидерборд — независимо, не блокирует UI ──
@@ -1112,7 +1132,7 @@ const HomePage: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <div className="text-white font-bold text-base leading-tight">Личная скидка</div>
                     <div className="text-white/85 text-xs mt-1 leading-snug">
-                      {personalDiscounts['*']
+                      {(personalDiscounts['*:all'] || personalDiscounts['*'])
                         ? 'Действует во всех точках сети'
                         : Object.keys(personalDiscounts).length > 1
                           ? `Активна в ${Object.keys(personalDiscounts).length} точках`

@@ -1106,6 +1106,7 @@ httpApp.post('/api/placeOrder', async (req: Request, res: Response) => {
       customerPhone,
       deliveryType,
       deliveryInfo,
+      personalDiscount,
       customerInfo 
     } = req.body || {};
     
@@ -1176,6 +1177,7 @@ httpApp.post('/api/placeOrder', async (req: Request, res: Response) => {
       totalPrice: totalAmount,
       bonusUsed,
       bonusEarned: 0,
+      personalDiscount: personalDiscount || null,
       status: needsApproval ? 'awaiting_approval' : 'pending',
       needsApproval: needsApproval || false,
       customerInfo: customerInfo || {},
@@ -1211,6 +1213,38 @@ httpApp.post('/api/placeOrder', async (req: Request, res: Response) => {
     }
     
     console.log(`[PlaceOrder] Created order #${orderNumberFormatted} (${orderId}) for ${customerName} (${customerPhone})`);
+
+    // ─── Накопительная лояльность по напиткам ───
+    // Подсчитываем кол-во напитков в заказе. Учитываем только если у клиента
+    // НЕТ персональной скидки на напитки/всё для этой точки (drinksPct === 0).
+    try {
+      const realUser = userId && userId !== 'pos_guest';
+      const hasDrinksDiscount = !!personalDiscount && Number(personalDiscount.drinksPct) > 0;
+      if (realUser && !hasDrinksDiscount) {
+        const drinksInOrder = (items as Array<{ category?: string; quantity?: number }>).reduce(
+          (acc, it) => {
+            const cat = (it.category || 'drinks').toLowerCase();
+            return cat === 'drinks' ? acc + (Number(it.quantity) || 1) : acc;
+          },
+          0
+        );
+        if (drinksInOrder > 0) {
+          const bonusRef = db.collection('bonuses').doc(userId);
+          await bonusRef.set(
+            {
+              drinksCount: admin.firestore.FieldValue.increment(drinksInOrder),
+              ordersCount: admin.firestore.FieldValue.increment(1),
+              lastOrderAt: admin.firestore.Timestamp.now(),
+              updatedAt: admin.firestore.Timestamp.now(),
+            },
+            { merge: true }
+          );
+          console.log(`[PlaceOrder] +${drinksInOrder} drinks to loyalty for ${userId}`);
+        }
+      }
+    } catch (loyaltyErr) {
+      console.error('[PlaceOrder] Loyalty drinksCount update failed:', loyaltyErr);
+    }
     
     // ─── Push-уведомление суперовнерам при превышении порога ───
     if (needsApproval) {
@@ -1367,12 +1401,15 @@ httpApp.get('/api/users', async (req: Request, res: Response) => {
       // Fetch bonus balances and order counts in parallel for all users
       const userIds = usersSnapshot.docs.map(d => d.id);
       
-      // Batch fetch bonuses
+      // Batch fetch bonuses (balance + drinksCount — для накопительной лояльности)
       const bonusPromises = userIds.map(id => db.collection('bonuses').doc(id).get());
       const bonusDocs = await Promise.all(bonusPromises);
       const bonusMap = new Map<string, number>();
+      const drinksCountMap = new Map<string, number>();
       bonusDocs.forEach((bDoc, i) => {
-        bonusMap.set(userIds[i], bDoc.exists ? (bDoc.data()?.balance || 0) : 0);
+        const bd = bDoc.exists ? (bDoc.data() || {}) : {};
+        bonusMap.set(userIds[i], Number(bd.balance) || 0);
+        drinksCountMap.set(userIds[i], Number(bd.drinksCount) || 0);
       });
       
       // Batch fetch order counts and totalSpent
@@ -1402,14 +1439,25 @@ httpApp.get('/api/users', async (req: Request, res: Response) => {
         const data = doc.data();
         const totalOrders = ordersCountMap.get(doc.id) || 0;
         const totalSpent = totalSpentMap.get(doc.id) || 0;
-        
+        const drinksCount = drinksCountMap.get(doc.id) || 0;
+
         // Determine level based on total spent amount
         let level = 'Бронза';
         let levelRank = 0;
         if (totalSpent >= 25000) { level = 'Платинум'; levelRank = 3; }
         else if (totalSpent >= 15000) { level = 'Золото'; levelRank = 2; }
         else if (totalSpent >= 5000) { level = 'Серебро'; levelRank = 1; }
-        
+
+        // Накопительная скидка (cashback) по количеству выпитых напитков.
+        // Тиры синхронизированы с src/components/AchievementBadge.ts:
+        // 0/10/25/50/100/200 → 3/5/8/10/12/15%.
+        let cashbackPercent = 3;
+        if (drinksCount >= 200) cashbackPercent = 15;
+        else if (drinksCount >= 100) cashbackPercent = 12;
+        else if (drinksCount >= 50) cashbackPercent = 10;
+        else if (drinksCount >= 25) cashbackPercent = 8;
+        else if (drinksCount >= 10) cashbackPercent = 5;
+
         return {
           id: doc.id,
           uid: doc.id,
@@ -1422,6 +1470,8 @@ httpApp.get('/api/users', async (req: Request, res: Response) => {
           isActive: data.isActive !== false,
           isCloseFriend: data.isCloseFriend || false,
           bonusBalance: bonusMap.get(doc.id) || 0,
+          drinksCount,
+          cashbackPercent,
           ordersCount: totalOrders,
           totalOrders,
           totalSpent: totalSpentMap.get(doc.id) || 0,

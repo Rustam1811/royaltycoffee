@@ -29,6 +29,14 @@ interface Props {
 
 const PRESET_PERCENTS = [0, 5, 10, 15, 20, 25, 30];
 
+type Category = 'drinks' | 'food' | 'all';
+
+const CATEGORY_OPTIONS: { value: Category; label: string; emoji: string; hint: string }[] = [
+  { value: 'drinks', label: 'Напитки', emoji: '☕', hint: 'Фикс. скидка на напитки. Накопительная лояльность в этой точке перестаёт расти.' },
+  { value: 'food',   label: 'Выпечка', emoji: '🥐', hint: 'Скидка только на еду. Накопительная лояльность не меняется.' },
+  { value: 'all',    label: 'Всё',     emoji: '🛒', hint: 'Фикс. скидка на весь чек. Накопительная лояльность в этой точке перестаёт расти.' },
+];
+
 const UserDiscountModal: React.FC<Props> = ({ open, user, restrictedOutletId, role, onClose, onSaved }) => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [discounts, setDiscounts] = useState<PersonalDiscountsMap>({});
@@ -36,6 +44,7 @@ const UserDiscountModal: React.FC<Props> = ({ open, user, restrictedOutletId, ro
   const [allOutlets, setAllOutlets] = useState(false);
   const [percent, setPercent] = useState(5);
   const [comment, setComment] = useState('');
+  const [category, setCategory] = useState<Category>('drinks');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,10 +72,6 @@ const UserDiscountModal: React.FC<Props> = ({ open, user, restrictedOutletId, ro
         // Преселект: для бариста — всегда его единственная точка
         if (isBarista && restrictedOutletId) {
           setSelectedOutletIds([restrictedOutletId]);
-          if (existing[restrictedOutletId]) {
-            setPercent(existing[restrictedOutletId].percent);
-            setComment(existing[restrictedOutletId].comment || '');
-          }
         } else if (visibleLocs.length === 1) {
           setSelectedOutletIds([visibleLocs[0].id]);
         }
@@ -98,8 +103,10 @@ const UserDiscountModal: React.FC<Props> = ({ open, user, restrictedOutletId, ro
     try {
       const targets = allOutlets ? ['*'] : selectedOutletIds;
       for (const outletId of targets) {
-        await setUserDiscount(user.uid, outletId, percent, comment || undefined);
+        await setUserDiscount(user.uid, outletId, percent, comment || undefined, category);
       }
+      const fresh = await getUserDiscounts(user.uid);
+      setDiscounts(fresh);
       onSaved?.();
       onClose();
     } catch (e: unknown) {
@@ -109,18 +116,25 @@ const UserDiscountModal: React.FC<Props> = ({ open, user, restrictedOutletId, ro
     }
   };
 
-  const handleRemove = async (outletId: string) => {
+  const handleRemove = async (key: string) => {
     if (!user) return;
-    if (!confirm('Снять скидку с этой точки?')) return;
+    if (!confirm('Снять скидку?')) return;
     setSaving(true);
     try {
-      await removeUserDiscount(user.uid, outletId);
+      await removeUserDiscount(user.uid, key);
       const fresh = await getUserDiscounts(user.uid);
       setDiscounts(fresh);
       onSaved?.();
     } finally {
       setSaving(false);
     }
+  };
+
+  /** Парсинг ключа discounts: `outletId:category` или legacy `outletId`. */
+  const parseKey = (key: string): { outletId: string; cat: Category } => {
+    const colon = key.indexOf(':');
+    if (colon === -1) return { outletId: key, cat: 'all' };
+    return { outletId: key.slice(0, colon), cat: (key.slice(colon + 1) as Category) || 'all' };
   };
 
   const outletName = (id: string) => {
@@ -183,34 +197,40 @@ const UserDiscountModal: React.FC<Props> = ({ open, user, restrictedOutletId, ro
                         Активные скидки
                       </h3>
                       <div className="space-y-2">
-                        {currentDiscountsEntries.map(([outletId, entry]) => (
-                          <div
-                            key={outletId}
-                            className="flex items-center gap-3 p-3 rounded-2xl bg-emerald-50 border border-emerald-200"
-                          >
-                            <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white font-bold flex items-center justify-center text-sm">
-                              {entry.percent}%
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-semibold text-slate-900 text-sm truncate">
-                                {outletName(outletId)}
+                        {currentDiscountsEntries.map(([key, entry]) => {
+                          const { outletId, cat } = parseKey(key);
+                          const catOpt = CATEGORY_OPTIONS.find(c => c.value === (entry.category || cat));
+                          return (
+                            <div
+                              key={key}
+                              className="flex items-center gap-3 p-3 rounded-2xl bg-emerald-50 border border-emerald-200"
+                            >
+                              <div className="w-12 h-12 rounded-xl bg-emerald-500 text-white font-bold flex flex-col items-center justify-center text-sm leading-none">
+                                <span>{entry.percent}%</span>
+                                <span className="text-[10px] mt-0.5 opacity-90">{catOpt?.emoji}</span>
                               </div>
-                              {entry.comment && (
-                                <div className="text-xs text-slate-500 truncate">{entry.comment}</div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-slate-900 text-sm truncate">
+                                  {outletName(outletId)}
+                                </div>
+                                <div className="text-xs text-emerald-700 truncate">
+                                  {catOpt?.label || 'Всё'}
+                                  {entry.comment ? ` · ${entry.comment}` : ''}
+                                </div>
+                              </div>
+                              {(canChooseAll || (isBarista && outletId === restrictedOutletId)) && (
+                                <button
+                                  onClick={() => handleRemove(key)}
+                                  className="p-2 rounded-lg hover:bg-red-100 text-red-500"
+                                  disabled={saving}
+                                  aria-label="Удалить"
+                                >
+                                  <TrashIcon className="w-4 h-4" />
+                                </button>
                               )}
                             </div>
-                            {(canChooseAll || (isBarista && outletId === restrictedOutletId)) && (
-                              <button
-                                onClick={() => handleRemove(outletId)}
-                                className="p-2 rounded-lg hover:bg-red-100 text-red-500"
-                                disabled={saving}
-                                aria-label="Удалить"
-                              >
-                                <TrashIcon className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </section>
                   )}
@@ -277,6 +297,35 @@ const UserDiscountModal: React.FC<Props> = ({ open, user, restrictedOutletId, ro
                       </div>
                     </section>
                   )}
+
+                  {/* Category */}
+                  <section>
+                    <h3 className="text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">
+                      Тип скидки
+                    </h3>
+                    <div className="grid grid-cols-3 gap-2">
+                      {CATEGORY_OPTIONS.map(opt => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setCategory(opt.value)}
+                          className={`p-3 rounded-2xl border text-center transition ${
+                            category === opt.value
+                              ? 'border-emerald-500 bg-emerald-50 shadow-sm'
+                              : 'border-slate-200 bg-white hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="text-2xl leading-none">{opt.emoji}</div>
+                          <div className={`text-xs font-bold mt-1 ${category === opt.value ? 'text-emerald-700' : 'text-slate-700'}`}>
+                            {opt.label}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-2 leading-snug">
+                      {CATEGORY_OPTIONS.find(c => c.value === category)?.hint}
+                    </p>
+                  </section>
 
                   {/* Percent */}
                   <section>

@@ -17,6 +17,8 @@ interface ListedUser {
   avatar: string | null;
   ordersCount: number;
   bonusBalance: number;
+  drinksCount?: number;
+  cashbackPercent?: number;
   totalSpent: number;
   lastOrderDate: string | null;
   level: string;
@@ -394,8 +396,12 @@ const UsersPage: React.FC = () => {
                       <span className="font-semibold text-slate-900">{u.ordersCount}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="flex items-center gap-1"><CurrencyDollarIcon className="w-3.5 h-3.5 text-amber-500" /> Бонусов:</span>
-                      <span className="font-semibold text-amber-600">{u.bonusBalance || 0}</span>
+                      <span className="flex items-center gap-1">☕ Напитков:</span>
+                      <span className="font-semibold text-slate-900">{u.drinksCount ?? 0}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="flex items-center gap-1"><CurrencyDollarIcon className="w-3.5 h-3.5 text-amber-500" /> Накопит. скидка:</span>
+                      <span className="font-bold text-amber-600">{u.cashbackPercent ?? 3}%</span>
                     </div>
                     {u.lastOrderDate && (
                       <div className="text-[10px] text-slate-500 mt-2">

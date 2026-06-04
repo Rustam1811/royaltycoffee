@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import { onSnapshot, doc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
 
 export interface PersonalDiscountEntry {
@@ -28,22 +29,32 @@ export function usePersonalDiscounts(): {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const uid = auth.currentUser?.uid;
-    if (!uid) {
-      setLoading(false);
-      return;
-    }
-    const ref = doc(db, 'users', uid);
-    const unsub = onSnapshot(
-      ref,
-      (snap) => {
-        const data = snap.data();
-        setDiscounts((data?.personalDiscounts || {}) as PersonalDiscountsMap);
+    let snapshotUnsub: (() => void) | undefined;
+
+    const authUnsub = onAuthStateChanged(auth, (user) => {
+      snapshotUnsub?.();
+      snapshotUnsub = undefined;
+
+      if (!user) {
+        setDiscounts({});
         setLoading(false);
-      },
-      () => setLoading(false)
-    );
-    return () => unsub();
+        return;
+      }
+
+      snapshotUnsub = onSnapshot(
+        doc(db, 'users', user.uid),
+        (snap) => {
+          setDiscounts((snap.data()?.personalDiscounts || {}) as PersonalDiscountsMap);
+          setLoading(false);
+        },
+        () => setLoading(false)
+      );
+    });
+
+    return () => {
+      authUnsub();
+      snapshotUnsub?.();
+    };
   }, []);
 
   const maxPercent = Object.values(discounts).reduce(
