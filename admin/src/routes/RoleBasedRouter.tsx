@@ -36,6 +36,7 @@ const CourierDashboard = lazy(() => import('@/pages/CourierDashboard'));
 const CourierDocumentsPage = lazy(() => import('@/pages/CourierDocumentsPage'));
 const StaffManagementPage = lazy(() => import('@/pages/StaffManagementPage'));
 const WorkshopPage = lazy(() => import('@/pages/WorkshopPage'));
+const IikoSettingsPage = lazy(() => import('@/pages/IikoSettingsPage'));
 
 // Компонент загрузки
 const PageLoader: React.FC = () => (
@@ -73,6 +74,7 @@ const PAGE_COMPONENTS: Record<string, React.LazyExoticComponent<React.FC<{ locat
   'courier-dashboard': CourierDashboard,
   'courier-documents': CourierDocumentsPage,
   'workshop': WorkshopPage,
+  'iiko-settings': IikoSettingsPage,
 };
 
 interface RouteParams {

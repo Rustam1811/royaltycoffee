@@ -75,9 +75,15 @@ async function initKeyboard(): Promise<void> {
 async function initAppListeners(): Promise<void> {
   try {
     const { App } = await import('@capacitor/app');
+    const { handleBack } = await import('./backHandler');
 
     // Handle hardware back button (Android)
     App.addListener('backButton', ({ canGoBack }) => {
+      // 1. Let any open overlay / in-page sub-screen consume the back press first
+      //    (story viewer, menu category & item detail, bottom sheets, etc.)
+      if (handleBack()) return;
+
+      // 2. Otherwise fall back to normal navigation, or minimise on the root route
       if (canGoBack) {
         window.history.back();
       } else {

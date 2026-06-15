@@ -24,6 +24,7 @@ import {
   Cog6ToothIcon,
   DocumentIcon,
   BuildingOffice2Icon,
+  BuildingStorefrontIcon,
   Bars3Icon,
   XMarkIcon,
   ArrowRightOnRectangleIcon,
@@ -52,7 +53,8 @@ const ICONS: Record<string, React.FC<{ className?: string }>> = {
   'courier-dashboard': TruckIcon,
   'courier-documents': DocumentIcon,
   'workshop': BuildingOffice2Icon,
-  'staff': UserGroupIcon
+  'staff': UserGroupIcon,
+  'iiko-settings': BuildingStorefrontIcon,
 };
 
 interface RoleBasedNavigationProps {

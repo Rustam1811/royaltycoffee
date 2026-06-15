@@ -9,7 +9,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'meshoptimizer';
 import * as THREE from 'three';
 
-const GLB_URL = `${import.meta.env.BASE_URL}images/3Dcup_tiny.glb`.replace('//', '/');
+const GLB_URL = '/images/3Dcup_tiny.glb';
 
 /* ── Preload GLB as soon as this module loads, before Canvas even mounts ── */
 useLoader.preload(GLTFLoader, GLB_URL, (loader: GLTFLoader) => {

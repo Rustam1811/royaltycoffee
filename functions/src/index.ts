@@ -1373,139 +1373,169 @@ httpApp.get('/api/users', async (req: Request, res: Response) => {
       });
     }
     
-    // Список пользователей для админ-панели
+    // Список клиентов для админ-панели (только role='user', без стаффа и цеха)
     if (action === 'list') {
       const pageNum = Math.max(1, parseInt(page as string) || 1);
       const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 20));
-      const offset = (pageNum - 1) * limitNum;
-      
-      console.log(`[Users list] page=${pageNum}, limit=${limitNum}, offset=${offset}`);
-      
-      // Получаем общее количество пользователей
-      const countSnapshot = await db.collection('users').count().get();
-      const totalCount = countSnapshot.data().count;
-      
-      // Получаем пользователей с пагинацией
-      let query = db.collection('users')
-        .orderBy('createdAt', 'desc')
-        .limit(limitNum);
-      
-      // Для offset используем startAfter если не первая страница
-      if (offset > 0) {
-        // Получаем документ для startAfter
-        const skipSnapshot = await db.collection('users')
-          .orderBy('createdAt', 'desc')
-          .limit(offset)
-          .get();
-        
-        if (!skipSnapshot.empty) {
-          const lastDoc = skipSnapshot.docs[skipSnapshot.docs.length - 1];
-          query = db.collection('users')
-            .orderBy('createdAt', 'desc')
-            .startAfter(lastDoc)
-            .limit(limitNum);
-        }
+
+      // Роли которые НЕ являются клиентами кофейни
+      const STAFF_ROLES = new Set([
+        'barista', 'admin', 'owner', 'superowner', 'courier',
+        'workshop', 'workshop_client', 'workshop_manager', 'manager',
+      ]);
+
+      // Грузим всех, фильтруем стафф JS-стороной
+      // (Firestore 'not-in' не покрывает отсутствующее поле)
+      const allUsersSnap = await db.collection('users').orderBy('createdAt', 'desc').get();
+
+      const candidateDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
+
+      for (const doc of allUsersSnap.docs) {
+        const data = doc.data();
+        const role: string = data.role || '';
+        if (STAFF_ROLES.has(role)) continue; // исключаем стафф
+        if (role && role !== 'user') continue; // исключаем неизвестные роли
+        candidateDocs.push(doc);
       }
-      
-      const usersSnapshot = await query.get();
-      
-      // Fetch bonus balances and order counts in parallel for all users
-      const userIds = usersSnapshot.docs.map(d => d.id);
-      
-      // Batch fetch bonuses (balance + drinksCount — для накопительной лояльности)
-      const bonusPromises = userIds.map(id => db.collection('bonuses').doc(id).get());
-      const bonusDocs = await Promise.all(bonusPromises);
+
+      // Дедупликация по номеру телефона: оставляем аккаунт с большим числом заказов
+      // (или более ранний, если заказов нет)
+      // Сначала быстро считаем заказы для дедупликации по телефону
+      const phoneGroups = new Map<string, FirebaseFirestore.QueryDocumentSnapshot[]>();
+      const noPhone: FirebaseFirestore.QueryDocumentSnapshot[] = [];
+
+      for (const doc of candidateDocs) {
+        const phone: string = (doc.data().phone || '').replace(/\D/g, '');
+        if (!phone) { noPhone.push(doc); continue; }
+        const existing = phoneGroups.get(phone) || [];
+        existing.push(doc);
+        phoneGroups.set(phone, existing);
+      }
+
+      // Для групп с дублями — грузим количество заказов и выбираем «главный» аккаунт
+      const deduplicatedDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [...noPhone];
+
+      await Promise.all(Array.from(phoneGroups.values()).map(async (group) => {
+        if (group.length === 1) { deduplicatedDocs.push(group[0]); return; }
+        // Несколько аккаунтов с одним телефоном — выбираем с наибольшим числом заказов
+        const counts = await Promise.all(
+          group.map(d => db.collection('orders').where('userId', '==', d.id).count().get())
+        );
+        let bestIdx = 0;
+        let bestCount = 0;
+        counts.forEach((snap, i) => {
+          const c = snap.data().count;
+          if (c > bestCount) { bestCount = c; bestIdx = i; }
+        });
+        deduplicatedDocs.push(group[bestIdx]);
+      }));
+
+      // Сортируем по createdAt desc
+      deduplicatedDocs.sort((a, b) => {
+        const ta = a.data().createdAt?.toDate?.()?.getTime?.() ?? 0;
+        const tb = b.data().createdAt?.toDate?.()?.getTime?.() ?? 0;
+        return tb - ta;
+      });
+
+      const totalCount = deduplicatedDocs.length;
+      const offset = (pageNum - 1) * limitNum;
+      const pageDocs = deduplicatedDocs.slice(offset, offset + limitNum);
+      const userIds = pageDocs.map(d => d.id);
+
+      // Batch-загрузка бонусов и заказов для текущей страницы
+      const [bonusDocs, orderSnapshots] = await Promise.all([
+        Promise.all(userIds.map(id => db.collection('bonuses').doc(id).get())),
+        Promise.all(userIds.map(id => db.collection('orders').where('userId', '==', id).get())),
+      ]);
+
       const bonusMap = new Map<string, number>();
       const drinksCountMap = new Map<string, number>();
       bonusDocs.forEach((bDoc, i) => {
         const bd = bDoc.exists ? (bDoc.data() || {}) : {};
         bonusMap.set(userIds[i], Number(bd.balance) || 0);
-        drinksCountMap.set(userIds[i], Number(bd.drinksCount) || 0);
+        drinksCountMap.set(userIds[i], Number(bd.drinksCount ?? bd.ordersCount) || 0);
       });
-      
-      // Batch fetch order counts and totalSpent
-      const orderPromises = userIds.map(id =>
-        db.collection('orders').where('userId', '==', id).get()
-      );
-      const orderSnapshots = await Promise.all(orderPromises);
+
       const ordersCountMap = new Map<string, number>();
       const totalSpentMap = new Map<string, number>();
       const lastOrderMap = new Map<string, string | null>();
       orderSnapshots.forEach((snap, i) => {
         ordersCountMap.set(userIds[i], snap.size);
         let spent = 0;
-        let lastDate: Date | null = null;
+        let lastDateMs = 0;
         snap.docs.forEach(oDoc => {
           const od = oDoc.data();
-          spent += od.amount || od.totalPrice || 0;
+          spent += od.amount || od.totalPrice || od.total || 0;
           const rawTs = od.createdAt;
           const ts: Date | null = rawTs?.toDate ? rawTs.toDate() : (rawTs ? new Date(String(rawTs)) : null);
-          if (ts && (!lastDate || ts.getTime() > lastDate.getTime())) lastDate = ts;
+          if (ts && ts.getTime() > lastDateMs) lastDateMs = ts.getTime();
         });
         totalSpentMap.set(userIds[i], spent);
-        lastOrderMap.set(userIds[i], lastDate ? (lastDate as Date).toISOString() : null);
+        lastOrderMap.set(userIds[i], lastDateMs ? new Date(lastDateMs).toISOString() : null);
       });
-      
-      const users = usersSnapshot.docs.map(doc => {
+
+      // Пороги кэшбэка — синхронизированы с AchievementBadge.tsx
+      const getCashback = (drinks: number) => {
+        if (drinks >= 400) return 15;
+        if (drinks >= 250) return 12;
+        if (drinks >= 100) return 10;
+        if (drinks >= 80)  return 8;
+        if (drinks >= 50)  return 5;
+        return 3;
+      };
+
+      // Уровень по напиткам (синхронизирован с фронтом)
+      const getLevel = (drinks: number): { level: string; levelRank: number } => {
+        if (drinks >= 400) return { level: 'VIP',       levelRank: 5 };
+        if (drinks >= 250) return { level: 'Бриллиант', levelRank: 4 };
+        if (drinks >= 100) return { level: 'Платина',   levelRank: 3 };
+        if (drinks >= 80)  return { level: 'Золото',    levelRank: 2 };
+        if (drinks >= 50)  return { level: 'Серебро',   levelRank: 1 };
+        return { level: 'Бронза', levelRank: 0 };
+      };
+
+      const users = pageDocs.map(doc => {
         const data = doc.data();
-        const totalOrders = ordersCountMap.get(doc.id) || 0;
-        const totalSpent = totalSpentMap.get(doc.id) || 0;
         const drinksCount = drinksCountMap.get(doc.id) || 0;
-
-        // Determine level based on total spent amount
-        let level = 'Бронза';
-        let levelRank = 0;
-        if (totalSpent >= 25000) { level = 'Платинум'; levelRank = 3; }
-        else if (totalSpent >= 15000) { level = 'Золото'; levelRank = 2; }
-        else if (totalSpent >= 5000) { level = 'Серебро'; levelRank = 1; }
-
-        // Накопительная скидка (cashback) по количеству выпитых напитков.
-        // Тиры синхронизированы с src/components/AchievementBadge.ts:
-        // 0/10/25/50/100/200 → 3/5/8/10/12/15%.
-        let cashbackPercent = 3;
-        if (drinksCount >= 200) cashbackPercent = 15;
-        else if (drinksCount >= 100) cashbackPercent = 12;
-        else if (drinksCount >= 50) cashbackPercent = 10;
-        else if (drinksCount >= 25) cashbackPercent = 8;
-        else if (drinksCount >= 10) cashbackPercent = 5;
+        const { level, levelRank } = getLevel(drinksCount);
 
         return {
           id: doc.id,
           uid: doc.id,
           phone: data.phone || null,
           email: data.email || null,
-          displayName: data.displayName || data.name || null,
           name: data.name || data.displayName || null,
+          displayName: data.displayName || data.name || null,
           avatar: data.avatar || null,
           role: data.role || 'user',
           isActive: data.isActive !== false,
           isCloseFriend: data.isCloseFriend || false,
           bonusBalance: bonusMap.get(doc.id) || 0,
           drinksCount,
-          cashbackPercent,
-          ordersCount: totalOrders,
-          totalOrders,
+          cashbackPercent: getCashback(drinksCount),
+          ordersCount: ordersCountMap.get(doc.id) || 0,
+          totalOrders: ordersCountMap.get(doc.id) || 0,
           totalSpent: totalSpentMap.get(doc.id) || 0,
           lastOrderDate: lastOrderMap.get(doc.id) || null,
           level,
           levelRank,
           primaryLocationId: data.primaryLocationId || null,
           createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt || null,
-          lastLogin: data.lastLogin?.toDate?.()?.toISOString() || data.lastLogin || null
+          lastLogin: data.lastLogin?.toDate?.()?.toISOString() || data.lastLogin || null,
         };
       });
-      
+
       return res.json({
         ok: true,
         users,
         total: totalCount,
-        hasMore: users.length === limitNum,
+        hasMore: offset + pageDocs.length < totalCount,
         pagination: {
           page: pageNum,
           limit: limitNum,
           total: totalCount,
-          totalPages: Math.ceil(totalCount / limitNum)
-        }
+          totalPages: Math.ceil(totalCount / limitNum),
+        },
       });
     }
     
@@ -2664,6 +2694,14 @@ httpApp.post('/api/roles/remove', (req, res) => removeRoleFn(req, res));
 httpApp.post('/api/roles/create-staff', (req, res) => createStaffUserFn(req, res));
 httpApp.get('/api/roles/staff-full', (req, res) => listStaffFullFn(req, res));
 httpApp.post('/api/roles/update-password', (req, res) => updateStaffPasswordFn(req, res));
+
+// ─── iiko External Loyalty (iiko → нам: скидки на кассе) ───
+import { iikoLoyaltyRouter } from './iikoLoyalty';
+httpApp.use('/api/iiko-loyalty', iikoLoyaltyRouter);
+
+// ─── iiko Cloud API sync (мы → iiko: заказы, меню, стоп-лист) ───
+import { iikoSyncRouter } from './iikoSync';
+httpApp.use('/api/iiko-sync', iikoSyncRouter);
 
 export const app = functions.https.onRequest(httpApp);
 

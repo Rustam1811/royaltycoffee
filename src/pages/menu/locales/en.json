@@ -1,4 +1,53 @@
 {
+  "screen": {
+    "nav": {
+      "home": "Home",
+      "menu": "Menu",
+      "qr": "QR",
+      "locations": "Coffee shops",
+      "profile": "Profile"
+    },
+    "menu": {
+      "title": "Menu",
+      "drinks": "Drinks",
+      "food": "Food",
+      "tabs": {
+        "all": "All",
+        "recommended": "Recommended",
+        "favorites": "Favorites",
+        "order": "Order"
+      },
+      "search": "Search..",
+      "clearFilter": "Clear filter",
+      "filters": "Filters",
+      "selectCoffeeShop": "Select a coffee shop",
+      "loadError": "Loading error",
+      "nothingFound": "Nothing found",
+      "size": "Size",
+      "customize": "Customize",
+      "addToCart": "Add to cart",
+      "ml": "ml",
+      "kcal": "kcal"
+    },
+    "locations": {
+      "title": "Coffee shops",
+      "selected": "Selected:",
+      "selectedBadge": "Selected",
+      "nearest": "Nearest",
+      "choose": "Select",
+      "route": "Directions",
+      "notFound": "No coffee shops found",
+      "selectedToastTitle": "Location selected!",
+      "selectedToastSub": "Orders will be linked to this coffee shop",
+      "hoursNote": "🕐 Working hours may change on holidays",
+      "meters": "m",
+      "km": "km"
+    },
+    "profile": {
+      "title": "Profile",
+      "language": "Language"
+    }
+  },
   "ui": {
     "menu": "Menu",
     "size": "Size",

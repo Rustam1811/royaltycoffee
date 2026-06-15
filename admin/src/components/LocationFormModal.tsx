@@ -18,6 +18,7 @@ interface LocationFormData {
   phone: string;
   isActive: boolean;
   coordinates?: LocationCoordinates;
+  twogisId?: string;
   staff: StaffInput[];
 }
 
@@ -54,6 +55,7 @@ export const LocationFormModal: React.FC<Props> = ({
   const [isActive, setIsActive] = useState(true);
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
+  const [twogisId, setTwogisId] = useState("");
   const [staff, setStaff] = useState<StaffInput[]>([]);
 
   useEffect(() => {
@@ -64,6 +66,7 @@ export const LocationFormModal: React.FC<Props> = ({
       setIsActive(location.isActive);
       setLat(location.coordinates?.lat?.toString() ?? "");
       setLng(location.coordinates?.lng?.toString() ?? "");
+      setTwogisId(location.twogisId ?? "");
       // Load existing staff
       setStaff(existingStaff.map(s => ({
         email: s.email,
@@ -77,6 +80,7 @@ export const LocationFormModal: React.FC<Props> = ({
       setIsActive(true);
       setLat("");
       setLng("");
+      setTwogisId("");
       setStaff([]);
     }
   }, [location, existingStaff, isOpen]);
@@ -103,7 +107,15 @@ export const LocationFormModal: React.FC<Props> = ({
     const parsedLng = parseFloat(lng);
     const coordinates =
       !isNaN(parsedLat) && !isNaN(parsedLng) ? { lat: parsedLat, lng: parsedLng } : undefined;
-    await onSave({ name, address, phone, isActive, coordinates, staff: validStaff });
+    await onSave({
+      name,
+      address,
+      phone,
+      isActive,
+      coordinates,
+      twogisId: twogisId.trim() || undefined,
+      staff: validStaff,
+    });
   };
 
   return (
@@ -207,6 +219,25 @@ export const LocationFormModal: React.FC<Props> = ({
                   </div>
                   <p className="text-xs text-gray-400 mt-1">
                     Откройте Google Maps → ПКМ по точке → скопируйте координаты
+                  </p>
+                </div>
+
+                {/* 2GIS firm/branch ID */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    2GIS ID филиала
+                  </label>
+                  <input
+                    type="text"
+                    value={twogisId}
+                    onChange={(e) => setTwogisId(e.target.value)}
+                    inputMode="numeric"
+                    placeholder="Напр. 70000001057215291"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Если указан — в приложении карта ведёт точно ко входу. Найдите филиал на
+                    2gis.kz: ID — это число в адресе страницы после <code>/firm/</code>.
                   </p>
                 </div>
 

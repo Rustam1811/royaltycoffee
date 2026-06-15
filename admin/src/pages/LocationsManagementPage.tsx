@@ -76,7 +76,7 @@ export const LocationsManagementPage: React.FC = () => {
     }
   };
 
-  const handleSave = async (data: { name: string; address: string; phone: string; isActive: boolean; coordinates?: { lat: number; lng: number }; staff: { email: string; name: string; role: string }[] }) => {
+  const handleSave = async (data: { name: string; address: string; phone: string; isActive: boolean; coordinates?: { lat: number; lng: number }; twogisId?: string; staff: { email: string; name: string; role: string }[] }) => {
     try {
       setActionLoading(true);
       const { staff, ...locationData } = data;

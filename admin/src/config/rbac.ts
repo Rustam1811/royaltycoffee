@@ -34,7 +34,8 @@ export const ROLE_PERMISSIONS: Record<Role, string[]> = {
     'delivery',
     'couriers',
     'settings',
-    'workshop'
+    'workshop',
+    'iiko-settings',
   ],
   owner: [
     'dashboard',
@@ -96,7 +97,8 @@ export const PAGE_LABELS: Record<string, string> = {
   'settings': 'Настройки',
   'courier-dashboard': 'Мои доставки',
   'courier-documents': 'Документы',
-  'workshop': 'Цех'
+  'workshop': 'Цех',
+  'iiko-settings': 'iiko интеграция',
 };
 
 // Иконки страниц (heroicons names)
@@ -119,7 +121,8 @@ export const PAGE_ICONS: Record<string, string> = {
   'settings': 'Cog6ToothIcon',
   'courier-dashboard': 'TruckIcon',
   'courier-documents': 'DocumentIcon',
-  'workshop': 'BuildingOffice2Icon'
+  'workshop': 'BuildingOffice2Icon',
+  'iiko-settings': 'BuildingStorefrontIcon',
 };
 
 // Проверка доступа к странице

@@ -15,6 +15,8 @@ export interface Location {
   phone: string;
   isActive: boolean;
   coordinates?: LocationCoordinates;
+  /** 2GIS firm/branch ID — when set, the app points exactly at the branch entrance */
+  twogisId?: string;
   createdAt: Date;
   updatedAt: Date;
 }

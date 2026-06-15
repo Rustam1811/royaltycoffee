@@ -1,7 +1,8 @@
 import React from 'react';
 import { NavLink, useLocation, useRouteMatch } from 'react-router-dom';
-import { 
-  Squares2X2Icon, 
+import { useTranslation } from 'react-i18next';
+import {
+  Squares2X2Icon,
   QrCodeIcon,
 } from '@heroicons/react/24/solid';
 
@@ -49,25 +50,28 @@ const CrownIcon: React.FC<{ className?: string }> = ({ className }) => (
 interface NavItem {
   to: string;
   icon: React.ElementType;
-  label: string;
+  /** i18n key under `screen.nav` */
+  labelKey: string;
   isCenter?: boolean;
 }
 
 const navItems: NavItem[] = [
-  { to: '/home', icon: HomeSvgIcon, label: 'Главная' },
-  { to: '/menu', icon: Squares2X2Icon, label: 'Меню' },
-  { to: '/qr', icon: QrCodeIcon, label: 'QR', isCenter: true },
-  { to: '/locations', icon: CrownIcon, label: 'Кофейни' },
-  { to: '/profile', icon: ProfileSvgIcon, label: 'Профиль' },
+  { to: '/home', icon: HomeSvgIcon, labelKey: 'home' },
+  { to: '/menu', icon: Squares2X2Icon, labelKey: 'menu' },
+  { to: '/qr', icon: QrCodeIcon, labelKey: 'qr', isCenter: true },
+  { to: '/locations', icon: CrownIcon, labelKey: 'locations' },
+  { to: '/profile', icon: ProfileSvgIcon, labelKey: 'profile' },
 ];
 
 // Закомментированные неиспользуемые пункты навигации:
 // { to: '/order', icon: ShoppingBagIcon, label: 'Заказ' },
 // { to: '/card', icon: CreditCardIcon, label: 'Карта' },
 
-const NavItem: React.FC<NavItem> = ({ to, icon: Icon, label, isCenter }) => {
+const NavItem: React.FC<NavItem> = ({ to, icon: Icon, labelKey, isCenter }) => {
+  const { t } = useTranslation();
   const match = useRouteMatch({ path: to, exact: true });
   const isActive = !!match;
+  const label = t(`screen.nav.${labelKey}`);
 
   // Центральная QR кнопка с особым стилем
   if (isCenter) {

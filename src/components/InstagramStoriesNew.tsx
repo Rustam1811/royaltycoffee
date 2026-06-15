@@ -5,6 +5,7 @@ import { X, Heart, Eye, Volume2, VolumeX, Play } from 'lucide-react';
 import { StoriesService, Story } from '../services/stories';
 import { db } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { pushBackHandler } from '../services/backHandler';
 
 type StoryWithProgress = Story & { viewed: boolean };
 
@@ -215,6 +216,9 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
       document.documentElement.classList.remove(STORY_OPEN_CLASS);
     };
   }, []);
+
+  // Android hardware back button closes the viewer instead of exiting the app
+  useEffect(() => pushBackHandler(onClose), [onClose]);
 
   useEffect(() => {
     if (!current || paused) return;

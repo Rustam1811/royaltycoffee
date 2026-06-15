@@ -1,4 +1,53 @@
 {
+  "screen": {
+    "nav": {
+      "home": "Главная",
+      "menu": "Меню",
+      "qr": "QR",
+      "locations": "Кофейни",
+      "profile": "Профиль"
+    },
+    "menu": {
+      "title": "Меню",
+      "drinks": "Напитки",
+      "food": "Еда",
+      "tabs": {
+        "all": "Все",
+        "recommended": "Рекомендуемое",
+        "favorites": "Избранное",
+        "order": "Заказать"
+      },
+      "search": "Поиск..",
+      "clearFilter": "Очистить фильтр",
+      "filters": "Фильтры",
+      "selectCoffeeShop": "Выберите кофейню",
+      "loadError": "Ошибка загрузки",
+      "nothingFound": "Ничего не найдено",
+      "size": "Размер",
+      "customize": "Настроить",
+      "addToCart": "В корзину",
+      "ml": "мл",
+      "kcal": "ккал"
+    },
+    "locations": {
+      "title": "Кофейни",
+      "selected": "Выбрана:",
+      "selectedBadge": "Выбрана",
+      "nearest": "Ближайшая",
+      "choose": "Выбрать",
+      "route": "Маршрут",
+      "notFound": "Кофейни не найдены",
+      "selectedToastTitle": "Точка выбрана!",
+      "selectedToastSub": "Заказы будут привязаны к этой кофейне",
+      "hoursNote": "🕐 Время работы может меняться в праздничные дни",
+      "meters": "м",
+      "km": "км"
+    },
+    "profile": {
+      "title": "Профиль",
+      "language": "Язык"
+    }
+  },
   "ui": {
     "menu": "Меню",
     "size": "Размер",

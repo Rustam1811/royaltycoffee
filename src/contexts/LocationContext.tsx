@@ -85,6 +85,8 @@ export interface CafeLocation {
     lat: number;
     lng: number;
   };
+  /** 2GIS firm/branch ID — when set, maps point exactly at the branch entrance */
+  twogisId?: string;
   isActive: boolean;
   image?: string;
   distance?: number; // km from user

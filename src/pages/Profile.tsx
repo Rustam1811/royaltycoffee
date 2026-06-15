@@ -285,7 +285,7 @@ const LanguageSheet: React.FC<{ open: boolean; current: string; onChange: (code:
 
 /* ═══════════════════════════ PAGE ═══════════════════════════ */
 const ProfilePage: React.FC = () => {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user, signOut, updateProfile, deleteAccount } = useAuth();
 
   const [showEditModal, setShowEditModal] = useState(false);
@@ -321,7 +321,7 @@ const ProfilePage: React.FC = () => {
     <RoyalLayout>
       {/* Header */}
       <header className="sticky top-0 z-10 bg-gradient-to-br from-[#3D0A11] via-[#4D0E16] to-[#5A0D17] px-4 pb-3 pt-safe">
-        <h1 className="text-2xl font-extrabold text-white text-center">Профиль</h1>
+        <h1 className="text-2xl font-extrabold text-white text-center">{t('screen.profile.title')}</h1>
       </header>
 
       <main className="p-4 space-y-6 pb-36">

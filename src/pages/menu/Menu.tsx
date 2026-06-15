@@ -1,5 +1,6 @@
-import React, { useState, useMemo, memo, useCallback } from 'react';
+import React, { useState, useMemo, memo, useCallback, useEffect } from 'react';
 import { RoyalLoader } from '../../components/RoyalLoader';
+import { pushBackHandler } from '../../services/backHandler';
 import { useMenu } from '../../hooks/useMenu';
 import { useTranslation } from 'react-i18next';
 import { useLocation as useLocationContext } from '../../contexts/LocationContext';
@@ -27,11 +28,11 @@ const C = {
 
 /* ─── Tabs ─── */
 type TabKey = 'all' | 'recommended' | 'favorites' | 'order';
-const TABS: { key: TabKey; label: string }[] = [
-  { key: 'all', label: 'Все' },
-  { key: 'recommended', label: 'Рекомендуемое' },
-  { key: 'favorites', label: 'Избранное' },
-  { key: 'order', label: 'Заказать' },
+const TABS: { key: TabKey }[] = [
+  { key: 'all' },
+  { key: 'recommended' },
+  { key: 'favorites' },
+  { key: 'order' },
 ];
 
 /* ═══════ Promo Banner ═══════ */
@@ -95,6 +96,7 @@ const CircleCard: React.FC<{ item: PremiumMenuItem; onOpen: (item: PremiumMenuIt
 /* ═══════ Item detail page with premium customizer ═══════ */
 const ItemDetail: React.FC<{ item: PremiumMenuItem; onBack: () => void }> = ({ item, onBack }) => {
   const { dispatch } = useCart();
+  const { t } = useTranslation();
   const mods = item.modifiers || [];
 
   /* ── Classify modifiers by semantic role ── */
@@ -170,9 +172,9 @@ const ItemDetail: React.FC<{ item: PremiumMenuItem; onBack: () => void }> = ({ i
   const getSizeDisplay = (opt: string) => {
     if (item.sizes) {
       const s = item.sizes.find(sz => sz.label === opt || sz.key === opt);
-      if (s) return { label: s.label, sub: s.volume ? `${s.volume} мл` : '', price: s.price };
+      if (s) return { label: s.label, sub: s.volume ? `${s.volume} ${t('screen.menu.ml')}` : '', price: s.price };
     }
-    return { label: opt.includes('.') ? `${parseFloat(opt) * 1000} мл` : opt, sub: '', price: 0 };
+    return { label: opt.includes('.') ? `${parseFloat(opt) * 1000} ${t('screen.menu.ml')}` : opt, sub: '', price: 0 };
   };
 
   return (
@@ -220,7 +222,7 @@ const ItemDetail: React.FC<{ item: PremiumMenuItem; onBack: () => void }> = ({ i
           </div>
           {(item.energy || item.protein) && (
             <div className="flex items-center justify-center gap-4 mt-2">
-              {item.energy ? <span className="text-[11px] text-[#3D0A11]/30 font-medium">{item.energy} ккал</span> : null}
+              {item.energy ? <span className="text-[11px] text-[#3D0A11]/30 font-medium">{item.energy} {t('screen.menu.kcal')}</span> : null}
               {item.protein ? <span className="text-[11px] text-[#3D0A11]/30">Б {item.protein}г</span> : null}
               {item.fat ? <span className="text-[11px] text-[#3D0A11]/30">Ж {item.fat}г</span> : null}
               {item.carbs ? <span className="text-[11px] text-[#3D0A11]/30">У {item.carbs}г</span> : null}
@@ -232,7 +234,7 @@ const ItemDetail: React.FC<{ item: PremiumMenuItem; onBack: () => void }> = ({ i
         {sizeMod && sizeMod.options && (
           <div className="mt-6 px-5">
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-[11px] font-bold text-[#3D0A11]/40 uppercase tracking-[0.15em]">📐 Размер</span>
+              <span className="text-[11px] font-bold text-[#3D0A11]/40 uppercase tracking-[0.15em]">📐 {t('screen.menu.size')}</span>
               <div className="flex-1 h-[1px]" style={{ background: 'linear-gradient(to right, rgba(212,175,55,0.15), transparent)' }} />
             </div>
             <div className="relative flex p-1 rounded-2xl" style={{ background: 'rgba(61,10,17,0.06)', border: '1px solid rgba(61,10,17,0.08)' }}>
@@ -263,7 +265,7 @@ const ItemDetail: React.FC<{ item: PremiumMenuItem; onBack: () => void }> = ({ i
         {panels.length > 0 && (
           <div className="mt-5 px-5">
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-[11px] font-bold text-[#3D0A11]/40 uppercase tracking-[0.15em]">✨ Настроить</span>
+              <span className="text-[11px] font-bold text-[#3D0A11]/40 uppercase tracking-[0.15em]">✨ {t('screen.menu.customize')}</span>
               <div className="flex-1 h-[1px]" style={{ background: 'linear-gradient(to right, rgba(212,175,55,0.15), transparent)' }} />
             </div>
 
@@ -431,7 +433,7 @@ const ItemDetail: React.FC<{ item: PremiumMenuItem; onBack: () => void }> = ({ i
             className="px-7 py-3.5 rounded-2xl text-[15px] font-bold transition-all duration-200 active:scale-[0.96]"
             style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #B8962E 100%)', color: '#3D0A11',
               boxShadow: '0 4px 16px rgba(212,175,55,0.4), 0 1px 2px rgba(0,0,0,0.1)' }}>
-            В корзину
+            {t('screen.menu.addToCart')}
           </button>
         </div>
       </div>
@@ -447,7 +449,7 @@ const MenuLoading: React.FC = () => <RoyalLoader fullScreen={false} />;
    MAIN MENU PAGE
    ══════════════════════════════════════════════════════════ */
 const Menu: React.FC = () => {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { selectedLocation, isLocationSelected } = useLocationContext();
   const history = useHistory();
   const { drinks, food, loading, error } = useMenu(i18n.language);
@@ -476,6 +478,13 @@ const Menu: React.FC = () => {
 
   const selectedCatData = useMemo(() => (selectedCategory ? allCategories.find(c => c.key === selectedCategory) ?? null : null), [allCategories, selectedCategory]);
   const selectedCatItems = useMemo(() => (selectedCategory ? allItems.filter(it => String(it.categoryId) === selectedCategory) : []), [allItems, selectedCategory]);
+
+  /* ─── Android hardware back: close inner screens one level at a time
+     (item detail → category grid → category list) instead of leaving the menu ─── */
+  useEffect(() => {
+    if (detailItem) return pushBackHandler(() => setDetailItem(null));
+    if (selectedCategory) return pushBackHandler(() => setSelectedCategory(null));
+  }, [detailItem, selectedCategory]);
 
   /* ─── Detail page ─── */
   if (detailItem) {
@@ -511,17 +520,17 @@ const Menu: React.FC = () => {
       {/* Sticky header */}
       <div className="sticky top-0 z-30 bg-gradient-to-br from-[#3D0A11] via-[#4D0E16] to-[#5A0D17]">
         <div className="px-4 pt-safe pb-2">
-          <h1 className="text-2xl font-bold text-white">Меню</h1>
+          <h1 className="text-2xl font-bold text-white">{t('screen.menu.title')}</h1>
         </div>
 
         {/* Напитки / Еда */}
         <div className="px-4 pb-2 flex gap-2">
-          {(['drinks', 'food'] as const).map(t => (
-            <button key={t} onClick={() => { setMenuType(t); setSelectedCategory(null); }}
+          {(['drinks', 'food'] as const).map(type => (
+            <button key={type} onClick={() => { setMenuType(type); setSelectedCategory(null); }}
               className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all ${
-                menuType === t ? 'bg-[#D4AF37] text-black shadow-md' : 'bg-white/20 text-white/80 hover:bg-white/30'
+                menuType === type ? 'bg-[#D4AF37] text-black shadow-md' : 'bg-white/20 text-white/80 hover:bg-white/30'
               }`}>
-              {t === 'drinks' ? 'Напитки' : 'Еда'}
+              {type === 'drinks' ? t('screen.menu.drinks') : t('screen.menu.food')}
             </button>
           ))}
         </div>
@@ -535,7 +544,7 @@ const Menu: React.FC = () => {
                   ? 'border-[#D4AF37]/50 text-[#D4AF37] bg-[#D4AF37]/15'
                   : 'border-white/20 text-white/60 bg-white/10'
               }`}>
-              {tab.label}
+              {t(`screen.menu.tabs.${tab.key}`)}
             </button>
           ))}
         </div>
@@ -544,7 +553,7 @@ const Menu: React.FC = () => {
         <div className="px-4 pb-3">
           <div className="relative">
             <MagnifyingGlassIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50" />
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск.."
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder={t('screen.menu.search')}
               className="w-full pl-11 pr-10 py-3 rounded-xl bg-white/15 border border-white/20 text-sm text-white placeholder:text-white/50 outline-none focus:ring-2 focus:ring-[#D4AF37]/30 transition" />
             {search && (
               <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5">
@@ -558,11 +567,11 @@ const Menu: React.FC = () => {
         <div className="px-4 pb-3 flex gap-2">
           {search && (
             <button onClick={() => setSearch('')} className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/15 text-white/80 text-sm font-medium">
-              <XMarkIcon className="w-4 h-4" />Очистить фильтр
+              <XMarkIcon className="w-4 h-4" />{t('screen.menu.clearFilter')}
             </button>
           )}
           <button className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold text-black shadow-md bg-[#D4AF37]">
-            <FunnelIcon className="w-4 h-4" />Фильтры
+            <FunnelIcon className="w-4 h-4" />{t('screen.menu.filters')}
           </button>
         </div>
       </div>
@@ -572,7 +581,7 @@ const Menu: React.FC = () => {
         className="flex items-center gap-2 px-4 py-2.5 bg-[#3D0A11]/5 border-b border-[#3D0A11]/10 w-full text-left transition-colors hover:bg-[#3D0A11]/10">
         <MapPinIcon className={`w-4 h-4 flex-shrink-0 ${isLocationSelected ? 'text-[#D4AF37]' : 'text-[#3D0A11]/40'}`} />
         <span className={`text-xs font-medium truncate flex-1 ${isLocationSelected ? 'text-[#3D0A11]/80' : 'text-[#3D0A11]/40'}`}>
-          {isLocationSelected ? selectedLocation?.name : 'Выберите кофейню'}
+          {isLocationSelected ? selectedLocation?.name : t('screen.menu.selectCoffeeShop')}
         </span>
         <ChevronRightIcon className="w-3.5 h-3.5 text-[#3D0A11]/20 flex-shrink-0" />
       </button>
@@ -580,17 +589,17 @@ const Menu: React.FC = () => {
       {/* Content */}
       <div className="pb-36">
         {loading ? <MenuLoading /> : error ? (
-          <div className="p-8 text-center text-[#3D0A11]/40"><p className="text-lg mb-2">Ошибка загрузки</p><p className="text-sm">{error}</p></div>
+          <div className="p-8 text-center text-[#3D0A11]/40"><p className="text-lg mb-2">{t('screen.menu.loadError')}</p><p className="text-sm">{error}</p></div>
         ) : (
           <>
             {!search && activeTab === 'all' && <div className="mt-4"><PromoBanner /></div>}
 
             <div className="px-4 mt-4 mb-2">
-              <h2 className="text-xl font-bold text-[#D4AF37]">{menuType === 'drinks' ? 'Напитки' : 'Еда'}</h2>
+              <h2 className="text-xl font-bold text-[#D4AF37]">{menuType === 'drinks' ? t('screen.menu.drinks') : t('screen.menu.food')}</h2>
             </div>
 
             {filteredCategories.length === 0 ? (
-              <div className="px-4 py-12 text-center text-[#3D0A11]/40 text-sm">Ничего не найдено</div>
+              <div className="px-4 py-12 text-center text-[#3D0A11]/40 text-sm">{t('screen.menu.nothingFound')}</div>
             ) : (
               <div className="bg-cream-card mx-4 rounded-3xl overflow-hidden border border-cream-border shadow-royal-sm">
                 {filteredCategories.map(cat => {

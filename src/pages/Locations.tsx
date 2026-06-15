@@ -5,6 +5,7 @@ import { MapPinIcon as MapPinSolidIcon, CheckCircleIcon as CheckCircleSolidIcon 
 import { db } from '../lib/firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { RoyalLayout } from '../components/RoyalLayout';
 import { useLocation as useLocationContext } from '../contexts/LocationContext';
 
@@ -19,6 +20,8 @@ interface Location {
     lat: number;
     lng: number;
   };
+  /** 2GIS firm/branch ID — when set, points exactly at the branch entrance */
+  twogisId?: string;
   imageUrl?: string;
 }
 
@@ -43,14 +46,27 @@ const LocationCard: React.FC<{
   onSelect: () => void;
   onChoose: () => void;
 }> = ({ location, index, isNearest, isSelected, distanceKm, onSelect, onChoose }) => {
+  const { t } = useTranslation();
   const openInMaps = (e: React.MouseEvent) => {
     e.stopPropagation();
+    // 1. Best: a real 2GIS firm/branch ID — opens the curated branch card with the
+    //    exact entrance pin (and a built-in "build route" button to it).
+    if (location.twogisId) {
+      window.open(`https://2gis.kz/firm/${location.twogisId}`, '_blank');
+      return;
+    }
+    // 2. Fallback: build a pedestrian route to the coordinates instead of dropping a
+    //    raw geo pin. A `/geo/lng,lat` pin lands on the building centroid; a route makes
+    //    2GIS snap the destination to the nearest entrance. The empty first point ("|")
+    //    lets 2GIS use the user's current location as origin.
     if (location.coordinates) {
+      const { lng, lat } = location.coordinates;
       window.open(
-        `https://2gis.kz/astana/geo/${location.coordinates.lng},${location.coordinates.lat}`,
+        `https://2gis.kz/astana/directions/points/%7C${lng}%2C${lat}?pedestrian`,
         '_blank',
       );
     } else if (location.address) {
+      // 3. Last resort: search by address.
       window.open(
         `https://2gis.kz/astana/search/${encodeURIComponent(location.address)}`,
         '_blank',
@@ -80,12 +96,12 @@ const LocationCard: React.FC<{
       {isSelected && (
         <div className="absolute top-3 right-3 z-10 flex items-center gap-1 px-2.5 py-1 bg-[#D4AF37] text-black text-[10px] font-bold uppercase tracking-wider rounded-full">
           <CheckCircleSolidIcon className="w-3.5 h-3.5" />
-          Выбрана
+          {t('screen.locations.selectedBadge')}
         </div>
       )}
       {!isSelected && isNearest && (
         <div className="absolute top-3 right-3 z-10 px-2.5 py-1 bg-[#D4AF37] text-black text-[10px] font-bold uppercase tracking-wider rounded-full">
-          Ближайшая
+          {t('screen.locations.nearest')}
         </div>
       )}
 
@@ -107,7 +123,7 @@ const LocationCard: React.FC<{
               )}
               {distanceKm !== null && (
                 <span className="text-xs text-[#D4AF37] font-medium">
-                  {distanceKm < 1 ? `${Math.round(distanceKm * 1000)} м` : `${distanceKm.toFixed(1)} км`}
+                  {distanceKm < 1 ? `${Math.round(distanceKm * 1000)} ${t('screen.locations.meters')}` : `${distanceKm.toFixed(1)} ${t('screen.locations.km')}`}
                 </span>
               )}
             </div>
@@ -127,12 +143,12 @@ const LocationCard: React.FC<{
             {isSelected ? (
               <>
                 <CheckCircleSolidIcon className="w-4 h-4" />
-                Выбрана
+                {t('screen.locations.selectedBadge')}
               </>
             ) : (
               <>
                 <CheckCircleIcon className="w-4 h-4" />
-                Выбрать
+                {t('screen.locations.choose')}
               </>
             )}
           </button>
@@ -141,7 +157,7 @@ const LocationCard: React.FC<{
             className="flex items-center gap-1.5 px-4 py-2 bg-[#3D0A11]/5 hover:bg-[#3D0A11]/10 text-[#3D0A11]/60 text-sm rounded-xl transition-colors border border-[#3D0A11]/10"
           >
             <MapPinSolidIcon className="w-4 h-4" />
-            Маршрут
+            {t('screen.locations.route')}
           </button>
           {location.phone && (
             <button
@@ -175,6 +191,7 @@ async function geocodeAddress(address: string): Promise<{ lat: number; lng: numb
 
 // ─── Main page ───
 const LocationsPage: React.FC = () => {
+  const { t } = useTranslation();
   const history = useHistory();
   const { selectedLocation, selectLocation } = useLocationContext();
   const [locations, setLocations] = useState<Location[]>([]);
@@ -290,7 +307,7 @@ const LocationsPage: React.FC = () => {
             </button>
             <div className="flex items-center gap-2">
               <MapPinSolidIcon className="w-5 h-5 text-[#D4AF37]" />
-              <h1 className="text-lg font-bold text-white">Кофейни</h1>
+              <h1 className="text-lg font-bold text-white">{t('screen.locations.title')}</h1>
             </div>
           </div>
         </div>
@@ -301,7 +318,7 @@ const LocationsPage: React.FC = () => {
         <div className="px-4 py-2 bg-[#D4AF37]/10 border-b border-[#D4AF37]/15">
           <div className="flex items-center gap-2">
             <CheckCircleSolidIcon className="w-4 h-4 text-[#D4AF37] flex-shrink-0" />
-            <span className="text-[#3D0A11]/50 text-xs">Выбрана:</span>
+            <span className="text-[#3D0A11]/50 text-xs">{t('screen.locations.selected')}</span>
             <span className="text-[#3D0A11] text-xs font-semibold truncate">{selectedLocation.name}</span>
           </div>
         </div>
@@ -318,8 +335,8 @@ const LocationsPage: React.FC = () => {
           >
             <CheckCircleSolidIcon className="w-6 h-6 flex-shrink-0" />
             <div>
-              <p className="font-bold text-sm">Точка выбрана!</p>
-              <p className="text-xs opacity-80">Заказы будут привязаны к этой кофейне</p>
+              <p className="font-bold text-sm">{t('screen.locations.selectedToastTitle')}</p>
+              <p className="text-xs opacity-80">{t('screen.locations.selectedToastSub')}</p>
             </div>
           </motion.div>
         )}
@@ -367,13 +384,13 @@ const LocationsPage: React.FC = () => {
               {locations.length === 0 && (
                 <div className="text-center py-12">
                   <MapPinIcon className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-                  <p className="text-gray-400">Кофейни не найдены</p>
+                  <p className="text-gray-400">{t('screen.locations.notFound')}</p>
                 </div>
               )}
 
               <div className="p-3 bg-[#D4AF37]/10 rounded-2xl border border-[#D4AF37]/15 mt-4">
                 <p className="text-[#D4AF37] text-xs text-center">
-                  🕐 Время работы может меняться в праздничные дни
+                  {t('screen.locations.hoursNote')}
                 </p>
               </div>
             </motion.div>

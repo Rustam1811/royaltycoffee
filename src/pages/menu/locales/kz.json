@@ -1,4 +1,53 @@
 {
+  "screen": {
+    "nav": {
+      "home": "Басты бет",
+      "menu": "Мәзір",
+      "qr": "QR",
+      "locations": "Кофеханалар",
+      "profile": "Профиль"
+    },
+    "menu": {
+      "title": "Мәзір",
+      "drinks": "Сусындар",
+      "food": "Тағам",
+      "tabs": {
+        "all": "Барлығы",
+        "recommended": "Ұсынылған",
+        "favorites": "Таңдаулы",
+        "order": "Тапсырыс"
+      },
+      "search": "Іздеу..",
+      "clearFilter": "Сүзгіні тазалау",
+      "filters": "Сүзгілер",
+      "selectCoffeeShop": "Кофеханасын таңдаңыз",
+      "loadError": "Жүктеу қатесі",
+      "nothingFound": "Ештеңе табылмады",
+      "size": "Өлшем",
+      "customize": "Баптау",
+      "addToCart": "Себетке",
+      "ml": "мл",
+      "kcal": "ккал"
+    },
+    "locations": {
+      "title": "Кофеханалар",
+      "selected": "Таңдалды:",
+      "selectedBadge": "Таңдалды",
+      "nearest": "Ең жақыны",
+      "choose": "Таңдау",
+      "route": "Бағыт",
+      "notFound": "Кофеханалар табылмады",
+      "selectedToastTitle": "Нүкте таңдалды!",
+      "selectedToastSub": "Тапсырыстар осы кофеханаға байланады",
+      "hoursNote": "🕐 Жұмыс уақыты мереке күндері өзгеруі мүмкін",
+      "meters": "м",
+      "km": "км"
+    },
+    "profile": {
+      "title": "Профиль",
+      "language": "Тіл"
+    }
+  },
   "ui": {
     "menu": "Мәзір",
     "size": "Өлшем",
