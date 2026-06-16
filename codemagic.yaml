@@ -199,8 +199,10 @@ workflows:
           NEW_BUILD_NUMBER=$(($BUILD_NUMBER + 100))
           echo "Setting build number to: $NEW_BUILD_NUMBER"
           agvtool new-version -all $NEW_BUILD_NUMBER
-          # Поднимаем версию (1.8.4 уже была загружена)
-          agvtool new-marketing-version 1.8.6
+          # ВАЖНО: поднимай при каждом релизе — старый train закрывается в TestFlight
+          # и App Store требует версию строго выше предыдущей (1.8.6 уже закрыта).
+          # Держим в синхроне с android/app/build.gradle (versionName).
+          agvtool new-marketing-version 1.8.9
 
       - name: Build iOS release IPA
         script: |
