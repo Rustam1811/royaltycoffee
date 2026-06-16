@@ -637,7 +637,7 @@ httpApp.get('/api/debug-version', async (req: Request, res: Response) => {
 httpApp.all('/api/locations', async (req: Request, res: Response) => {
   try {
     const { action, id } = req.query;
-    const MAX_LOCATIONS = 10;
+    const MAX_LOCATIONS = 20;
 
     switch (action) {
       case 'list': {

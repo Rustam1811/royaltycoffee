@@ -51,8 +51,12 @@ const LocationCard: React.FC<{
     e.stopPropagation();
     // 1. Best: a real 2GIS firm/branch ID — opens the curated branch card with the
     //    exact entrance pin (and a built-in "build route" button to it).
+    //    The city segment ("astana") is required — without it 2GIS doesn't resolve
+    //    the firm card and shows a blank map. The firm ID is globally unique, so 2GIS
+    //    redirects to the correct branch even if it's in another city.
     if (location.twogisId) {
-      window.open(`https://2gis.kz/firm/${location.twogisId}`, '_blank');
+      const firmId = location.twogisId.trim();
+      window.open(`https://2gis.kz/astana/firm/${firmId}`, '_blank');
       return;
     }
     // 2. Fallback: build a pedestrian route to the coordinates instead of dropping a

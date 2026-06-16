@@ -43,7 +43,7 @@ export interface LocationAnalytics extends Location {
   stats: LocationStats;
 }
 
-export const MAX_LOCATIONS = 10;
+export const MAX_LOCATIONS = 20;
 
 export const DEFAULT_LOCATION_ID = 'main';
 
